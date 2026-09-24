@@ -50,6 +50,7 @@ mod tests {
             session_locked: false,
             typing_active: false,
             music_motion_active: false,
+            drowsy_motion_active: false,
         };
 
         assert_eq!(BehaviorEngine.resolve(&context), Behavior::CodingWithMusic);
@@ -64,6 +65,7 @@ mod tests {
             session_locked: true,
             typing_active: false,
             music_motion_active: false,
+            drowsy_motion_active: false,
         };
 
         assert_eq!(BehaviorEngine.resolve(&context), Behavior::Sleeping);

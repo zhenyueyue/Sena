@@ -81,13 +81,15 @@ Cadence: **180 ms/frame**
 
 ### Drowsy — 3 frames
 
-Cadence: **850 ms/frame**
+Drowsy is low-duty-cycle rather than a permanent loop. While the user has been inactive for 5–10 minutes, Sena stays on frame `000` most of the time. The runtime triggers one short sleepy-motion burst after staggered rests of **18 / 27 / 22 / 31 seconds**.
 
-1. Heavy eyelids.
-2. Head dips slightly.
-3. Small recovery, still sleepy.
+| Frame | Visual | Hold |
+| --- | --- | ---: |
+| `000` | Heavy eyelids / stable sleepy pose | 420 ms |
+| `001` | Head dips slightly / brief yawn-like low point | 760 ms |
+| `002` | Small recovery, still sleepy | 420 ms |
 
-No dramatic wobble.
+One burst is approximately **1.6 seconds**, then Sena freezes on `000` again. No dramatic wobble, body drift, or continuous animation.
 
 ### Sleeping — 3 frames
 

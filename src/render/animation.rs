@@ -52,6 +52,7 @@ impl AnimationSpec {
         package: &PetPackage,
         typing_active: bool,
         music_motion_active: bool,
+        drowsy_motion_active: bool,
     ) -> Self {
         let mut spec = Self::for_behavior(behavior, package);
         let resolved = package
@@ -68,6 +69,7 @@ impl AnimationSpec {
                 Behavior::CodingWithMusic => typing_active || music_motion_active,
                 _ => true,
             },
+            Behavior::Drowsy => resolved == Behavior::Drowsy && drowsy_motion_active,
             _ => true,
         };
 
@@ -215,7 +217,7 @@ mod tests {
     #[test]
     fn coding_stays_static_until_keyboard_activity() {
         let package = PetPackage::load_default().expect("official Sena package should load");
-        let spec = AnimationSpec::for_runtime(Behavior::Coding, &package, false, false);
+        let spec = AnimationSpec::for_runtime(Behavior::Coding, &package, false, false, false);
 
         assert_eq!(spec.clip, AnimationClip::Coding);
         assert_eq!(spec.frame_count, 1);
@@ -226,7 +228,7 @@ mod tests {
     #[test]
     fn coding_animates_during_keyboard_activity() {
         let package = PetPackage::load_default().expect("official Sena package should load");
-        let spec = AnimationSpec::for_runtime(Behavior::Coding, &package, true, false);
+        let spec = AnimationSpec::for_runtime(Behavior::Coding, &package, true, false, false);
 
         assert_eq!(spec.frame_count, 4);
         assert_eq!(spec.interval, Some(Duration::from_millis(220)));
@@ -236,8 +238,10 @@ mod tests {
     #[test]
     fn dedicated_listening_animation_can_sleep_between_motion_bursts() {
         let package = PetPackage::builtin_placeholder();
-        let quiet = AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, false);
-        let moving = AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, true);
+        let quiet =
+            AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, false, false);
+        let moving =
+            AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, true, false);
 
         assert!(!quiet.running());
         assert_eq!(quiet.frame_count, 1);
@@ -248,8 +252,10 @@ mod tests {
     #[test]
     fn coding_with_music_reuses_coding_when_combined_assets_are_missing() {
         let package = PetPackage::load_default().expect("official Sena package should load");
-        let quiet = AnimationSpec::for_runtime(Behavior::CodingWithMusic, &package, false, false);
-        let typing = AnimationSpec::for_runtime(Behavior::CodingWithMusic, &package, true, false);
+        let quiet =
+            AnimationSpec::for_runtime(Behavior::CodingWithMusic, &package, false, false, false);
+        let typing =
+            AnimationSpec::for_runtime(Behavior::CodingWithMusic, &package, true, false, false);
 
         assert!(!quiet.running());
         assert_eq!(quiet.frame_count, 1);
@@ -258,10 +264,36 @@ mod tests {
     }
 
     #[test]
+    fn drowsy_animation_can_sleep_between_motion_bursts() {
+        let package = PetPackage::builtin_placeholder();
+        let quiet = AnimationSpec::for_runtime(Behavior::Drowsy, &package, false, false, false);
+        let motion = AnimationSpec::for_runtime(Behavior::Drowsy, &package, false, false, true);
+
+        assert!(!quiet.running());
+        assert_eq!(quiet.frame_count, 1);
+        assert!(motion.running());
+        assert_eq!(motion.frame_count, 2);
+    }
+
+    #[test]
+    fn official_drowsy_fallback_stays_static_until_assets_exist() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+        let quiet = AnimationSpec::for_runtime(Behavior::Drowsy, &package, false, false, false);
+        let motion = AnimationSpec::for_runtime(Behavior::Drowsy, &package, false, false, true);
+
+        assert!(!quiet.running());
+        assert_eq!(quiet.frame_count, 1);
+        assert!(!motion.running());
+        assert_eq!(motion.frame_count, 1);
+    }
+
+    #[test]
     fn official_listening_assets_sleep_between_motion_bursts() {
         let package = PetPackage::load_default().expect("official Sena package should load");
-        let quiet = AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, false);
-        let motion = AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, true);
+        let quiet =
+            AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, false, false);
+        let motion =
+            AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, true, false);
 
         assert_eq!(package.manifest().id, "sena.official");
         assert!(!quiet.running());

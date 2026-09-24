@@ -45,6 +45,13 @@ fn active_package() -> &'static PetPackage {
     })
 }
 
+pub fn has_dedicated_animation(behavior: Behavior) -> bool {
+    let package = active_package();
+    package
+        .animation(behavior)
+        .is_some_and(|definition| !package.is_sprite() || !definition.frames.is_empty())
+}
+
 pub fn install(window: &PetWindow) {
     let window_weak = window.as_weak();
 
@@ -201,6 +208,7 @@ pub fn apply_context(window: &PetWindow, context: &DesktopContext, behavior: Beh
         active_package(),
         context.typing_active,
         context.music_motion_active,
+        context.drowsy_motion_active,
     );
     let clip = animation.clip as i32;
 

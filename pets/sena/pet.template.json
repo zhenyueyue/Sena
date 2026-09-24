@@ -73,7 +73,11 @@
         "animations/drowsy/001.webp",
         "animations/drowsy/002.webp"
       ],
-      "interval_ms": 850,
+      "frame_durations_ms": [
+        420,
+        760,
+        420
+      ],
       "looping": true
     },
     "sleeping": {

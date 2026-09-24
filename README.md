@@ -69,7 +69,7 @@ Behavior is mapped to renderer-independent animation clips before the current Sl
 - Coding: static focused pose while the keyboard is quiet; short typing bursts only around real key activity.
 - ListeningMusic: static between occasional one-shot music-motion bursts; the current rest pattern is 7 / 11 / 9 / 13 seconds with a short 900 ms motion window.
 - CodingWithMusic: prefers dedicated combined assets when available, otherwise reuses Coding assets before falling back further.
-- Drowsy: 2-frame slow motion at 900 ms per frame.
+- Drowsy: static sleepy pose between occasional 1.6-second three-frame motion bursts; current rest pattern is 18 / 27 / 22 / 31 seconds.
 - Sleeping: 2-frame breathing/Zzz motion at 1500 ms per frame.
 
 There is intentionally no global 60 FPS ticker. Each behavior owns its own cadence, and static states stop animation scheduling entirely.
@@ -103,6 +103,8 @@ Coding is now input-aware. When a supported IDE is foreground but the keyboard i
 On the development machine, the static Coding pose measured effectively zero CPU over a 12-second sample. Continuous multi-frame Coding remains intentionally limited to the short periods in which the user is actively typing.
 
 ListeningMusic now follows the same low-duty-cycle principle and the official package ships a four-frame Listening v1 set. Media playback itself does not justify a permanent animation loop: Sena stays on listening/000 most of the time and wakes for brief 240 / 220 / 240 / 220 ms motion bursts at staggered 7 / 11 / 9 / 13 second rest intervals. Stopping media or locking Windows cancels pending music motion immediately. CodingWithMusic currently reuses the finished Coding visual set, so typing remains input-driven even while music is playing.
+
+Drowsy now follows the same event-sleep model. After 5 minutes without user input, Sena enters a static sleepy pose; if the active package actually contains Drowsy assets, short 1.6-second sleepy-motion bursts are scheduled after staggered 18 / 27 / 22 / 31 second rests. Real input, media playback, session lock, or the 10-minute transition to Sleeping cancels pending Drowsy motion. Until Drowsy art is shipped, the official package remains completely static in its Idle fallback instead of waking for placeholder animation.
 
 ## License
 
