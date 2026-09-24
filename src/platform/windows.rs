@@ -10,10 +10,11 @@ use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use slint::PhysicalPosition;
 use windows::{
     Win32::{
-        Foundation::{CloseHandle, HWND, POINT},
+        Foundation::{CloseHandle, HWND, POINT, RECT},
         Graphics::Gdi::{
-            CreateEllipticRgn, DeleteObject, GetMonitorInfoW, HGDIOBJ, MONITOR_DEFAULTTONEAREST,
-            MONITORINFO, MonitorFromPoint, SetWindowRgn,
+            CreateEllipticRgn, CreateRectRgn, DeleteObject, ExtCreateRegion, GetMonitorInfoW,
+            HGDIOBJ, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromPoint, RDH_RECTANGLES,
+            RGNDATA, RGNDATAHEADER, SetWindowRgn,
         },
         System::{
             SystemInformation::GetTickCount,
@@ -40,6 +41,14 @@ pub struct WorkArea {
     pub top: i32,
     pub right: i32,
     pub bottom: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AlphaRegionRect {
+    pub left: u32,
+    pub top: u32,
+    pub right: u32,
+    pub bottom: u32,
 }
 
 type ForegroundCallback = Box<dyn FnMut(String)>;
@@ -157,6 +166,111 @@ pub fn work_area_for_point(point: PhysicalPosition) -> Option<WorkArea> {
     })
 }
 
+pub fn apply_sprite_alpha_region_if_available(
+    window: &slint::Window,
+    source_width: u32,
+    source_height: u32,
+    alpha_rects: &[AlphaRegionRect],
+) {
+    let Some(hwnd) = hwnd_from_slint_window(window) else {
+        return;
+    };
+
+    let size = window.size();
+    if source_width == 0 || source_height == 0 || size.width == 0 || size.height == 0 {
+        return;
+    }
+
+    let scaled_rects: Vec<RECT> = alpha_rects
+        .iter()
+        .filter_map(|rect| {
+            let left = scale_floor(rect.left, size.width, source_width);
+            let top = scale_floor(rect.top, size.height, source_height);
+            let right = scale_ceil(rect.right, size.width, source_width);
+            let bottom = scale_ceil(rect.bottom, size.height, source_height);
+
+            (right > left && bottom > top).then_some(RECT {
+                left,
+                top,
+                right,
+                bottom,
+            })
+        })
+        .collect();
+
+    let region = if scaled_rects.is_empty() {
+        unsafe { CreateRectRgn(0, 0, 0, 0) }
+    } else {
+        create_region_from_rectangles(&scaled_rects)
+    };
+
+    if region.0.is_null() {
+        return;
+    }
+
+    apply_owned_region(hwnd, region);
+}
+
+fn scale_floor(value: u32, target: u32, source: u32) -> i32 {
+    ((value as u64 * target as u64) / source as u64).min(i32::MAX as u64) as i32
+}
+
+fn scale_ceil(value: u32, target: u32, source: u32) -> i32 {
+    ((value as u64 * target as u64 + source as u64 - 1) / source as u64).min(i32::MAX as u64) as i32
+}
+
+fn create_region_from_rectangles(rectangles: &[RECT]) -> windows::Win32::Graphics::Gdi::HRGN {
+    let header_size = std::mem::size_of::<RGNDATAHEADER>();
+    let rectangles_size = std::mem::size_of_val(rectangles);
+    let total_size = header_size + rectangles_size;
+    let storage_words = total_size.div_ceil(std::mem::size_of::<u64>());
+    let mut storage = vec![0u64; storage_words];
+
+    let left = rectangles.iter().map(|rect| rect.left).min().unwrap_or(0);
+    let top = rectangles.iter().map(|rect| rect.top).min().unwrap_or(0);
+    let right = rectangles.iter().map(|rect| rect.right).max().unwrap_or(0);
+    let bottom = rectangles.iter().map(|rect| rect.bottom).max().unwrap_or(0);
+
+    let header = RGNDATAHEADER {
+        dwSize: header_size as u32,
+        iType: RDH_RECTANGLES,
+        nCount: rectangles.len().min(u32::MAX as usize) as u32,
+        nRgnSize: rectangles_size.min(u32::MAX as usize) as u32,
+        rcBound: RECT {
+            left,
+            top,
+            right,
+            bottom,
+        },
+    };
+
+    let bytes = storage.as_mut_ptr().cast::<u8>();
+
+    unsafe {
+        std::ptr::write(bytes.cast::<RGNDATAHEADER>(), header);
+        std::ptr::copy_nonoverlapping(
+            rectangles.as_ptr().cast::<u8>(),
+            bytes.add(header_size),
+            rectangles_size,
+        );
+
+        ExtCreateRegion(
+            None,
+            total_size.min(u32::MAX as usize) as u32,
+            bytes.cast::<RGNDATA>(),
+        )
+    }
+}
+
+fn apply_owned_region(hwnd: HWND, region: windows::Win32::Graphics::Gdi::HRGN) {
+    let applied = unsafe { SetWindowRgn(hwnd, Some(region), true) };
+    if applied == 0 {
+        unsafe {
+            let _ = DeleteObject(HGDIOBJ(region.0));
+        }
+    }
+}
+
 /// Restricts the native window to the visible placeholder pet body.
 ///
 /// Windows does not hit-test pixels outside the region, so transparent corner
@@ -184,12 +298,7 @@ pub fn apply_pet_window_region_if_available(window: &slint::Window, placeholder:
         return;
     }
 
-    let applied = unsafe { SetWindowRgn(hwnd, Some(region), true) };
-    if applied == 0 {
-        unsafe {
-            let _ = DeleteObject(HGDIOBJ(region.0));
-        }
-    }
+    apply_owned_region(hwnd, region);
 }
 
 fn hwnd_from_slint_window(window: &slint::Window) -> Option<HWND> {

@@ -4,7 +4,7 @@ mod sprite;
 use std::sync::OnceLock;
 
 use animation::{AnimationClip, AnimationSpec};
-use slint::ComponentHandle;
+use slint::{ComponentHandle, LogicalSize, Timer};
 
 use crate::{PetWindow, behavior::Behavior, context::DesktopContext, pet::PetPackage};
 
@@ -45,23 +45,95 @@ pub fn install(window: &PetWindow) {
 
         apply_sprite_frame(&window, clip.behavior(), frame.max(0) as usize);
     });
+
+    // The native HWND may not exist during the initial context render. Re-apply
+    // the first frame once after the event loop starts so its alpha region is
+    // guaranteed to reach Win32 without adding a permanent timer.
+    let window_weak = window.as_weak();
+    Timer::single_shot(std::time::Duration::from_millis(150), move || {
+        let Some(window) = window_weak.upgrade() else {
+            return;
+        };
+        let Some(clip) = AnimationClip::from_i32(window.get_animation_clip()) else {
+            return;
+        };
+
+        apply_sprite_frame(
+            &window,
+            clip.behavior(),
+            window.get_animation_frame().max(0) as usize,
+        );
+    });
 }
 
 fn apply_sprite_frame(window: &PetWindow, behavior: Behavior, frame: usize) {
     let package = active_package();
 
     let Some(path) = package.sprite_frame_path(behavior, frame) else {
-        window.set_use_sprite(false);
+        use_placeholder(window);
         return;
     };
 
-    let Some(image) = sprite::load_cached(&path) else {
-        window.set_use_sprite(false);
+    let settings = package.sprite_settings();
+    let Some(sprite) = sprite::load_cached(&path, settings.alpha_threshold) else {
+        use_placeholder(window);
         return;
     };
 
-    window.set_sprite_image(image);
+    let logical_width = sprite.width as f32 * settings.scale;
+    let logical_height = sprite.height as f32 * settings.scale;
+    let scale_factor = window.window().scale_factor();
+    let target_width = (logical_width * scale_factor).round().max(1.0) as u32;
+    let target_height = (logical_height * scale_factor).round().max(1.0) as u32;
+    let current_size = window.window().size();
+
+    if current_size.width != target_width || current_size.height != target_height {
+        window
+            .window()
+            .set_size(LogicalSize::new(logical_width, logical_height));
+    }
+
+    window.set_sprite_image(sprite.image.clone());
     window.set_use_sprite(true);
+
+    #[cfg(target_os = "windows")]
+    {
+        use crate::platform::windows::{self, AlphaRegionRect};
+
+        let alpha_rects: Vec<AlphaRegionRect> = sprite
+            .alpha_rects
+            .iter()
+            .map(|rect| AlphaRegionRect {
+                left: rect.left,
+                top: rect.top,
+                right: rect.right,
+                bottom: rect.bottom,
+            })
+            .collect();
+
+        windows::apply_sprite_alpha_region_if_available(
+            &window.window(),
+            sprite.width,
+            sprite.height,
+            &alpha_rects,
+        );
+    }
+}
+
+fn use_placeholder(window: &PetWindow) {
+    window.set_use_sprite(false);
+
+    let scale_factor = window.window().scale_factor();
+    let current_size = window.window().size();
+    let target_width = (220.0 * scale_factor).round() as u32;
+    let target_height = (240.0 * scale_factor).round() as u32;
+
+    if current_size.width != target_width || current_size.height != target_height {
+        window.window().set_size(LogicalSize::new(220.0, 240.0));
+    }
+
+    #[cfg(target_os = "windows")]
+    crate::platform::windows::apply_pet_window_region_if_available(&window.window(), true);
 }
 
 /// Renderer boundary for the current Slint placeholder and Sprite backend.

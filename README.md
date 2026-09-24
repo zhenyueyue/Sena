@@ -83,7 +83,9 @@ Set `SENA_PET_PACKAGE` to a package directory to override the default package du
 
 The Sprite renderer is now connected end-to-end. PNG/WebP frames are decoded only when first used and then cached in memory, so animation ticks do not repeatedly read or decode files from disk. Missing or invalid frames safely fall back to the built-in placeholder.
 
-The next milestone is sprite-aware hit testing/window sizing for real character artwork, followed by the first Sena character asset set, tray/settings controls, and position/configuration persistence.
+Sprite packages now control character scale and use alpha-aware native Windows regions. The native window follows the source image size multiplied by the package scale, while transparent pixels are excluded from the window region so they do not block clicks to applications underneath.
+
+The next milestone is the first real Sena character asset set, followed by tray/settings controls and position/configuration persistence.
 
 ## License
 

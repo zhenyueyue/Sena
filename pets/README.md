@@ -23,6 +23,10 @@ Current schema version: `1`.
   "version": "1.0.0",
   "author": "Example Author",
   "renderer": "sprite",
+  "sprite": {
+    "scale": 0.75,
+    "alpha_threshold": 8
+  },
   "license": "CC-BY-4.0",
   "animations": {
     "idle": {
@@ -60,6 +64,14 @@ Supported renderer identifiers are currently reserved as:
 - `live2d` — reserved for the future Cubism renderer.
 
 Sprite asset paths must be relative to the package directory. Absolute paths and `..` path traversal are rejected. Sprite frame files are intentionally limited to PNG and WebP so Sena does not ship unnecessary image decoders.
+
+### Sprite display and hit testing
+
+`sprite.scale` controls the on-screen size relative to the source image. `1.0` means one logical desktop pixel per source pixel, `0.5` is half size, and `2.0` is double size. Accepted values are `0.1` through `4.0`.
+
+`sprite.alpha_threshold` controls native mouse hit testing. Pixels whose alpha is below the threshold are excluded from the Win32 window region, so clicks pass through transparent parts of the character to applications underneath. The default is `8`, which keeps anti-aliased character edges while ignoring nearly transparent background pixels.
+
+All frames in one character package should use the same canvas dimensions. Sena can handle differing frame dimensions, but a changing canvas would resize the native window between frames and create visible jitter.
 
 ## Recommended Sprite Layout
 

@@ -69,6 +69,31 @@ const fn default_looping() -> bool {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct SpriteSettings {
+    #[serde(default = "default_sprite_scale")]
+    pub scale: f32,
+    #[serde(default = "default_alpha_threshold")]
+    pub alpha_threshold: u8,
+}
+
+impl Default for SpriteSettings {
+    fn default() -> Self {
+        Self {
+            scale: default_sprite_scale(),
+            alpha_threshold: default_alpha_threshold(),
+        }
+    }
+}
+
+const fn default_sprite_scale() -> f32 {
+    1.0
+}
+
+const fn default_alpha_threshold() -> u8 {
+    8
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct PetManifest {
     pub schema_version: u32,
     pub id: String,
@@ -78,6 +103,8 @@ pub struct PetManifest {
     pub version: String,
     pub author: String,
     pub renderer: RendererKind,
+    #[serde(default)]
+    pub sprite: SpriteSettings,
     #[serde(default)]
     pub license: Option<String>,
     #[serde(default)]
@@ -161,6 +188,7 @@ impl PetPackage {
                 version: env!("CARGO_PKG_VERSION").into(),
                 author: "Sena Project".into(),
                 renderer: RendererKind::Placeholder,
+                sprite: SpriteSettings::default(),
                 license: Some("Apache-2.0".into()),
                 animations,
             },
@@ -214,6 +242,10 @@ impl PetPackage {
         self.manifest.renderer == RendererKind::Sprite
     }
 
+    pub fn sprite_settings(&self) -> &SpriteSettings {
+        &self.manifest.sprite
+    }
+
     pub fn sprite_frame_path(&self, behavior: Behavior, frame: usize) -> Option<PathBuf> {
         if !self.is_sprite() {
             return None;
@@ -258,6 +290,14 @@ fn validate_manifest(root: &Path, manifest: &PetManifest) -> Result<(), PackageE
     if manifest.id.trim().is_empty() || manifest.name.trim().is_empty() {
         return Err(PackageError::InvalidManifest(
             "id and name must not be empty".into(),
+        ));
+    }
+
+    if manifest.renderer == RendererKind::Sprite
+        && (!manifest.sprite.scale.is_finite() || !(0.1..=4.0).contains(&manifest.sprite.scale))
+    {
+        return Err(PackageError::InvalidManifest(
+            "sprite.scale must be between 0.1 and 4.0".into(),
         ));
     }
 
@@ -427,5 +467,12 @@ mod tests {
         assert!(is_supported_sprite_asset(Path::new("idle.webp")));
         assert!(!is_supported_sprite_asset(Path::new("idle.jpg")));
         assert!(!is_supported_sprite_asset(Path::new("model.moc3")));
+    }
+
+    #[test]
+    fn sprite_settings_have_safe_defaults() {
+        let settings = SpriteSettings::default();
+        assert_eq!(settings.scale, 1.0);
+        assert_eq!(settings.alpha_threshold, 8);
     }
 }
