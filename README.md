@@ -104,7 +104,7 @@ On the development machine, the static Coding pose measured effectively zero CPU
 
 ListeningMusic now follows the same low-duty-cycle principle and the official package ships a four-frame Listening v1 set. Media playback itself does not justify a permanent animation loop: Sena stays on listening/000 most of the time and wakes for brief 240 / 220 / 240 / 220 ms motion bursts at staggered 7 / 11 / 9 / 13 second rest intervals. Stopping media or locking Windows cancels pending music motion immediately. CodingWithMusic currently reuses the finished Coding visual set, so typing remains input-driven even while music is playing.
 
-Drowsy now follows the same event-sleep model. After 5 minutes without user input, Sena enters a static sleepy pose; if the active package actually contains Drowsy assets, short 1.6-second sleepy-motion bursts are scheduled after staggered 18 / 27 / 22 / 31 second rests. Real input, media playback, session lock, or the 10-minute transition to Sleeping cancels pending Drowsy motion. Until Drowsy art is shipped, the official package remains completely static in its Idle fallback instead of waking for placeholder animation.
+Drowsy now follows the same event-sleep model and the official package ships a three-frame Drowsy v1 set. After 5 minutes without user input, Sena stays on drowsy/000 most of the time and wakes for short 420 / 760 / 420 ms sleepy-motion bursts after staggered 18 / 27 / 22 / 31 second rests. Real input, media playback, session lock, or the 10-minute transition to Sleeping cancels pending Drowsy motion immediately.
 
 ## License
 

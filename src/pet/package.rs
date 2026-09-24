@@ -718,4 +718,22 @@ mod tests {
         );
         assert_eq!(listening.frame_durations_ms, vec![240, 220, 240, 220]);
     }
+
+    #[test]
+    fn official_sena_drowsy_keeps_v1_frame_timing() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+        let drowsy = package
+            .animation(Behavior::Drowsy)
+            .expect("official Sena package should contain Drowsy");
+
+        assert_eq!(
+            drowsy.frames,
+            vec![
+                "animations/drowsy/000.webp",
+                "animations/drowsy/001.webp",
+                "animations/drowsy/002.webp",
+            ]
+        );
+        assert_eq!(drowsy.frame_durations_ms, vec![420, 760, 420]);
+    }
 }

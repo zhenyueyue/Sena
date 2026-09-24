@@ -56,6 +56,19 @@
         220
       ],
       "looping": true
+    },
+    "drowsy": {
+      "frames": [
+        "animations/drowsy/000.webp",
+        "animations/drowsy/001.webp",
+        "animations/drowsy/002.webp"
+      ],
+      "frame_durations_ms": [
+        420,
+        760,
+        420
+      ],
+      "looping": true
     }
   }
 }
