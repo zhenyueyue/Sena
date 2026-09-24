@@ -18,14 +18,17 @@ This is deliberately larger than the old placeholder while remaining compact eno
 
 ## Rendering style
 
-- Clean high-quality anime illustration.
-- Soft cel shading with restrained gradients.
+- High-detail Japanese anime / delicate 3D-doll-inspired illustration matching the approved Sena reference.
+- Soft luminous shading, translucent chiffon and crystal highlights, while preserving a clean readable silhouette.
 - Crisp outer silhouette.
 - Fine internal line work, but avoid hairline-thin detached elements.
 - Transparent edges should be properly anti-aliased.
 - No baked background, frame, drop shadow rectangle, text, UI, watermark, or signature.
 - Lighting direction stays consistent across all frames.
 - Camera is fixed: slight eye-level/front three-quarter feel, no lens changes.
+- Character proportion target is approximately **6.5–7 heads tall**; never return to the early oversized-head look.
+- Legs should read long and elegant.
+- Shoes must use a thin sole and slim heel; no thick platform construction.
 
 ## Alpha requirements
 
@@ -145,6 +148,6 @@ The master reference is more important than adding additional prompt detail.
 
 Use this as the visual target when producing the first approved master image:
 
-> Original adult anime woman named Sena (星奈), semi-chibi 4.5-head-tall proportions, long dark navy-black hair with subtle violet gradient at the ends, cyan-violet eyes, small four-point star hair clip on viewer-left side, off-white cropped futuristic jacket, deep navy inner top, dark navy skirt-over-shorts silhouette, opaque black tights, short dark ankle boots, restrained lavender and cyan luminous accents, calm warm attentive expression, clean modern Japanese anime illustration, soft cel shading, crisp silhouette, full body, fixed front three-quarter camera, transparent background, no text, no watermark.
+> Original adult anime woman named Sena (星奈), elegant 6.5–7-head-tall proportions with a relatively small refined head, very long moonlight silver-white hair with faint blush-pink/lilac tint, luminous violet-pink eyes, large translucent lavender crystal-organza bow with small butterfly/star ornaments, elaborate but readable white/lilac/ice-blue layered chiffon-and-lace crystal dress, butterfly and moon-star jewelry, pale sheer stockings, slim crystal heels with a thin sole and absolutely no thick platform, calm dreamy warm expression, delicate high-detail Japanese anime / 3D-doll-inspired illustration, crisp full-body silhouette, fixed front three-quarter camera, transparent background, no text, no watermark.
 
 Do not add environment/background elements to production Sprite frames.

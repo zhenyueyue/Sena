@@ -6,58 +6,59 @@
 **Role:** desktop companion  
 **Visual age:** young adult  
 **Personality:** calm, observant, warm, slightly sleepy, quietly playful  
-**Theme:** starlight × desktop technology × companionship
+**Theme:** moonlight × starlight × crystal butterflies × companionship
 
-Sena should feel comfortable existing beside a code editor for hours. Her design must remain readable at approximately 250–450 logical pixels tall, so silhouette, face, hair, and two or three signature details matter more than dense costume decoration.
+Sena should feel like a quiet dream living beside the user's desktop: delicate and luminous, but calm enough to remain on screen for hours. Her production Sprite must preserve the approved elegant body proportions and avoid the oversized-head or heavy-platform-shoe look that appeared in early drafts.
 
 ## Face
 
-- Soft oval anime face; not childlike.
-- Cyan-violet irises with a darker outer ring.
-- Small four-point star catchlight may appear in one eye, but keep normal white highlights too.
-- Fine upper lashes; restrained lower lashes.
-- Small natural mouth.
-- Default expression: relaxed, attentive, faintly curious.
-- Blush is subtle and only stronger in reactions.
+- Refined soft oval face with an elegant young-adult appearance.
+- Head must remain proportionate to the body; do not enlarge it into chibi proportions.
+- Large but not exaggerated violet-pink irises with a darker outer ring and glassy highlights.
+- Fine upper lashes and delicate lower-lash detail.
+- Small natural nose and softly defined lips.
+- Default expression: gentle, dreamy, attentive and slightly wistful.
+- Fine glitter/freckle-like star accents under the eyes are allowed, but should remain subtle at desktop scale.
 
 ## Hair
 
-- Long navy-black hair reaching the lower back.
-- Slight outward curve near the ends.
-- Soft side bangs framing both cheeks.
-- Violet tint/gradient only in the lower third of the hair.
-- One small four-point star hair clip on the viewer's left.
-- Hair volume should create one clear outer silhouette. Avoid dozens of detached thin strands.
+- Very long moonlight silver-white hair with a faint blush-pink/lilac tint.
+- Hair reaches below the hips and forms a soft flowing silhouette.
+- Airy bangs and face-framing strands; the forehead should not be fully hidden.
+- A large translucent lavender crystal-organza bow is the primary head accessory.
+- Small butterfly/star crystal ornaments may decorate the bow and side hair.
+- Hair detail can be rich in the master artwork, but production frames must avoid excessive isolated one-pixel strands that create noisy alpha regions.
 
 ## Outfit
 
-Base outfit is modern and slightly futuristic rather than a school uniform.
+The approved base outfit is a moonlight-lavender crystal dress rather than the earlier techwear concept.
 
-- Off-white cropped jacket, soft fabric with clean geometric seams.
-- Deep navy fitted inner top.
-- Dark navy pleated skirt-over-shorts silhouette.
-- Opaque black tights.
-- Short dark ankle boots with one subtle cyan accent.
-- Small star emblem or stitch detail on jacket cuff or chest, never a large logo.
-- No dangling chains or dense accessories.
+- White/lilac/ice-blue layered chiffon and lace dress.
+- Short fitted inner skirt with longer translucent asymmetric outer layers and ribbon tails.
+- Crystal-butterfly motifs at the waist, sleeves and selected ribbon ends.
+- Delicate star/moon charms may hang from a few controlled attachment points.
+- Sheer pale stockings/tights with restrained crystal-ribbon details.
+- Shoes are elegant slim-heeled crystal shoes with a **thin sole**. No thick platform sole.
+- Heel and sole mass must remain visually light; footwear must not dominate the lower silhouette.
+- Jewelry is fine and delicate: butterfly choker, tiny stars, small crystals.
+- The costume can sparkle, but the silhouette must stay readable at desktop scale.
 
-The outfit needs to work in a future Live2D rig. Keep jacket, inner top, skirt, hair front/back, star clip, eyes, mouth, arms, and accessories visually separable.
+For future Live2D, keep front/back hair, bow, face, eyes, mouth, upper/lower dress layers, ribbons, arms, jewelry clusters and optional accessories visually separable.
 
 ## Modular accessories
 
 ### Headphones
 
-- Over-ear design.
-- Deep navy shell.
-- Thin violet ring with a small cyan status light.
-- Must remain recognizable at 300 px character height.
+- Elegant over-ear design derived from the crystal-butterfly motif.
+- Pearl white / translucent lavender shell with a subtle violet ring.
+- Must remain recognizable at 300 px character height without becoming visually heavy.
 - Used by `listening_music` and `coding_with_music`.
 
 ### Laptop
 
-- Compact dark laptop, approximately shoulder-width when seated.
-- Minimal back emblem: a four-point star.
-- Screen glow should be faint cyan, not a bright rectangle.
+- Compact pearl-white or pale-lavender laptop, approximately shoulder-width when seated.
+- Minimal back emblem: a small star or butterfly.
+- Screen glow should be faint lilac-blue, not a bright rectangle.
 - Used by `coding` and `coding_with_music`.
 
 ## Pose language
@@ -88,13 +89,13 @@ Not required for the first Sprite package, but preserve compatibility with:
 
 Every generated or hand-drawn frame must preserve:
 
-1. Star hair clip position and shape.
-2. Hair color and violet-end gradient.
-3. Eye colors.
-4. Jacket/inner-top/skirt palette.
-5. Body proportions.
-6. Face shape.
-7. Accessory design.
+1. Moonlight silver-pink hair color.
+2. Large translucent lavender bow shape and placement.
+3. Violet-pink eye color and face structure.
+4. Crystal-lavender layered dress design.
+5. Elegant adult body proportions with a relatively small head.
+6. Thin-soled slim-heel shoe silhouette.
+7. Butterfly/star jewelry language.
 8. Camera angle and scale unless the animation specification explicitly says otherwise.
 
 If any of these drift between frames, regenerate/redraw before adding the frame to the package.
