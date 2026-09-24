@@ -35,7 +35,6 @@ export component PetWindow inherits Window {
     callback drag-start();
     callback drag-move();
     callback drag-end();
-    callback context-menu();
     callback animation-tick(int, int);
 
     animation-timer := Timer {
@@ -81,8 +80,6 @@ export component PetWindow inherits Window {
                 root.drag-start();
             } else if event.button == PointerEventButton.left && event.kind == PointerEventKind.up {
                 root.drag-end();
-            } else if event.button == PointerEventButton.right && event.kind == PointerEventKind.up {
-                root.context-menu();
             } else if event.kind == PointerEventKind.cancel {
                 root.drag-end();
             }
@@ -261,8 +258,6 @@ export component PetWindow inherits Window {
                     root.drag-start();
                 } else if event.button == PointerEventButton.left && event.kind == PointerEventKind.up {
                     root.drag-end();
-                } else if event.button == PointerEventButton.right && event.kind == PointerEventKind.up {
-                    root.context-menu();
                 } else if event.kind == PointerEventKind.cancel {
                     root.drag-end();
                 }

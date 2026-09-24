@@ -7,6 +7,7 @@ mod render;
 
 use std::{
     cell::RefCell,
+    rc::Rc,
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, AtomicU64, Ordering},
@@ -139,43 +140,65 @@ fn main() -> Result<(), slint::PlatformError> {
     }
 
     #[cfg(target_os = "windows")]
-    {
+    let _pet_context_menu_hook = {
+        let hook = Rc::new(RefCell::new(None));
+        let hook_slot = Rc::clone(&hook);
         let window = window.as_weak();
         let context = Arc::clone(&context);
         let preferences = Arc::clone(&preferences);
         let pet_visible = Arc::clone(&pet_visible);
 
-        window
-            .upgrade()
-            .expect("pet window must be alive")
-            .on_context_menu(move || {
-                let Some(strong_window) = window.upgrade() else {
-                    return;
-                };
+        slint::Timer::single_shot(Duration::from_millis(120), move || {
+            let Some(strong_window) = window.upgrade() else {
+                return;
+            };
 
-                let snapshot = preferences
-                    .lock()
-                    .expect("preferences lock poisoned")
-                    .value()
-                    .clone();
+            let callback_window = window.clone();
+            let callback_context = Arc::clone(&context);
+            let callback_preferences = Arc::clone(&preferences);
+            let callback_pet_visible = Arc::clone(&pet_visible);
 
-                let Some(action) = platform::windows::show_pet_context_menu(
-                    &strong_window.window(),
-                    snapshot.scale,
-                    snapshot.always_on_top,
-                ) else {
-                    return;
-                };
+            match platform::windows::PetContextMenuHook::install(
+                &strong_window.window(),
+                move || {
+                    let Some(strong_window) = callback_window.upgrade() else {
+                        return;
+                    };
 
-                handle_desktop_action(
-                    action,
-                    window.clone(),
-                    Arc::clone(&context),
-                    Arc::clone(&preferences),
-                    Arc::clone(&pet_visible),
-                );
-            });
-    }
+                    let snapshot = callback_preferences
+                        .lock()
+                        .expect("preferences lock poisoned")
+                        .value()
+                        .clone();
+
+                    let Some(action) = platform::windows::show_pet_context_menu(
+                        &strong_window.window(),
+                        snapshot.scale,
+                        snapshot.always_on_top,
+                    ) else {
+                        return;
+                    };
+
+                    handle_desktop_action(
+                        action,
+                        callback_window.clone(),
+                        Arc::clone(&callback_context),
+                        Arc::clone(&callback_preferences),
+                        Arc::clone(&callback_pet_visible),
+                    );
+                },
+            ) {
+                Ok(installed) => {
+                    *hook_slot.borrow_mut() = Some(installed);
+                }
+                Err(error) => {
+                    eprintln!("pet context menu unavailable: {error}");
+                }
+            }
+        });
+
+        hook
+    };
 
     #[cfg(target_os = "windows")]
     let _tray_icon = {

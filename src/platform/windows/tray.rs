@@ -1,5 +1,6 @@
 use std::{
     ffi::c_void,
+    io,
     sync::{Arc, Mutex, OnceLock, mpsc},
     thread::{self, JoinHandle},
     time::Duration,
@@ -12,8 +13,8 @@ use windows::{
         UI::{
             Input::KeyboardAndMouse::SetActiveWindow,
             Shell::{
-                NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NOTIFYICONDATAW,
-                Shell_NotifyIconW,
+                DefSubclassProc, NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE,
+                NOTIFYICONDATAW, RemoveWindowSubclass, SetWindowSubclass, Shell_NotifyIconW,
             },
             WindowsAndMessaging::{
                 AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
@@ -31,6 +32,7 @@ use windows::{
 
 const TRAY_ICON_ID: u32 = 1;
 const TRAY_CALLBACK_MESSAGE: u32 = WM_APP + 41;
+const PET_CONTEXT_SUBCLASS_ID: usize = 0x5345_4E41;
 
 const CMD_SETTINGS: usize = 1000;
 const CMD_SHOW: usize = 1001;
@@ -54,6 +56,58 @@ pub enum TrayAction {
 type TrayCallback = Arc<dyn Fn(TrayAction) + Send + Sync + 'static>;
 
 static TRAY_CALLBACK: OnceLock<Mutex<Option<TrayCallback>>> = OnceLock::new();
+
+struct PetContextCallback {
+    callback: Box<dyn Fn() + 'static>,
+}
+
+pub struct PetContextMenuHook {
+    hwnd: HWND,
+    callback: *mut PetContextCallback,
+}
+
+impl PetContextMenuHook {
+    pub fn install(window: &slint::Window, callback: impl Fn() + 'static) -> io::Result<Self> {
+        let hwnd = super::hwnd_from_slint_window(window)
+            .ok_or_else(|| io::Error::other("Sena native window handle is not available"))?;
+
+        let callback = Box::into_raw(Box::new(PetContextCallback {
+            callback: Box::new(callback),
+        }));
+
+        let installed = unsafe {
+            SetWindowSubclass(
+                hwnd,
+                Some(pet_context_subclass_proc),
+                PET_CONTEXT_SUBCLASS_ID,
+                callback as usize,
+            )
+        }
+        .as_bool();
+
+        if !installed {
+            unsafe {
+                drop(Box::from_raw(callback));
+            }
+            return Err(io::Error::last_os_error());
+        }
+
+        Ok(Self { hwnd, callback })
+    }
+}
+
+impl Drop for PetContextMenuHook {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = RemoveWindowSubclass(
+                self.hwnd,
+                Some(pet_context_subclass_proc),
+                PET_CONTEXT_SUBCLASS_ID,
+            );
+            drop(Box::from_raw(self.callback));
+        }
+    }
+}
 
 pub struct TrayIcon {
     hwnd: isize,
@@ -341,6 +395,25 @@ fn action_for_command(command: usize) -> Option<TrayAction> {
         CMD_EXIT => Some(TrayAction::Exit),
         _ => None,
     }
+}
+
+unsafe extern "system" fn pet_context_subclass_proc(
+    hwnd: HWND,
+    message: u32,
+    wparam: WPARAM,
+    lparam: LPARAM,
+    _subclass_id: usize,
+    ref_data: usize,
+) -> LRESULT {
+    if message == WM_RBUTTONUP || message == WM_CONTEXTMENU {
+        let callback = ref_data as *mut PetContextCallback;
+        if let Some(callback) = unsafe { callback.as_ref() } {
+            (callback.callback)();
+        }
+        return LRESULT(0);
+    }
+
+    unsafe { DefSubclassProc(hwnd, message, wparam, lparam) }
 }
 
 unsafe extern "system" fn window_proc(

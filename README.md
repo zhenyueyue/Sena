@@ -58,6 +58,7 @@ Idle behavior defaults to 5 minutes for Drowsy and 10 minutes for Sleeping. Acti
 - The final drag position is persisted and restored on the next launch.
 - Dragging and restored positions are constrained to the nearest monitor work area, including the taskbar boundary.
 - The Windows notification-area icon provides **Settings**, **Show Sena**, **Hide Sena**, **80% / 100% / 120% size**, and **Exit** actions.
+- Right-clicking Sena itself opens a native Windows context menu with **Settings**, **80% / 100% / 120% size**, **Always on top**, and **Exit**. It uses a lightweight HWND subclass and shares the same action handler as the tray menu.
 - Right-clicking the visible pet body opens a native Windows shortcut menu for **Settings**, **80% / 100% / 120% size**, **Always on top**, and **Exit**. The current size and always-on-top state are shown with native check marks.
 - Size changes are persisted and immediately re-render the Sprite at the new physical display size.
 - User preferences are stored in %APPDATA%\\Sena\\preferences.json; position, size, and always-on-top state survive restarts without a database or background sync.
