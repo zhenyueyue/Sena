@@ -68,7 +68,7 @@ Behavior is mapped to renderer-independent animation clips before the current Sl
 - Idle: static, no permanent timer.
 - Coding: static focused pose while the keyboard is quiet; short typing bursts only around real key activity.
 - ListeningMusic: static between occasional one-shot music-motion bursts; the current rest pattern is 7 / 11 / 9 / 13 seconds with a short 900 ms motion window.
-- CodingWithMusic: prefers dedicated combined assets when available, otherwise reuses Coding assets before falling back further.
+- CodingWithMusic: static combined pose between activity bursts; dedicated assets respond to both typing and low-frequency music motion, while the current fallback reuses Coding and ignores music-only sway.
 - Drowsy: static sleepy pose between occasional 1.6-second three-frame motion bursts; current rest pattern is 18 / 27 / 22 / 31 seconds.
 - Sleeping: completely static while Windows is locked; when unlocked after 10 minutes of inactivity, occasional 2.4-second three-frame breathing/Zzz bursts use a 35 / 52 / 43 / 61 second rest pattern.
 

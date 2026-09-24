@@ -73,11 +73,16 @@ Cadence: **260 ms/frame**
 
 ### Coding With Music — 4 frames
 
-Cadence: **180 ms/frame**
+CodingWithMusic is also low-duty-cycle. Frame `000` is the static combined pose: laptop open, headphones on, eyes focused on the screen. The same four-frame burst is reused by both real keyboard activity and the low-frequency music-motion scheduler.
 
-- Laptop + headphones.
-- Typing remains the main motion.
-- Music sway is reduced compared with pure listening state.
+| Frame | Visual | Hold |
+| --- | --- | ---: |
+| `000` | Static combined pose / hands ready | 180 ms |
+| `001` | Small left-hand typing change + tiny music sway | 160 ms |
+| `002` | Right-hand typing / brief listening-focus pause | 340 ms |
+| `003` | Return toward neutral, hair/headphones settle | 160 ms |
+
+Keep the total burst under one second so a music-motion window can complete nearly one full cycle. Typing remains the dominant motion; music sway must be noticeably smaller than pure ListeningMusic. When dedicated CodingWithMusic assets are absent, runtime falls back to Coding and ignores music-only motion bursts rather than making the plain Coding sprite sway.
 
 ### Drowsy — 3 frames
 

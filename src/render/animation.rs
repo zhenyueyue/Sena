@@ -276,6 +276,14 @@ mod tests {
             false,
             false,
         );
+        let music_only = AnimationSpec::for_runtime(
+            Behavior::CodingWithMusic,
+            &package,
+            false,
+            true,
+            false,
+            false,
+        );
         let typing = AnimationSpec::for_runtime(
             Behavior::CodingWithMusic,
             &package,
@@ -287,6 +295,8 @@ mod tests {
 
         assert!(!quiet.running());
         assert_eq!(quiet.frame_count, 1);
+        assert!(!music_only.running());
+        assert_eq!(music_only.frame_count, 1);
         assert!(typing.running());
         assert_eq!(typing.frame_count, 4);
     }
