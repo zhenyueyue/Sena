@@ -3,6 +3,7 @@ name = "sena"
 version = "0.1.0"
 edition = "2024"
 description = "Sena (星奈) — a lightweight, context-aware Windows desktop companion."
+license = "Apache-2.0"
 
 [dependencies]
 slint = { version = "1.18.1", default-features = false, features = [

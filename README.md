@@ -74,3 +74,9 @@ Behavior is mapped to renderer-independent animation clips before the current Sl
 There is intentionally no global 60 FPS ticker. Each behavior owns its own cadence, and static states stop animation scheduling entirely.
 
 The next milestone is external pet-package assets (Sprite/WebP frames), tray/settings controls, and position/configuration persistence.
+
+## License
+
+Sena's source code is licensed under the [Apache License 2.0](LICENSE).
+
+Character artwork, Live2D models, animation assets, fonts, and other third-party or bundled media may use separate licenses when explicitly stated. The Apache-2.0 license for the source code does not override those asset-specific terms.
