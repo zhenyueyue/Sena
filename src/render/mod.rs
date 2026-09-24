@@ -1,7 +1,7 @@
 mod animation;
 mod sprite;
 
-use std::sync::OnceLock;
+use std::{cell::RefCell, sync::OnceLock};
 
 use animation::{AnimationClip, AnimationSpec};
 use slint::{ComponentHandle, LogicalSize, Timer};
@@ -9,6 +9,20 @@ use slint::{ComponentHandle, LogicalSize, Timer};
 use crate::{PetWindow, behavior::Behavior, context::DesktopContext, pet::PetPackage};
 
 static PET_PACKAGE: OnceLock<PetPackage> = OnceLock::new();
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct AlphaRegionKey {
+    behavior: Behavior,
+    frame: usize,
+    source_width: u32,
+    source_height: u32,
+    target_width: u32,
+    target_height: u32,
+}
+
+thread_local! {
+    static ALPHA_REGION_KEY: RefCell<Option<AlphaRegionKey>> = const { RefCell::new(None) };
+}
 
 fn active_package() -> &'static PetPackage {
     PET_PACKAGE.get_or_init(|| match PetPackage::load_default() {
@@ -82,14 +96,19 @@ fn apply_sprite_frame(window: &PetWindow, behavior: Behavior, frame: usize) {
     };
 
     let settings = package.sprite_settings();
-    let Some(sprite) = sprite::load_cached(&path, settings.alpha_threshold) else {
+    let scale_factor = window.window().scale_factor();
+    let Some(sprite) = sprite::load_cached(
+        &path,
+        settings.alpha_threshold,
+        settings.scale,
+        scale_factor,
+    ) else {
         use_placeholder(window);
         return;
     };
 
-    let logical_width = sprite.width as f32 * settings.scale;
-    let logical_height = sprite.height as f32 * settings.scale;
-    let scale_factor = window.window().scale_factor();
+    let logical_width = sprite.source_width as f32 * settings.scale;
+    let logical_height = sprite.source_height as f32 * settings.scale;
     let target_width = (logical_width * scale_factor).round().max(1.0) as u32;
     let target_height = (logical_height * scale_factor).round().max(1.0) as u32;
     let current_size = window.window().size();
@@ -107,28 +126,50 @@ fn apply_sprite_frame(window: &PetWindow, behavior: Behavior, frame: usize) {
     {
         use crate::platform::windows::{self, AlphaRegionRect};
 
-        let alpha_rects: Vec<AlphaRegionRect> = sprite
-            .alpha_rects
-            .iter()
-            .map(|rect| AlphaRegionRect {
-                left: rect.left,
-                top: rect.top,
-                right: rect.right,
-                bottom: rect.bottom,
-            })
-            .collect();
+        let region_key = AlphaRegionKey {
+            behavior,
+            frame,
+            source_width: sprite.width,
+            source_height: sprite.height,
+            target_width,
+            target_height,
+        };
 
-        windows::apply_sprite_alpha_region_if_available(
-            &window.window(),
-            sprite.width,
-            sprite.height,
-            &alpha_rects,
-        );
+        let should_update_region = ALPHA_REGION_KEY.with(|current| {
+            let mut current = current.borrow_mut();
+            if current.as_ref() == Some(&region_key) {
+                false
+            } else {
+                *current = Some(region_key);
+                true
+            }
+        });
+
+        if should_update_region {
+            let alpha_rects: Vec<AlphaRegionRect> = sprite
+                .alpha_rects
+                .iter()
+                .map(|rect| AlphaRegionRect {
+                    left: rect.left,
+                    top: rect.top,
+                    right: rect.right,
+                    bottom: rect.bottom,
+                })
+                .collect();
+
+            windows::apply_sprite_alpha_region_if_available(
+                &window.window(),
+                sprite.width,
+                sprite.height,
+                &alpha_rects,
+            );
+        }
     }
 }
 
 fn use_placeholder(window: &PetWindow) {
     window.set_use_sprite(false);
+    ALPHA_REGION_KEY.with(|current| *current.borrow_mut() = None);
 
     let scale_factor = window.window().scale_factor();
     let current_size = window.window().size();

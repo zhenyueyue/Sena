@@ -17,25 +17,42 @@ pub struct AlphaRect {
 #[derive(Debug, Clone)]
 pub struct SpriteFrame {
     pub image: Image,
+    pub source_width: u32,
+    pub source_height: u32,
     pub width: u32,
     pub height: u32,
     pub alpha_rects: Vec<AlphaRect>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct CacheScale {
+    logical_scale_bits: u32,
+    dpi_scale_bits: u32,
+}
+
 thread_local! {
-    static IMAGE_CACHE: RefCell<HashMap<(PathBuf, u8), Option<SpriteFrame>>> =
+    static IMAGE_CACHE: RefCell<HashMap<(PathBuf, u8, CacheScale), Option<SpriteFrame>>> =
         RefCell::new(HashMap::new());
 }
 
-pub fn load_cached(path: &Path, alpha_threshold: u8) -> Option<SpriteFrame> {
+pub fn load_cached(
+    path: &Path,
+    alpha_threshold: u8,
+    logical_scale: f32,
+    dpi_scale: f32,
+) -> Option<SpriteFrame> {
     IMAGE_CACHE.with(|cache| {
-        let key = (path.to_path_buf(), alpha_threshold);
+        let cache_scale = CacheScale {
+            logical_scale_bits: logical_scale.to_bits(),
+            dpi_scale_bits: dpi_scale.to_bits(),
+        };
+        let key = (path.to_path_buf(), alpha_threshold, cache_scale);
 
         if let Some(cached) = cache.borrow().get(&key) {
             return cached.clone();
         }
 
-        let frame = match decode(path, alpha_threshold) {
+        let frame = match decode(path, alpha_threshold, logical_scale, dpi_scale) {
             Ok(frame) => Some(frame),
             Err(error) => {
                 eprintln!("failed to decode sprite frame {}: {error}", path.display());
@@ -49,12 +66,33 @@ pub fn load_cached(path: &Path, alpha_threshold: u8) -> Option<SpriteFrame> {
     })
 }
 
-fn decode(path: &Path, alpha_threshold: u8) -> Result<SpriteFrame, String> {
+fn decode(
+    path: &Path,
+    alpha_threshold: u8,
+    logical_scale: f32,
+    dpi_scale: f32,
+) -> Result<SpriteFrame, String> {
     let decoded = image::ImageReader::open(path)
         .map_err(|error| error.to_string())?
         .decode()
-        .map_err(|error| error.to_string())?
-        .into_rgba8();
+        .map_err(|error| error.to_string())?;
+
+    let source_width = decoded.width();
+    let source_height = decoded.height();
+    let runtime_scale = (logical_scale * dpi_scale).max(0.01);
+    let target_width = ((source_width as f32 * runtime_scale).round() as u32).max(1);
+    let target_height = ((source_height as f32 * runtime_scale).round() as u32).max(1);
+
+    let decoded = if target_width < source_width || target_height < source_height {
+        decoded.resize_exact(
+            target_width,
+            target_height,
+            image::imageops::FilterType::Lanczos3,
+        )
+    } else {
+        decoded
+    }
+    .into_rgba8();
 
     let width = decoded.width();
     let height = decoded.height();
@@ -64,6 +102,8 @@ fn decode(path: &Path, alpha_threshold: u8) -> Result<SpriteFrame, String> {
 
     Ok(SpriteFrame {
         image: Image::from_rgba8(buffer),
+        source_width,
+        source_height,
         width,
         height,
         alpha_rects,
@@ -139,7 +179,7 @@ mod tests {
             .save_with_format(&path, format)
             .expect("test image should save");
 
-        let decoded = decode(&path, 8).expect("test image should decode");
+        let decoded = decode(&path, 8, 1.0, 1.0).expect("test image should decode");
 
         let _ = std::fs::remove_file(path);
 
@@ -157,6 +197,29 @@ mod tests {
     #[test]
     fn decodes_webp_into_slint_image() {
         round_trip(image::ImageFormat::WebP, "webp");
+    }
+
+    #[test]
+    fn decode_downscales_to_runtime_size() {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time should be after Unix epoch")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!(
+            "sena-sprite-scale-test-{}-{nonce}.png",
+            std::process::id()
+        ));
+
+        let pixels = image::RgbaImage::from_pixel(100, 200, image::Rgba([255, 255, 255, 255]));
+        pixels
+            .save_with_format(&path, image::ImageFormat::Png)
+            .expect("test PNG should save");
+
+        let decoded = decode(&path, 8, 0.5, 1.0).expect("scaled image should decode");
+        let _ = std::fs::remove_file(path);
+
+        assert_eq!(decoded.width, 50);
+        assert_eq!(decoded.height, 100);
     }
 
     #[test]

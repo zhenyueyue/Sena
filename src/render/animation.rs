@@ -169,13 +169,13 @@ mod tests {
     }
 
     #[test]
-    fn official_single_frame_package_falls_back_without_starting_a_timer() {
+    fn official_package_uses_idle_animation_for_unfinished_behaviors() {
         let package = PetPackage::load_default().expect("official Sena package should load");
         let spec = AnimationSpec::for_behavior(Behavior::Coding, &package);
 
         assert_eq!(package.manifest().id, "sena.official");
-        assert_eq!(spec.frame_count, 1);
-        assert_eq!(spec.interval, None);
-        assert!(!spec.running());
+        assert_eq!(spec.frame_count, 4);
+        assert_eq!(spec.interval, Some(Duration::from_millis(1800)));
+        assert!(spec.running());
     }
 }

@@ -7,16 +7,24 @@
   "author": "Sena Project",
   "renderer": "sprite",
   "sprite": {
-    "scale": 0.9,
+    "scale": 0.36,
     "alpha_threshold": 8
   },
   "license": "All rights reserved",
   "animations": {
     "idle": {
       "frames": [
-        "animations/idle/000.webp"
+        "animations/idle/000.webp",
+        "animations/idle/001.webp",
+        "animations/idle/002.webp",
+        "animations/idle/003.webp"
       ],
-      "interval_ms": null,
+      "frame_durations_ms": [
+        1800,
+        120,
+        2300,
+        120
+      ],
       "looping": true
     }
   }
