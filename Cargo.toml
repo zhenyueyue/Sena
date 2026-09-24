@@ -1,0 +1,27 @@
+[package]
+name = "sena"
+version = "0.1.0"
+edition = "2024"
+description = "Sena (星奈) — a lightweight, context-aware Windows desktop companion."
+
+[dependencies]
+slint = { version = "1.18.1", default-features = false, features = [
+    "backend-winit",
+    "compat-1-18",
+    "renderer-femtovg",
+    "raw-window-handle-06",
+    "std",
+] }
+
+[build-dependencies]
+slint-build = { version = "1.18.1", default-features = false, features = ["compat-1-18"] }
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+panic = "abort"
+strip = "symbols"
+
+[target."cfg(windows)".dependencies]
+raw-window-handle = "0.6"
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_UI_Accessibility", "Win32_UI_WindowsAndMessaging", "Win32_System_Threading", "Foundation", "Media_Control", "Win32_System_WinRT", "Win32_Graphics_Gdi", "Win32_UI_Input_KeyboardAndMouse", "Win32_System_SystemInformation", "Win32_System_RemoteDesktop", "Win32_System_LibraryLoader"] }
