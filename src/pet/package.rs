@@ -678,4 +678,23 @@ mod tests {
         );
         assert_eq!(idle.frame_durations_ms, vec![1800, 120, 2300, 120]);
     }
+
+    #[test]
+    fn official_sena_coding_keeps_v1_frame_timing() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+        let coding = package
+            .animation(Behavior::Coding)
+            .expect("official Sena package should contain Coding");
+
+        assert_eq!(
+            coding.frames,
+            vec![
+                "animations/coding/000.webp",
+                "animations/coding/001.webp",
+                "animations/coding/002.webp",
+                "animations/coding/003.webp",
+            ]
+        );
+        assert_eq!(coding.frame_durations_ms, vec![220, 180, 900, 180]);
+    }
 }

@@ -26,6 +26,21 @@
         120
       ],
       "looping": true
+    },
+    "coding": {
+      "frames": [
+        "animations/coding/000.webp",
+        "animations/coding/001.webp",
+        "animations/coding/002.webp",
+        "animations/coding/003.webp"
+      ],
+      "frame_durations_ms": [
+        220,
+        180,
+        900,
+        180
+      ],
+      "looping": true
     }
   }
 }

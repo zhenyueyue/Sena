@@ -34,7 +34,12 @@
         "animations/coding/002.webp",
         "animations/coding/003.webp"
       ],
-      "interval_ms": 180,
+      "frame_durations_ms": [
+        220,
+        180,
+        900,
+        180
+      ],
       "looping": true
     },
     "listening_music": {

@@ -93,7 +93,11 @@ The official `pets/sena/pet.json` now ships the first complete four-frame Sena +
 
 Runtime decoding downsamples high-resolution Sprite sources to the actual physical display size before caching them. This preserves the 768×1024 production source while avoiding the memory cost of keeping every full-resolution RGBA frame resident when Sena is displayed much smaller on the desktop.
 
-The next asset milestone is the Coding animation set. Until it is ready, the behavior engine still reports Coding while the renderer safely falls back to the finished Idle loop.
+The official package now also ships a four-frame Coding v1 set. Coding is triggered by the real foreground-process signal and no longer falls back to Idle when a supported IDE is active.
+
+High-resolution Sprite sources are downsampled to their physical display size before caching. Alpha hit regions are reused across frames within the same behavior instead of being rebuilt on every animation tick.
+
+A static Coding pose measured effectively zero CPU over a 12-second sample on the development machine, while continuous multi-frame Coding redraws were measurably more expensive. The next runtime milestone is therefore input-aware Coding: keep the focused Coding pose static while the keyboard is quiet, and run short typing bursts only around actual keyboard activity.
 
 ## License
 

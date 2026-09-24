@@ -169,9 +169,20 @@ mod tests {
     }
 
     #[test]
-    fn official_package_uses_idle_animation_for_unfinished_behaviors() {
+    fn official_package_uses_coding_animation_when_available() {
         let package = PetPackage::load_default().expect("official Sena package should load");
         let spec = AnimationSpec::for_behavior(Behavior::Coding, &package);
+
+        assert_eq!(package.manifest().id, "sena.official");
+        assert_eq!(spec.frame_count, 4);
+        assert_eq!(spec.interval, Some(Duration::from_millis(220)));
+        assert!(spec.running());
+    }
+
+    #[test]
+    fn official_package_uses_idle_animation_for_unfinished_behaviors() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+        let spec = AnimationSpec::for_behavior(Behavior::ListeningMusic, &package);
 
         assert_eq!(package.manifest().id, "sena.official");
         assert_eq!(spec.frame_count, 4);

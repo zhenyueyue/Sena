@@ -13,7 +13,6 @@ static PET_PACKAGE: OnceLock<PetPackage> = OnceLock::new();
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct AlphaRegionKey {
     behavior: Behavior,
-    frame: usize,
     source_width: u32,
     source_height: u32,
     target_width: u32,
@@ -128,7 +127,6 @@ fn apply_sprite_frame(window: &PetWindow, behavior: Behavior, frame: usize) {
 
         let region_key = AlphaRegionKey {
             behavior,
-            frame,
             source_width: sprite.width,
             source_height: sprite.height,
             target_width,
