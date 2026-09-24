@@ -266,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn coding_with_music_reuses_coding_when_combined_assets_are_missing() {
+    fn official_coding_with_music_assets_use_both_activity_sources() {
         let package = PetPackage::load_default().expect("official Sena package should load");
         let quiet = AnimationSpec::for_runtime(
             Behavior::CodingWithMusic,
@@ -293,12 +293,17 @@ mod tests {
             false,
         );
 
+        assert_eq!(package.manifest().id, "sena.official");
         assert!(!quiet.running());
         assert_eq!(quiet.frame_count, 1);
-        assert!(!music_only.running());
-        assert_eq!(music_only.frame_count, 1);
+
+        assert!(music_only.running());
+        assert_eq!(music_only.frame_count, 4);
+        assert_eq!(music_only.interval, Some(Duration::from_millis(180)));
+
         assert!(typing.running());
         assert_eq!(typing.frame_count, 4);
+        assert_eq!(typing.interval, Some(Duration::from_millis(180)));
     }
 
     #[test]

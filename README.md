@@ -68,7 +68,7 @@ Behavior is mapped to renderer-independent animation clips before the current Sl
 - Idle: static, no permanent timer.
 - Coding: static focused pose while the keyboard is quiet; short typing bursts only around real key activity.
 - ListeningMusic: static between occasional one-shot music-motion bursts; the current rest pattern is 7 / 11 / 9 / 13 seconds with a short 900 ms motion window.
-- CodingWithMusic: static combined pose between activity bursts; dedicated assets respond to both typing and low-frequency music motion, while the current fallback reuses Coding and ignores music-only sway.
+- CodingWithMusic: static combined pose between activity bursts; the official four-frame set responds to both real typing and low-frequency music motion, with Coding fallback retained only for packages that omit combined assets.
 - Drowsy: static sleepy pose between occasional 1.6-second three-frame motion bursts; current rest pattern is 18 / 27 / 22 / 31 seconds.
 - Sleeping: completely static while Windows is locked; when unlocked after 10 minutes of inactivity, occasional 2.4-second three-frame breathing/Zzz bursts use a 35 / 52 / 43 / 61 second rest pattern.
 
@@ -102,7 +102,7 @@ Coding is now input-aware. When a supported IDE is foreground but the keyboard i
 
 On the development machine, the static Coding pose measured effectively zero CPU over a 12-second sample. Continuous multi-frame Coding remains intentionally limited to the short periods in which the user is actively typing.
 
-ListeningMusic now follows the same low-duty-cycle principle and the official package ships a four-frame Listening v1 set. Media playback itself does not justify a permanent animation loop: Sena stays on listening/000 most of the time and wakes for brief 240 / 220 / 240 / 220 ms motion bursts at staggered 7 / 11 / 9 / 13 second rest intervals. Stopping media or locking Windows cancels pending music motion immediately. CodingWithMusic currently reuses the finished Coding visual set, so typing remains input-driven even while music is playing.
+ListeningMusic now follows the same low-duty-cycle principle and the official package ships a four-frame Listening v1 set. Media playback itself does not justify a permanent animation loop: Sena stays on listening/000 most of the time and wakes for brief 240 / 220 / 240 / 220 ms motion bursts at staggered 7 / 11 / 9 / 13 second rest intervals. Stopping media or locking Windows cancels pending music motion immediately. The official package now also ships a four-frame CodingWithMusic v1 set: when a supported IDE is foreground while media is playing, Sena holds the combined headphone-and-laptop pose and uses the same short 180 / 160 / 340 / 160 ms burst for either real keyboard activity or the low-frequency music-motion scheduler.
 
 Drowsy now follows the same event-sleep model and the official package ships a three-frame Drowsy v1 set. After 5 minutes without user input, Sena stays on drowsy/000 most of the time and wakes for short 420 / 760 / 420 ms sleepy-motion bursts after staggered 18 / 27 / 22 / 31 second rests. Real input, media playback, session lock, or the 10-minute transition to Sleeping cancels pending Drowsy motion immediately.
 

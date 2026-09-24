@@ -57,6 +57,21 @@
       ],
       "looping": true
     },
+    "coding_with_music": {
+      "frames": [
+        "animations/coding_with_music/000.webp",
+        "animations/coding_with_music/001.webp",
+        "animations/coding_with_music/002.webp",
+        "animations/coding_with_music/003.webp"
+      ],
+      "frame_durations_ms": [
+        180,
+        160,
+        340,
+        160
+      ],
+      "looping": true
+    },
     "drowsy": {
       "frames": [
         "animations/drowsy/000.webp",

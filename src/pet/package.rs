@@ -754,4 +754,23 @@ mod tests {
         );
         assert_eq!(sleeping.frame_durations_ms, vec![700, 1000, 700]);
     }
+
+    #[test]
+    fn official_sena_coding_with_music_keeps_v1_frame_timing() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+        let combined = package
+            .animation(Behavior::CodingWithMusic)
+            .expect("official Sena package should contain CodingWithMusic");
+
+        assert_eq!(
+            combined.frames,
+            vec![
+                "animations/coding_with_music/000.webp",
+                "animations/coding_with_music/001.webp",
+                "animations/coding_with_music/002.webp",
+                "animations/coding_with_music/003.webp",
+            ]
+        );
+        assert_eq!(combined.frame_durations_ms, vec![180, 160, 340, 160]);
+    }
 }
