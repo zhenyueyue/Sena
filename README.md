@@ -73,7 +73,15 @@ Behavior is mapped to renderer-independent animation clips before the current Sl
 
 There is intentionally no global 60 FPS ticker. Each behavior owns its own cadence, and static states stop animation scheduling entirely.
 
-The next milestone is external pet-package assets (Sprite/WebP frames), tray/settings controls, and position/configuration persistence.
+### Pet packages
+
+Sena now loads character behavior metadata from `pets/<character>/pet.json`. Animation cadence, frame counts, looping behavior, renderer type, author/version metadata, asset paths, and asset license metadata live outside the executable.
+
+The bundled `pets/default/pet.json` drives the current placeholder. Sprite packages can declare transparent PNG/WebP frame paths, and invalid/unsafe asset paths are rejected. If an external package is missing or broken, Sena safely falls back to a built-in placeholder configuration.
+
+Set `SENA_PET_PACKAGE` to a package directory to override the default package during development. See [pets/README.md](pets/README.md) for the schema and directory layout.
+
+The next milestone is connecting the declared Sprite/WebP frame assets to the renderer, followed by tray/settings controls and position/configuration persistence.
 
 ## License
 

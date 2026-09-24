@@ -1,0 +1,388 @@
+use std::{
+    collections::BTreeMap,
+    env, fmt, fs,
+    path::{Component, Path, PathBuf},
+};
+
+use serde::Deserialize;
+
+use crate::behavior::Behavior;
+
+const SUPPORTED_SCHEMA_VERSION: u32 = 1;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RendererKind {
+    Placeholder,
+    Sprite,
+    Live2d,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AnimationKey {
+    Idle,
+    Coding,
+    ListeningMusic,
+    CodingWithMusic,
+    Drowsy,
+    Sleeping,
+}
+
+impl From<Behavior> for AnimationKey {
+    fn from(value: Behavior) -> Self {
+        match value {
+            Behavior::Idle => Self::Idle,
+            Behavior::Coding => Self::Coding,
+            Behavior::ListeningMusic => Self::ListeningMusic,
+            Behavior::CodingWithMusic => Self::CodingWithMusic,
+            Behavior::Drowsy => Self::Drowsy,
+            Behavior::Sleeping => Self::Sleeping,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct AnimationDefinition {
+    #[serde(default)]
+    pub frames: Vec<String>,
+    #[serde(default)]
+    pub frame_count: Option<u32>,
+    #[serde(default)]
+    pub interval_ms: Option<u64>,
+    #[serde(default = "default_looping")]
+    pub looping: bool,
+}
+
+impl AnimationDefinition {
+    pub fn effective_frame_count(&self) -> usize {
+        if self.frames.is_empty() {
+            self.frame_count.unwrap_or(1).max(1) as usize
+        } else {
+            self.frames.len()
+        }
+    }
+}
+
+const fn default_looping() -> bool {
+    true
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct PetManifest {
+    pub schema_version: u32,
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    pub version: String,
+    pub author: String,
+    pub renderer: RendererKind,
+    #[serde(default)]
+    pub license: Option<String>,
+    #[serde(default)]
+    pub animations: BTreeMap<AnimationKey, AnimationDefinition>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PetPackage {
+    root: PathBuf,
+    manifest: PetManifest,
+}
+
+impl PetPackage {
+    pub fn builtin_placeholder() -> Self {
+        let animations = [
+            (
+                AnimationKey::Idle,
+                AnimationDefinition {
+                    frames: Vec::new(),
+                    frame_count: Some(1),
+                    interval_ms: None,
+                    looping: true,
+                },
+            ),
+            (
+                AnimationKey::Coding,
+                AnimationDefinition {
+                    frames: Vec::new(),
+                    frame_count: Some(2),
+                    interval_ms: Some(160),
+                    looping: true,
+                },
+            ),
+            (
+                AnimationKey::ListeningMusic,
+                AnimationDefinition {
+                    frames: Vec::new(),
+                    frame_count: Some(4),
+                    interval_ms: Some(240),
+                    looping: true,
+                },
+            ),
+            (
+                AnimationKey::CodingWithMusic,
+                AnimationDefinition {
+                    frames: Vec::new(),
+                    frame_count: Some(4),
+                    interval_ms: Some(160),
+                    looping: true,
+                },
+            ),
+            (
+                AnimationKey::Drowsy,
+                AnimationDefinition {
+                    frames: Vec::new(),
+                    frame_count: Some(2),
+                    interval_ms: Some(900),
+                    looping: true,
+                },
+            ),
+            (
+                AnimationKey::Sleeping,
+                AnimationDefinition {
+                    frames: Vec::new(),
+                    frame_count: Some(2),
+                    interval_ms: Some(1500),
+                    looping: true,
+                },
+            ),
+        ]
+        .into_iter()
+        .collect();
+
+        Self {
+            root: PathBuf::new(),
+            manifest: PetManifest {
+                schema_version: SUPPORTED_SCHEMA_VERSION,
+                id: "sena.builtin".into(),
+                name: "Sena".into(),
+                display_name: Some("星奈".into()),
+                version: env!("CARGO_PKG_VERSION").into(),
+                author: "Sena Project".into(),
+                renderer: RendererKind::Placeholder,
+                license: Some("Apache-2.0".into()),
+                animations,
+            },
+        }
+    }
+
+    pub fn load_default() -> Result<Self, PackageError> {
+        let candidates = default_package_candidates();
+
+        for candidate in &candidates {
+            if candidate.join("pet.json").is_file() {
+                return Self::load_from_dir(candidate);
+            }
+        }
+
+        Err(PackageError::NotFound(candidates))
+    }
+
+    pub fn load_from_dir(root: impl AsRef<Path>) -> Result<Self, PackageError> {
+        let root = root.as_ref().to_path_buf();
+        let manifest_path = root.join("pet.json");
+        let json =
+            fs::read_to_string(&manifest_path).map_err(|source| PackageError::ReadManifest {
+                path: manifest_path.clone(),
+                source,
+            })?;
+        let manifest: PetManifest =
+            serde_json::from_str(&json).map_err(|source| PackageError::ParseManifest {
+                path: manifest_path.clone(),
+                source,
+            })?;
+
+        validate_manifest(&root, &manifest)?;
+
+        Ok(Self { root, manifest })
+    }
+
+    pub fn manifest(&self) -> &PetManifest {
+        &self.manifest
+    }
+
+    pub fn root(&self) -> &Path {
+        &self.root
+    }
+
+    pub fn animation(&self, behavior: Behavior) -> Option<&AnimationDefinition> {
+        self.manifest.animations.get(&AnimationKey::from(behavior))
+    }
+}
+
+fn default_package_candidates() -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
+    if let Some(explicit) = env::var_os("SENA_PET_PACKAGE") {
+        candidates.push(PathBuf::from(explicit));
+    }
+
+    if let Ok(executable) = env::current_exe()
+        && let Some(directory) = executable.parent()
+    {
+        candidates.push(directory.join("pets").join("default"));
+    }
+
+    candidates.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("pets")
+            .join("default"),
+    );
+
+    candidates
+}
+
+fn validate_manifest(root: &Path, manifest: &PetManifest) -> Result<(), PackageError> {
+    if manifest.schema_version != SUPPORTED_SCHEMA_VERSION {
+        return Err(PackageError::UnsupportedSchema {
+            found: manifest.schema_version,
+            supported: SUPPORTED_SCHEMA_VERSION,
+        });
+    }
+
+    if manifest.id.trim().is_empty() || manifest.name.trim().is_empty() {
+        return Err(PackageError::InvalidManifest(
+            "id and name must not be empty".into(),
+        ));
+    }
+
+    for (animation, definition) in &manifest.animations {
+        if definition.effective_frame_count() == 0 {
+            return Err(PackageError::InvalidManifest(format!(
+                "{animation:?} must contain at least one frame"
+            )));
+        }
+
+        for frame in &definition.frames {
+            let relative = Path::new(frame);
+            if !is_safe_relative_path(relative) {
+                return Err(PackageError::UnsafeAssetPath(frame.clone()));
+            }
+
+            if manifest.renderer == RendererKind::Sprite && !root.join(relative).is_file() {
+                return Err(PackageError::MissingAsset(root.join(relative)));
+            }
+        }
+    }
+
+    if manifest.renderer == RendererKind::Sprite
+        && manifest
+            .animations
+            .values()
+            .all(|animation| animation.frames.is_empty())
+    {
+        return Err(PackageError::InvalidManifest(
+            "sprite packages must provide at least one frame asset".into(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn is_safe_relative_path(path: &Path) -> bool {
+    !path.as_os_str().is_empty()
+        && !path.is_absolute()
+        && path
+            .components()
+            .all(|component| matches!(component, Component::Normal(_)))
+}
+
+#[derive(Debug)]
+pub enum PackageError {
+    NotFound(Vec<PathBuf>),
+    ReadManifest {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+    ParseManifest {
+        path: PathBuf,
+        source: serde_json::Error,
+    },
+    UnsupportedSchema {
+        found: u32,
+        supported: u32,
+    },
+    InvalidManifest(String),
+    UnsafeAssetPath(String),
+    MissingAsset(PathBuf),
+}
+
+impl fmt::Display for PackageError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::NotFound(paths) => write!(
+                f,
+                "no pet package found in {}",
+                paths
+                    .iter()
+                    .map(|path| path.display().to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Self::ReadManifest { path, source } => {
+                write!(f, "failed to read {}: {source}", path.display())
+            }
+            Self::ParseManifest { path, source } => {
+                write!(f, "failed to parse {}: {source}", path.display())
+            }
+            Self::UnsupportedSchema { found, supported } => write!(
+                f,
+                "pet package schema {found} is not supported; expected {supported}"
+            ),
+            Self::InvalidManifest(message) => write!(f, "invalid pet package: {message}"),
+            Self::UnsafeAssetPath(path) => {
+                write!(f, "pet package contains unsafe asset path: {path}")
+            }
+            Self::MissingAsset(path) => {
+                write!(f, "pet package asset does not exist: {}", path.display())
+            }
+        }
+    }
+}
+
+impl std::error::Error for PackageError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bundled_default_package_loads() {
+        let package = PetPackage::load_from_dir(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("pets")
+                .join("default"),
+        )
+        .expect("bundled default package should load");
+
+        assert_eq!(package.manifest().id, "sena.default");
+        assert_eq!(package.manifest().renderer, RendererKind::Placeholder);
+        assert_eq!(
+            package
+                .animation(Behavior::Sleeping)
+                .expect("sleeping animation")
+                .interval_ms,
+            Some(1500)
+        );
+    }
+
+    #[test]
+    fn rejects_asset_paths_that_escape_package_root() {
+        assert!(!is_safe_relative_path(Path::new("../outside.webp")));
+        assert!(!is_safe_relative_path(Path::new("/absolute.webp")));
+        assert!(is_safe_relative_path(Path::new("animations/idle/000.webp")));
+    }
+
+    #[test]
+    fn animation_uses_real_frames_before_declared_placeholder_count() {
+        let definition = AnimationDefinition {
+            frames: vec!["a.webp".into(), "b.webp".into(), "c.webp".into()],
+            frame_count: Some(99),
+            interval_ms: Some(200),
+            looping: true,
+        };
+
+        assert_eq!(definition.effective_frame_count(), 3);
+    }
+}

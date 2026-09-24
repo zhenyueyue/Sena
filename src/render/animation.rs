@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::behavior::Behavior;
+use crate::{behavior::Behavior, pet::PetPackage};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(i32)]
@@ -18,10 +18,32 @@ pub struct AnimationSpec {
     pub clip: AnimationClip,
     pub frame_count: i32,
     pub interval: Option<Duration>,
+    pub looping: bool,
 }
 
 impl AnimationSpec {
-    pub const fn for_behavior(behavior: Behavior) -> Self {
+    pub fn for_behavior(behavior: Behavior, package: &PetPackage) -> Self {
+        let fallback = Self::fallback_for_behavior(behavior);
+
+        let Some(definition) = package.animation(behavior) else {
+            return fallback;
+        };
+
+        let frame_count = definition.effective_frame_count().min(i32::MAX as usize) as i32;
+        let interval = definition
+            .interval_ms
+            .filter(|milliseconds| *milliseconds > 0)
+            .map(Duration::from_millis);
+
+        Self {
+            clip: fallback.clip,
+            frame_count,
+            interval,
+            looping: definition.looping,
+        }
+    }
+
+    const fn fallback_for_behavior(behavior: Behavior) -> Self {
         match behavior {
             // Idle deliberately has no timer. A future idle blink can be scheduled
             // as an occasional one-shot instead of keeping a permanent frame loop.
@@ -29,31 +51,37 @@ impl AnimationSpec {
                 clip: AnimationClip::Static,
                 frame_count: 1,
                 interval: None,
+                looping: true,
             },
             Behavior::Coding => Self {
                 clip: AnimationClip::Coding,
                 frame_count: 2,
                 interval: Some(Duration::from_millis(160)),
+                looping: true,
             },
             Behavior::ListeningMusic => Self {
                 clip: AnimationClip::Listening,
                 frame_count: 4,
                 interval: Some(Duration::from_millis(240)),
+                looping: true,
             },
             Behavior::CodingWithMusic => Self {
                 clip: AnimationClip::CodingWithMusic,
                 frame_count: 4,
                 interval: Some(Duration::from_millis(160)),
+                looping: true,
             },
             Behavior::Drowsy => Self {
                 clip: AnimationClip::Drowsy,
                 frame_count: 2,
                 interval: Some(Duration::from_millis(900)),
+                looping: true,
             },
             Behavior::Sleeping => Self {
                 clip: AnimationClip::Sleeping,
                 frame_count: 2,
                 interval: Some(Duration::from_millis(1500)),
+                looping: true,
             },
         }
     }
@@ -75,7 +103,8 @@ mod tests {
 
     #[test]
     fn idle_has_no_permanent_animation_timer() {
-        let spec = AnimationSpec::for_behavior(Behavior::Idle);
+        let package = PetPackage::builtin_placeholder();
+        let spec = AnimationSpec::for_behavior(Behavior::Idle, &package);
         assert!(!spec.running());
         assert_eq!(spec.frame_count, 1);
     }
@@ -89,7 +118,8 @@ mod tests {
             Behavior::Drowsy,
             Behavior::Sleeping,
         ] {
-            let spec = AnimationSpec::for_behavior(behavior);
+            let package = PetPackage::builtin_placeholder();
+            let spec = AnimationSpec::for_behavior(behavior, &package);
             let interval = spec.interval.expect("animated behavior needs interval");
             assert!(interval >= Duration::from_millis(160));
         }
@@ -97,7 +127,17 @@ mod tests {
 
     #[test]
     fn sleeping_uses_a_very_low_frequency_animation() {
-        let spec = AnimationSpec::for_behavior(Behavior::Sleeping);
+        let package = PetPackage::builtin_placeholder();
+        let spec = AnimationSpec::for_behavior(Behavior::Sleeping, &package);
         assert_eq!(spec.interval, Some(Duration::from_millis(1500)));
+    }
+
+    #[test]
+    fn bundled_package_drives_animation_timing() {
+        let package = PetPackage::load_default().expect("default pet package should load");
+        let spec = AnimationSpec::for_behavior(Behavior::ListeningMusic, &package);
+
+        assert_eq!(spec.frame_count, 4);
+        assert_eq!(spec.interval, Some(Duration::from_millis(240)));
     }
 }

@@ -6,6 +6,8 @@ description = "Sena (星奈) — a lightweight, context-aware Windows desktop co
 license = "Apache-2.0"
 
 [dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
 slint = { version = "1.18.1", default-features = false, features = [
     "backend-winit",
     "compat-1-18",

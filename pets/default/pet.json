@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "id": "sena.default",
+  "name": "Sena",
+  "display_name": "星奈",
+  "version": "0.1.0",
+  "author": "Sena Project",
+  "renderer": "placeholder",
+  "license": "Apache-2.0",
+  "animations": {
+    "idle": {
+      "frame_count": 1,
+      "interval_ms": null,
+      "looping": true
+    },
+    "coding": {
+      "frame_count": 2,
+      "interval_ms": 160,
+      "looping": true
+    },
+    "listening_music": {
+      "frame_count": 4,
+      "interval_ms": 240,
+      "looping": true
+    },
+    "coding_with_music": {
+      "frame_count": 4,
+      "interval_ms": 160,
+      "looping": true
+    },
+    "drowsy": {
+      "frame_count": 2,
+      "interval_ms": 900,
+      "looping": true
+    },
+    "sleeping": {
+      "frame_count": 2,
+      "interval_ms": 1500,
+      "looping": true
+    }
+  }
+}

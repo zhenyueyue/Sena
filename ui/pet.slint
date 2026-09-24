@@ -18,6 +18,7 @@ export component PetWindow inherits Window {
     in property <int> animation-frame-count: 1;
     in property <int> animation-interval-ms: 1000;
     in property <bool> animation-running: false;
+    in property <bool> animation-looping: true;
 
     property <length> body-bob: (
         animation-clip == 2 || animation-clip == 3
@@ -37,10 +38,16 @@ export component PetWindow inherits Window {
 
         triggered() => {
             if root.animation-frame-count > 1 {
-                root.animation-frame = Math.mod(
-                    root.animation-frame + 1,
-                    root.animation-frame-count
-                );
+                if root.animation-looping {
+                    root.animation-frame = Math.mod(
+                        root.animation-frame + 1,
+                        root.animation-frame-count
+                    );
+                } else if root.animation-frame + 1 < root.animation-frame-count {
+                    root.animation-frame += 1;
+                } else {
+                    self.running = false;
+                }
             }
         }
     }
