@@ -5,8 +5,12 @@ Sena loads pet packages from a directory containing a `pet.json` manifest.
 The default lookup order is:
 
 1. `SENA_PET_PACKAGE` environment variable, when set.
-2. `pets/default` next to `sena.exe`.
-3. The repository's `pets/default` directory while developing Sena.
+2. `pets/sena` next to `sena.exe` when an official `pet.json` is present and valid.
+3. The repository's `pets/sena` directory while developing Sena.
+4. `pets/default` next to `sena.exe`.
+5. The repository's `pets/default` placeholder package.
+
+An invalid higher-priority bundled package is skipped so the next valid bundled package can still start Sena.
 
 If a package cannot be loaded or validated, Sena falls back to its built-in placeholder so a broken pet package cannot prevent the application from starting.
 
@@ -72,6 +76,12 @@ Sprite asset paths must be relative to the package directory. Absolute paths and
 `sprite.alpha_threshold` controls native mouse hit testing. Pixels whose alpha is below the threshold are excluded from the Win32 window region, so clicks pass through transparent parts of the character to applications underneath. The default is `8`, which keeps anti-aliased character edges while ignoring nearly transparent background pixels.
 
 All frames in one character package should use the same canvas dimensions. Sena can handle differing frame dimensions, but a changing canvas would resize the native window between frames and create visible jitter.
+
+### Incremental animation fallback
+
+Sprite packages do not need every behavior to be finished at once. If the current behavior has no usable Sprite frames, Sena automatically uses that package's `idle` animation while preserving the real semantic behavior internally.
+
+This lets an early character package ship only `animations/idle/000.webp`. Other behaviors keep the official character visible through Idle until their own frames are added.
 
 ## Recommended Sprite Layout
 

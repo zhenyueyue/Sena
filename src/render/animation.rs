@@ -50,7 +50,7 @@ impl AnimationSpec {
     pub fn for_behavior(behavior: Behavior, package: &PetPackage) -> Self {
         let fallback = Self::fallback_for_behavior(behavior);
 
-        let Some(definition) = package.animation(behavior) else {
+        let Some((_, definition)) = package.animation_with_idle_fallback(behavior) else {
             return fallback;
         };
 

@@ -87,7 +87,9 @@ Sprite packages now control character scale and use alpha-aware native Windows r
 
 The first official Sena character production spec now lives in [pets/sena](pets/sena): it defines the visual identity, fixed 768×1024 Sprite canvas, six initial behavior animations, frame cadence, alpha requirements, and the target `sena.official` package manifest.
 
-The next milestone is producing and approving Sena's neutral master character image, then deriving the first Idle Sprite frames from that locked reference before expanding to the other behaviors.
+The package runtime now prefers a valid official `pets/sena/pet.json` over the placeholder package. Sprite behaviors can also be produced incrementally: unfinished states fall back to that package's Idle frames so the official character stays visible.
+
+The next asset milestone is exporting the approved Sena master artwork as the first normalized `768×1024` transparent `animations/idle/000.webp`, then promoting `pet.template.json` to the active `pet.json`.
 
 ## License
 

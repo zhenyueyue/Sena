@@ -197,14 +197,27 @@ impl PetPackage {
 
     pub fn load_default() -> Result<Self, PackageError> {
         let candidates = default_package_candidates();
+        let mut first_error = None;
 
         for candidate in &candidates {
-            if candidate.join("pet.json").is_file() {
-                return Self::load_from_dir(candidate);
+            if !candidate.join("pet.json").is_file() {
+                continue;
+            }
+
+            match Self::load_from_dir(candidate) {
+                Ok(package) => return Ok(package),
+                Err(error) => {
+                    if first_error.is_none() {
+                        first_error = Some(error);
+                    }
+                }
             }
         }
 
-        Err(PackageError::NotFound(candidates))
+        match first_error {
+            Some(error) => Err(error),
+            None => Err(PackageError::NotFound(candidates)),
+        }
     }
 
     pub fn load_from_dir(root: impl AsRef<Path>) -> Result<Self, PackageError> {
@@ -238,6 +251,30 @@ impl PetPackage {
         self.manifest.animations.get(&AnimationKey::from(behavior))
     }
 
+    pub fn animation_with_idle_fallback(
+        &self,
+        behavior: Behavior,
+    ) -> Option<(Behavior, &AnimationDefinition)> {
+        if let Some(definition) = self.animation(behavior)
+            && self.animation_is_renderable(definition)
+        {
+            return Some((behavior, definition));
+        }
+
+        if behavior != Behavior::Idle
+            && let Some(idle) = self.animation(Behavior::Idle)
+            && self.animation_is_renderable(idle)
+        {
+            return Some((Behavior::Idle, idle));
+        }
+
+        None
+    }
+
+    fn animation_is_renderable(&self, definition: &AnimationDefinition) -> bool {
+        !self.is_sprite() || !definition.frames.is_empty()
+    }
+
     pub fn is_sprite(&self) -> bool {
         self.manifest.renderer == RendererKind::Sprite
     }
@@ -251,8 +288,11 @@ impl PetPackage {
             return None;
         }
 
-        let definition = self.animation(behavior)?;
-        let relative = definition.frames.get(frame)?;
+        let (_, definition) = self.animation_with_idle_fallback(behavior)?;
+        let relative = definition
+            .frames
+            .get(frame)
+            .or_else(|| definition.frames.first())?;
         Some(self.root.join(relative))
     }
 }
@@ -263,6 +303,18 @@ fn default_package_candidates() -> Vec<PathBuf> {
     if let Some(explicit) = env::var_os("SENA_PET_PACKAGE") {
         candidates.push(PathBuf::from(explicit));
     }
+
+    if let Ok(executable) = env::current_exe()
+        && let Some(directory) = executable.parent()
+    {
+        candidates.push(directory.join("pets").join("sena"));
+    }
+
+    candidates.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("pets")
+            .join("sena"),
+    );
 
     if let Ok(executable) = env::current_exe()
         && let Some(directory) = executable.parent()
@@ -498,6 +550,42 @@ mod tests {
                 .frames
                 .len(),
             4
+        );
+    }
+
+    #[test]
+    fn sprite_behavior_without_frames_falls_back_to_idle() {
+        let mut package = PetPackage::builtin_placeholder();
+        package.manifest.renderer = RendererKind::Sprite;
+        package.manifest.animations.clear();
+        package.manifest.animations.insert(
+            AnimationKey::Idle,
+            AnimationDefinition {
+                frames: vec!["animations/idle/000.webp".into()],
+                frame_count: None,
+                interval_ms: None,
+                looping: true,
+            },
+        );
+        package.manifest.animations.insert(
+            AnimationKey::Coding,
+            AnimationDefinition {
+                frames: Vec::new(),
+                frame_count: None,
+                interval_ms: Some(180),
+                looping: true,
+            },
+        );
+
+        let (resolved, animation) = package
+            .animation_with_idle_fallback(Behavior::Coding)
+            .expect("coding should fall back to idle");
+
+        assert_eq!(resolved, Behavior::Idle);
+        assert_eq!(animation.frames, vec!["animations/idle/000.webp"]);
+        assert_eq!(
+            package.sprite_frame_path(Behavior::Coding, 0),
+            Some(PathBuf::from("animations/idle/000.webp"))
         );
     }
 }
