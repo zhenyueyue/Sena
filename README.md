@@ -57,14 +57,16 @@ Idle behavior defaults to 5 minutes for Drowsy and 10 minutes for Sleeping. Acti
 - Releasing the pet leaves it exactly where the user placed it; there is no default gravity or throw inertia.
 - The final drag position is persisted and restored on the next launch.
 - Dragging and restored positions are constrained to the nearest monitor work area, including the taskbar boundary.
-- The Windows notification-area icon provides **Show Sena**, **Hide Sena**, **80% / 100% / 120% size**, and **Exit** actions.
+- The Windows notification-area icon provides **Settings**, **Show Sena**, **Hide Sena**, **80% / 100% / 120% size**, and **Exit** actions.
 - Size changes are persisted and immediately re-render the Sprite at the new physical display size.
-- User preferences are stored in %APPDATA%\\Sena\\preferences.json; no database or background sync is required.
+- User preferences are stored in %APPDATA%\\Sena\\preferences.json; position, size, and always-on-top state survive restarts without a database or background sync.
+- The lightweight Slint settings window exposes size, startup-at-login, always-on-top, and show/hide controls. It is lazy-created only when opened from the tray, so normal idle operation does not keep a hidden settings window alive.
+- Startup-at-login uses the current-user Windows Run key (`HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run`) and does not require administrator privileges.
 - There is no permanent physics or movement timer.
 - The native Windows region is clipped to the visible pet body, so transparent corner pixels do not block clicks to applications underneath.
 - The tray implementation is event-driven on a blocked Win32 message loop; it does not add a polling timer.
 
-Gravity or playful throw physics may be added later as an explicit optional mode rather than default behavior. A dedicated settings window and startup-at-login toggle can build on the same preferences layer.
+Gravity or playful throw physics may be added later as an explicit optional mode rather than default behavior. The current settings window intentionally stays small; future behavior/audio options can extend the same preferences layer without introducing another configuration system.
 
 ### Animation runtime
 

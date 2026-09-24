@@ -6,9 +6,10 @@ mod preferences;
 mod render;
 
 use std::{
+    cell::RefCell,
     sync::{
         Arc, Mutex,
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::Duration,
 };
@@ -19,6 +20,10 @@ use preferences::PreferencesStore;
 use slint::ComponentHandle;
 
 slint::include_modules!();
+
+thread_local! {
+    static SETTINGS_WINDOW: RefCell<Option<SettingsWindow>> = const { RefCell::new(None) };
+}
 
 fn main() -> Result<(), slint::PlatformError> {
     let window = PetWindow::new()?;
@@ -34,6 +39,9 @@ fn main() -> Result<(), slint::PlatformError> {
         .value()
         .clone();
     render::set_user_scale(initial_preferences.scale);
+    window.set_keep_on_top(initial_preferences.always_on_top);
+
+    let pet_visible = Arc::new(AtomicBool::new(true));
 
     #[cfg(target_os = "windows")]
     let typing_generation = Arc::new(AtomicU64::new(0));
@@ -99,22 +107,35 @@ fn main() -> Result<(), slint::PlatformError> {
         let window = window.as_weak();
         let context = Arc::clone(&context);
         let preferences = Arc::clone(&preferences);
+        let pet_visible = Arc::clone(&pet_visible);
 
         match platform::windows::TrayIcon::start(move |action| {
             let window = window.clone();
             let context = Arc::clone(&context);
             let preferences = Arc::clone(&preferences);
+            let pet_visible = Arc::clone(&pet_visible);
 
             let _ = slint::invoke_from_event_loop(move || match action {
+                platform::windows::TrayAction::Settings => {
+                    show_settings_window(window, context, preferences, pet_visible);
+                }
                 platform::windows::TrayAction::Show => {
+                    pet_visible.store(true, Ordering::Release);
                     if let Some(window) = window.upgrade() {
                         let _ = window.show();
                     }
+                    with_settings_window(|settings| {
+                        settings.set_pet_visible(true);
+                    });
                 }
                 platform::windows::TrayAction::Hide => {
+                    pet_visible.store(false, Ordering::Release);
                     if let Some(window) = window.upgrade() {
                         let _ = window.hide();
                     }
+                    with_settings_window(|settings| {
+                        settings.set_pet_visible(false);
+                    });
                 }
                 platform::windows::TrayAction::SetScale(scale) => {
                     render::set_user_scale(scale);
@@ -131,6 +152,10 @@ fn main() -> Result<(), slint::PlatformError> {
                             eprintln!("failed to save Sena preferences: {error}");
                         }
                     }
+
+                    with_settings_window(|settings| {
+                        settings.set_scale_percent((scale * 100.0).round() as i32);
+                    });
                 }
                 platform::windows::TrayAction::Exit => {
                     let _ = slint::quit_event_loop();
@@ -391,6 +416,151 @@ fn main() -> Result<(), slint::PlatformError> {
     };
 
     window.run()
+}
+
+#[cfg(target_os = "windows")]
+fn with_settings_window(callback: impl FnOnce(&SettingsWindow)) {
+    SETTINGS_WINDOW.with(|slot| {
+        if let Some(settings) = slot.borrow().as_ref() {
+            callback(settings);
+        }
+    });
+}
+
+#[cfg(target_os = "windows")]
+fn show_settings_window(
+    window: slint::Weak<PetWindow>,
+    context: Arc<Mutex<DesktopContext>>,
+    preferences: Arc<Mutex<PreferencesStore>>,
+    pet_visible: Arc<AtomicBool>,
+) {
+    SETTINGS_WINDOW.with(|slot| {
+        if slot.borrow().is_none() {
+            let settings = match SettingsWindow::new() {
+                Ok(settings) => settings,
+                Err(error) => {
+                    eprintln!("failed to create Sena settings window: {error}");
+                    return;
+                }
+            };
+
+            {
+                let window = window.clone();
+                let context = Arc::clone(&context);
+                let preferences = Arc::clone(&preferences);
+                let settings_weak = settings.as_weak();
+
+                settings.on_set_scale(move |percent| {
+                    let scale = (percent as f32 / 100.0).clamp(0.6, 1.4);
+                    render::set_user_scale(scale);
+
+                    if let Some(window) = window.upgrade() {
+                        render_current_context(&window, &context);
+                        let position = pet::clamp_current_position(&window);
+
+                        let mut preferences =
+                            preferences.lock().expect("preferences lock poisoned");
+                        preferences.set_scale(scale);
+                        preferences.set_position(position.x, position.y);
+
+                        if let Err(error) = preferences.save() {
+                            eprintln!("failed to save Sena preferences: {error}");
+                            if let Some(settings) = settings_weak.upgrade() {
+                                settings
+                                    .set_status_message(format!("保存设置失败：{error}").into());
+                            }
+                        } else if let Some(settings) = settings_weak.upgrade() {
+                            settings.set_status_message("".into());
+                        }
+                    }
+                });
+            }
+
+            {
+                let settings_weak = settings.as_weak();
+                settings.on_set_startup(move |enabled| {
+                    let result = platform::windows::set_startup_enabled(enabled);
+                    let actual = platform::windows::startup_enabled();
+
+                    if let Some(settings) = settings_weak.upgrade() {
+                        settings.set_startup_enabled(actual);
+                        match result {
+                            Ok(()) => settings.set_status_message("".into()),
+                            Err(error) => settings
+                                .set_status_message(format!("开机自启设置失败：{error}").into()),
+                        }
+                    }
+                });
+            }
+
+            {
+                let window = window.clone();
+                let preferences = Arc::clone(&preferences);
+                let settings_weak = settings.as_weak();
+
+                settings.on_set_keep_on_top(move |enabled| {
+                    if let Some(window) = window.upgrade() {
+                        window.set_keep_on_top(enabled);
+                    }
+
+                    let mut preferences = preferences.lock().expect("preferences lock poisoned");
+                    preferences.set_always_on_top(enabled);
+
+                    if let Err(error) = preferences.save() {
+                        eprintln!("failed to save Sena preferences: {error}");
+                        if let Some(settings) = settings_weak.upgrade() {
+                            settings.set_status_message(format!("保存设置失败：{error}").into());
+                        }
+                    } else if let Some(settings) = settings_weak.upgrade() {
+                        settings.set_status_message("".into());
+                    }
+                });
+            }
+
+            {
+                let window = window.clone();
+                let pet_visible = Arc::clone(&pet_visible);
+
+                settings.on_set_visible(move |visible| {
+                    pet_visible.store(visible, Ordering::Release);
+
+                    if let Some(window) = window.upgrade() {
+                        if visible {
+                            let _ = window.show();
+                        } else {
+                            let _ = window.hide();
+                        }
+                    }
+                });
+            }
+
+            {
+                let settings_weak = settings.as_weak();
+                settings.on_close_settings(move || {
+                    if let Some(settings) = settings_weak.upgrade() {
+                        let _ = settings.hide();
+                    }
+                });
+            }
+
+            *slot.borrow_mut() = Some(settings);
+        }
+
+        let snapshot = preferences
+            .lock()
+            .expect("preferences lock poisoned")
+            .value()
+            .clone();
+
+        if let Some(settings) = slot.borrow().as_ref() {
+            settings.set_scale_percent((snapshot.scale * 100.0).round() as i32);
+            settings.set_keep_on_top(snapshot.always_on_top);
+            settings.set_pet_visible(pet_visible.load(Ordering::Acquire));
+            settings.set_startup_enabled(platform::windows::startup_enabled());
+            settings.set_status_message("".into());
+            let _ = settings.show();
+        }
+    });
 }
 
 fn sleeping_context_allows_motion(context: &DesktopContext) -> bool {

@@ -12,6 +12,7 @@ pub struct Preferences {
     pub window_x: Option<i32>,
     pub window_y: Option<i32>,
     pub scale: f32,
+    pub always_on_top: bool,
 }
 
 impl Default for Preferences {
@@ -20,6 +21,7 @@ impl Default for Preferences {
             window_x: None,
             window_y: None,
             scale: DEFAULT_SCALE,
+            always_on_top: true,
         }
     }
 }
@@ -76,6 +78,10 @@ impl PreferencesStore {
         };
     }
 
+    pub fn set_always_on_top(&mut self, enabled: bool) {
+        self.value.always_on_top = enabled;
+    }
+
     pub fn save(&self) -> std::io::Result<()> {
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent)?;
@@ -124,6 +130,7 @@ mod tests {
         let mut store = PreferencesStore::load_from_path(path.clone());
         store.set_position(321, 654);
         store.set_scale(1.2);
+        store.set_always_on_top(false);
         store.save().expect("preferences should save");
 
         let loaded = PreferencesStore::load_from_path(path.clone());
@@ -131,6 +138,7 @@ mod tests {
 
         assert_eq!(loaded.value().position(), Some((321, 654)));
         assert_eq!(loaded.value().scale, 1.2);
+        assert!(!loaded.value().always_on_top);
     }
 
     #[test]
@@ -143,5 +151,6 @@ mod tests {
         let _ = fs::remove_file(path);
 
         assert_eq!(loaded.value().scale, MAX_SCALE);
+        assert!(loaded.value().always_on_top);
     }
 }

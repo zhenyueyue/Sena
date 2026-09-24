@@ -1,11 +1,13 @@
 mod keyboard;
 mod media;
 mod session;
+mod startup;
 mod tray;
 
 pub use keyboard::KeyboardWatcher;
 pub use media::MediaWatcher;
 pub use session::SessionWatcher;
+pub use startup::{set_startup_enabled, startup_enabled};
 pub use tray::{TrayAction, TrayIcon};
 
 use std::{cell::RefCell, path::Path, time::Duration};

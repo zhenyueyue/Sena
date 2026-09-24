@@ -4,7 +4,8 @@ export component PetWindow inherits Window {
     height: 240px;
     background: transparent;
     no-frame: true;
-    always-on-top: true;
+    in-out property <bool> keep-on-top: true;
+    always-on-top: root.keep-on-top;
 
     in property <string> activity-label: "Idle";
     in property <string> foreground-label: "Desktop";
@@ -265,6 +266,229 @@ export component PetWindow inherits Window {
             moved => {
                 root.drag-move();
             }
+        }
+    }
+}
+
+component SenaButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected: false;
+    callback clicked();
+
+    height: 36px;
+    border-radius: 9px;
+    background: root.selected ? #d8d9ff : #f0f1f7;
+    border-width: 1px;
+    border-color: root.selected ? #abaeff : #e0e2ea;
+
+    Text {
+        text: root.label;
+        color: root.selected ? #5456a6 : #4c5060;
+        font-size: 13px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => {
+            root.clicked();
+        }
+    }
+}
+
+component ToggleRow inherits Rectangle {
+    in property <string> title;
+    in property <string> description;
+    in-out property <bool> checked: false;
+    callback toggled(bool);
+
+    height: 64px;
+    border-radius: 11px;
+    background: #ffffff;
+    border-width: 1px;
+    border-color: #e8e9ef;
+
+    Text {
+        x: 14px;
+        y: 10px;
+        width: parent.width - 94px;
+        text: root.title;
+        color: #343746;
+        font-size: 14px;
+    }
+
+    Text {
+        x: 14px;
+        y: 33px;
+        width: parent.width - 94px;
+        text: root.description;
+        color: #8d91a0;
+        font-size: 11px;
+        overflow: elide;
+    }
+
+    Rectangle {
+        x: parent.width - 64px;
+        y: 18px;
+        width: 46px;
+        height: 28px;
+        border-radius: 14px;
+        background: root.checked ? #7779d9 : #d9dbe3;
+
+        Rectangle {
+            x: root.checked ? 20px : 3px;
+            y: 3px;
+            width: 22px;
+            height: 22px;
+            border-radius: 11px;
+            background: #ffffff;
+        }
+    }
+
+    TouchArea {
+        mouse-cursor: MouseCursor.pointer;
+        clicked => {
+            root.checked = !root.checked;
+            root.toggled(root.checked);
+        }
+    }
+}
+
+export component SettingsWindow inherits Window {
+    title: "Sena 设置";
+    width: 420px;
+    height: 430px;
+    background: #f7f8fb;
+
+    in-out property <int> scale-percent: 100;
+    in-out property <bool> startup-enabled: false;
+    in-out property <bool> keep-on-top: true;
+    in-out property <bool> pet-visible: true;
+    in-out property <string> status-message: "";
+
+    callback set-scale(int);
+    callback set-startup(bool);
+    callback set-keep-on-top(bool);
+    callback set-visible(bool);
+    callback close-settings();
+
+    Text {
+        x: 24px;
+        y: 22px;
+        text: "Sena 设置";
+        color: #2f3240;
+        font-size: 22px;
+    }
+
+    Text {
+        x: 24px;
+        y: 54px;
+        width: parent.width - 48px;
+        text: "保持桌宠轻量运行，只调整你真正需要的选项。";
+        color: #8a8e9d;
+        font-size: 12px;
+    }
+
+    Text {
+        x: 24px;
+        y: 92px;
+        text: "角色大小";
+        color: #464958;
+        font-size: 13px;
+    }
+
+    HorizontalLayout {
+        x: 24px;
+        y: 116px;
+        width: parent.width - 48px;
+        spacing: 10px;
+
+        SenaButton {
+            label: "80%";
+            selected: root.scale-percent == 80;
+            clicked => {
+                root.scale-percent = 80;
+                root.set-scale(80);
+            }
+        }
+
+        SenaButton {
+            label: "100%";
+            selected: root.scale-percent == 100;
+            clicked => {
+                root.scale-percent = 100;
+                root.set-scale(100);
+            }
+        }
+
+        SenaButton {
+            label: "120%";
+            selected: root.scale-percent == 120;
+            clicked => {
+                root.scale-percent = 120;
+                root.set-scale(120);
+            }
+        }
+    }
+
+    ToggleRow {
+        x: 24px;
+        y: 174px;
+        width: parent.width - 48px;
+        title: "开机自启";
+        description: "登录 Windows 后自动启动 Sena";
+        checked: root.startup-enabled;
+        toggled(value) => {
+            root.startup-enabled = value;
+            root.set-startup(value);
+        }
+    }
+
+    ToggleRow {
+        x: 24px;
+        y: 248px;
+        width: parent.width - 48px;
+        title: "始终置顶";
+        description: "让 Sena 保持在其他普通窗口上方";
+        checked: root.keep-on-top;
+        toggled(value) => {
+            root.keep-on-top = value;
+            root.set-keep-on-top(value);
+        }
+    }
+
+    ToggleRow {
+        x: 24px;
+        y: 322px;
+        width: parent.width - 48px;
+        title: "显示桌宠";
+        description: "隐藏后仍可从系统托盘重新显示";
+        checked: root.pet-visible;
+        toggled(value) => {
+            root.pet-visible = value;
+            root.set-visible(value);
+        }
+    }
+
+    Text {
+        x: 24px;
+        y: 397px;
+        width: parent.width - 120px;
+        text: root.status-message;
+        color: #a15c62;
+        font-size: 11px;
+        overflow: elide;
+    }
+
+    SenaButton {
+        x: parent.width - 88px;
+        y: 388px;
+        width: 64px;
+        height: 30px;
+        label: "关闭";
+        clicked => {
+            root.close-settings();
         }
     }
 }

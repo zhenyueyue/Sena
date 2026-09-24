@@ -31,6 +31,7 @@ use windows::{
 const TRAY_ICON_ID: u32 = 1;
 const TRAY_CALLBACK_MESSAGE: u32 = WM_APP + 41;
 
+const CMD_SETTINGS: usize = 1000;
 const CMD_SHOW: usize = 1001;
 const CMD_HIDE: usize = 1002;
 const CMD_SCALE_80: usize = 1010;
@@ -40,6 +41,7 @@ const CMD_EXIT: usize = 1099;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TrayAction {
+    Settings,
     Show,
     Hide,
     SetScale(f32),
@@ -207,6 +209,8 @@ unsafe fn show_context_menu(hwnd: HWND) {
     };
 
     unsafe {
+        let _ = AppendMenuW(menu, MF_STRING, CMD_SETTINGS, w!("设置..."));
+        let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
         let _ = AppendMenuW(menu, MF_STRING, CMD_SHOW, w!("显示 Sena"));
         let _ = AppendMenuW(menu, MF_STRING, CMD_HIDE, w!("隐藏 Sena"));
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
@@ -252,6 +256,7 @@ unsafe fn show_context_menu(hwnd: HWND) {
 
 fn action_for_command(command: usize) -> Option<TrayAction> {
     match command {
+        CMD_SETTINGS => Some(TrayAction::Settings),
         CMD_SHOW => Some(TrayAction::Show),
         CMD_HIDE => Some(TrayAction::Hide),
         CMD_SCALE_80 => Some(TrayAction::SetScale(0.8)),
@@ -325,6 +330,7 @@ mod tests {
 
     #[test]
     fn tray_commands_map_to_expected_actions() {
+        assert_eq!(action_for_command(CMD_SETTINGS), Some(TrayAction::Settings));
         assert_eq!(action_for_command(CMD_SHOW), Some(TrayAction::Show));
         assert_eq!(action_for_command(CMD_HIDE), Some(TrayAction::Hide));
         assert_eq!(
