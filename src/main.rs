@@ -67,6 +67,7 @@ fn main() -> Result<(), slint::PlatformError> {
 
                 if let Some(window) = window.upgrade() {
                     let _ = window.show();
+                    platform::windows::ensure_window_visible(&window.window());
                 }
 
                 with_settings_window(|settings| {

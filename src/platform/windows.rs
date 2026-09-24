@@ -36,7 +36,7 @@ use windows::{
             Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO},
             WindowsAndMessaging::{
                 EVENT_SYSTEM_FOREGROUND, GetCursorPos, GetForegroundWindow,
-                GetWindowThreadProcessId, WINEVENT_OUTOFCONTEXT,
+                GetWindowThreadProcessId, SW_SHOWNOACTIVATE, ShowWindow, WINEVENT_OUTOFCONTEXT,
             },
         },
     },
@@ -283,6 +283,16 @@ fn apply_owned_region(hwnd: HWND, region: windows::Win32::Graphics::Gdi::HRGN) {
 ///
 /// Windows does not hit-test pixels outside the region, so transparent corner
 /// areas pass mouse input to the desktop or application underneath.
+pub fn ensure_window_visible(window: &slint::Window) {
+    let Some(hwnd) = hwnd_from_slint_window(window) else {
+        return;
+    };
+
+    unsafe {
+        let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+    }
+}
+
 pub fn apply_pet_window_region_if_available(window: &slint::Window, placeholder: bool) {
     let Some(hwnd) = hwnd_from_slint_window(window) else {
         return;
