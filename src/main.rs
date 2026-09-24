@@ -26,6 +26,16 @@ thread_local! {
 }
 
 fn main() -> Result<(), slint::PlatformError> {
+    #[cfg(target_os = "windows")]
+    let mut single_instance = match platform::windows::SingleInstance::acquire() {
+        Ok(platform::windows::SingleInstanceAcquire::Primary(instance)) => Some(instance),
+        Ok(platform::windows::SingleInstanceAcquire::ExistingNotified) => return Ok(()),
+        Err(error) => {
+            eprintln!("single-instance protection unavailable: {error}");
+            None
+        }
+    };
+
     let window = PetWindow::new()?;
 
     // No timer is started here. Slint's event loop sleeps while Sena
@@ -42,6 +52,31 @@ fn main() -> Result<(), slint::PlatformError> {
     window.set_keep_on_top(initial_preferences.always_on_top);
 
     let pet_visible = Arc::new(AtomicBool::new(true));
+
+    #[cfg(target_os = "windows")]
+    if let Some(instance) = single_instance.as_mut() {
+        let window = window.as_weak();
+        let pet_visible = Arc::clone(&pet_visible);
+
+        if let Err(error) = instance.start_show_listener(move || {
+            let window = window.clone();
+            let pet_visible = Arc::clone(&pet_visible);
+
+            let _ = slint::invoke_from_event_loop(move || {
+                pet_visible.store(true, Ordering::Release);
+
+                if let Some(window) = window.upgrade() {
+                    let _ = window.show();
+                }
+
+                with_settings_window(|settings| {
+                    settings.set_pet_visible(true);
+                });
+            });
+        }) {
+            eprintln!("single-instance show listener unavailable: {error}");
+        }
+    }
 
     #[cfg(target_os = "windows")]
     let typing_generation = Arc::new(AtomicU64::new(0));
@@ -415,7 +450,8 @@ fn main() -> Result<(), slint::PlatformError> {
         .ok()
     };
 
-    window.run()
+    window.show()?;
+    slint::run_event_loop_until_quit()
 }
 
 #[cfg(target_os = "windows")]

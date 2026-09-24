@@ -65,6 +65,8 @@ Idle behavior defaults to 5 minutes for Drowsy and 10 minutes for Sleeping. Acti
 - There is no permanent physics or movement timer.
 - The native Windows region is clipped to the visible pet body, so transparent corner pixels do not block clicks to applications underneath.
 - The tray implementation is event-driven on a blocked Win32 message loop; it does not add a polling timer.
+- Sena is single-instance per Windows session. A named Mutex prevents duplicate runtimes, while a named auto-reset Event lets a second launch ask the existing instance to show itself and then exit before creating Slint windows, watchers, or pet assets.
+- The Slint loop uses `run_event_loop_until_quit()`, so hiding every Sena window keeps the tray resident without a hidden keepalive window or polling loop; only the explicit Exit action stops the process.
 
 Gravity or playful throw physics may be added later as an explicit optional mode rather than default behavior. The current settings window intentionally stays small; future behavior/audio options can extend the same preferences layer without introducing another configuration system.
 
