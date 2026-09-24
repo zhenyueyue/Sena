@@ -43,7 +43,14 @@ pub fn install(window: &PetWindow) {
             return;
         };
 
-        apply_sprite_frame(&window, clip.behavior(), frame.max(0) as usize);
+        let behavior = clip.behavior();
+        let frame = frame.max(0) as usize;
+
+        apply_sprite_frame(&window, behavior, frame);
+
+        if let Some(milliseconds) = active_package().animation_frame_duration_ms(behavior, frame) {
+            window.set_animation_interval_ms(milliseconds.min(i32::MAX as u64) as i32);
+        }
     });
 
     // The native HWND may not exist during the initial context render. Re-apply

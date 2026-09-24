@@ -17,7 +17,7 @@ She reacts to what you are doing: coding, listening to music, stepping away from
 2. No high-frequency full process scans.
 3. Idle means event-driven sleep whenever possible.
 4. Foreground-app changes, media changes, session changes, and input-idle changes should use OS events or low-frequency fallbacks.
-5. Animation frame rate is chosen per animation instead of globally.
+5. Animation cadence is chosen per animation and may be overridden per frame for natural low-duty-cycle motion such as blinking.
 6. Expensive renderers such as Live2D are activated only while needed.
 7. React/WebView/Electron are intentionally not part of the pet runtime.
 

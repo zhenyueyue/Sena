@@ -19,7 +19,12 @@
         "animations/idle/002.webp",
         "animations/idle/003.webp"
       ],
-      "interval_ms": 650,
+      "frame_durations_ms": [
+        1800,
+        120,
+        2300,
+        120
+      ],
       "looping": true
     },
     "coding": {

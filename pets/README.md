@@ -35,9 +35,10 @@ Current schema version: `1`.
   "animations": {
     "idle": {
       "frames": [
-        "animations/idle/000.webp"
+        "animations/idle/000.webp",
+        "animations/idle/001.webp"
       ],
-      "interval_ms": null,
+      "frame_durations_ms": [1800, 120],
       "looping": true
     },
     "coding": {
@@ -51,6 +52,8 @@ Current schema version: `1`.
   }
 }
 ```
+
+`interval_ms` applies one cadence to every frame. `frame_durations_ms` optionally overrides it with one positive duration per frame; when present, its length must exactly match the effective frame count. This is preferred for occasional blink/reaction frames that should be brief while neutral frames remain on screen much longer.
 
 Supported animation keys are:
 

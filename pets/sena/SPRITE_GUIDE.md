@@ -42,16 +42,16 @@ This is deliberately larger than the old placeholder while remaining compact eno
 
 ### Idle — 4 frames
 
-Cadence: **650 ms/frame**
+Purpose: calm presence without a high-frequency animation loop. Human and cat blinks must be staggered so they never blink in the same frame.
 
-Purpose: calm presence without permanent high-frequency animation.
+| Frame | Visual | Hold |
+| --- | --- | ---: |
+| `000` | Sena open / cat open | 1800 ms |
+| `001` | Sena open / cat blink | 120 ms |
+| `002` | Sena open / cat open, tiny breath/hair settle | 2300 ms |
+| `003` | Sena blink / cat open | 120 ms |
 
-1. Neutral open-eye pose.
-2. Tiny breath / hair settle.
-3. Blink.
-4. Return to neutral.
-
-The loop should feel almost static. Large body movement is incorrect.
+Then return to `000`. Closed-eye frames are intentionally short; they must read as blinks, not as drowsiness. The loop should feel almost static and must not introduce body-position drift.
 
 ### Coding — 4 frames
 

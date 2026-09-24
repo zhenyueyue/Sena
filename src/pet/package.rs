@@ -50,6 +50,8 @@ pub struct AnimationDefinition {
     pub frame_count: Option<u32>,
     #[serde(default)]
     pub interval_ms: Option<u64>,
+    #[serde(default)]
+    pub frame_durations_ms: Vec<u64>,
     #[serde(default = "default_looping")]
     pub looping: bool,
 }
@@ -61,6 +63,14 @@ impl AnimationDefinition {
         } else {
             self.frames.len()
         }
+    }
+
+    pub fn frame_duration_ms(&self, frame: usize) -> Option<u64> {
+        self.frame_durations_ms
+            .get(frame)
+            .copied()
+            .or(self.interval_ms)
+            .filter(|milliseconds| *milliseconds > 0)
     }
 }
 
@@ -126,6 +136,7 @@ impl PetPackage {
                     frames: Vec::new(),
                     frame_count: Some(1),
                     interval_ms: None,
+                    frame_durations_ms: Vec::new(),
                     looping: true,
                 },
             ),
@@ -135,6 +146,7 @@ impl PetPackage {
                     frames: Vec::new(),
                     frame_count: Some(2),
                     interval_ms: Some(160),
+                    frame_durations_ms: Vec::new(),
                     looping: true,
                 },
             ),
@@ -144,6 +156,7 @@ impl PetPackage {
                     frames: Vec::new(),
                     frame_count: Some(4),
                     interval_ms: Some(240),
+                    frame_durations_ms: Vec::new(),
                     looping: true,
                 },
             ),
@@ -153,6 +166,7 @@ impl PetPackage {
                     frames: Vec::new(),
                     frame_count: Some(4),
                     interval_ms: Some(160),
+                    frame_durations_ms: Vec::new(),
                     looping: true,
                 },
             ),
@@ -162,6 +176,7 @@ impl PetPackage {
                     frames: Vec::new(),
                     frame_count: Some(2),
                     interval_ms: Some(900),
+                    frame_durations_ms: Vec::new(),
                     looping: true,
                 },
             ),
@@ -171,6 +186,7 @@ impl PetPackage {
                     frames: Vec::new(),
                     frame_count: Some(2),
                     interval_ms: Some(1500),
+                    frame_durations_ms: Vec::new(),
                     looping: true,
                 },
             ),
@@ -295,6 +311,11 @@ impl PetPackage {
             .or_else(|| definition.frames.first())?;
         Some(self.root.join(relative))
     }
+
+    pub fn animation_frame_duration_ms(&self, behavior: Behavior, frame: usize) -> Option<u64> {
+        let (_, definition) = self.animation_with_idle_fallback(behavior)?;
+        definition.frame_duration_ms(frame)
+    }
 }
 
 fn default_package_candidates() -> Vec<PathBuf> {
@@ -354,10 +375,29 @@ fn validate_manifest(root: &Path, manifest: &PetManifest) -> Result<(), PackageE
     }
 
     for (animation, definition) in &manifest.animations {
-        if definition.effective_frame_count() == 0 {
+        let frame_count = definition.effective_frame_count();
+        if frame_count == 0 {
             return Err(PackageError::InvalidManifest(format!(
                 "{animation:?} must contain at least one frame"
             )));
+        }
+
+        if !definition.frame_durations_ms.is_empty() {
+            if definition.frame_durations_ms.len() != frame_count {
+                return Err(PackageError::InvalidManifest(format!(
+                    "{animation:?} frame_durations_ms must have exactly {frame_count} entries"
+                )));
+            }
+
+            if definition
+                .frame_durations_ms
+                .iter()
+                .any(|milliseconds| *milliseconds == 0)
+            {
+                return Err(PackageError::InvalidManifest(format!(
+                    "{animation:?} frame durations must be greater than zero"
+                )));
+            }
         }
 
         for frame in &definition.frames {
@@ -507,6 +547,7 @@ mod tests {
             frames: vec!["a.webp".into(), "b.webp".into(), "c.webp".into()],
             frame_count: Some(99),
             interval_ms: Some(200),
+            frame_durations_ms: Vec::new(),
             looping: true,
         };
 
@@ -564,6 +605,7 @@ mod tests {
                 frames: vec!["animations/idle/000.webp".into()],
                 frame_count: None,
                 interval_ms: None,
+                frame_durations_ms: Vec::new(),
                 looping: true,
             },
         );
@@ -573,6 +615,7 @@ mod tests {
                 frames: Vec::new(),
                 frame_count: None,
                 interval_ms: Some(180),
+                frame_durations_ms: Vec::new(),
                 looping: true,
             },
         );
@@ -587,5 +630,33 @@ mod tests {
             package.sprite_frame_path(Behavior::Coding, 0),
             Some(PathBuf::from("animations/idle/000.webp"))
         );
+    }
+
+    #[test]
+    fn per_frame_duration_overrides_uniform_interval() {
+        let definition = AnimationDefinition {
+            frames: vec!["000.webp".into(), "001.webp".into()],
+            frame_count: None,
+            interval_ms: Some(650),
+            frame_durations_ms: vec![1800, 120],
+            looping: true,
+        };
+
+        assert_eq!(definition.frame_duration_ms(0), Some(1800));
+        assert_eq!(definition.frame_duration_ms(1), Some(120));
+    }
+
+    #[test]
+    fn uniform_interval_remains_backward_compatible() {
+        let definition = AnimationDefinition {
+            frames: vec!["000.webp".into(), "001.webp".into()],
+            frame_count: None,
+            interval_ms: Some(240),
+            frame_durations_ms: Vec::new(),
+            looping: true,
+        };
+
+        assert_eq!(definition.frame_duration_ms(0), Some(240));
+        assert_eq!(definition.frame_duration_ms(1), Some(240));
     }
 }

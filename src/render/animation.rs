@@ -55,10 +55,7 @@ impl AnimationSpec {
         };
 
         let frame_count = definition.effective_frame_count().min(i32::MAX as usize) as i32;
-        let interval = definition
-            .interval_ms
-            .filter(|milliseconds| *milliseconds > 0)
-            .map(Duration::from_millis);
+        let interval = definition.frame_duration_ms(0).map(Duration::from_millis);
 
         Self {
             clip: fallback.clip,
