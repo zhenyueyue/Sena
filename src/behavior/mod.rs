@@ -48,6 +48,7 @@ mod tests {
             media: MediaState::Playing,
             user_activity: UserActivity::Active,
             session_locked: false,
+            typing_active: false,
         };
 
         assert_eq!(BehaviorEngine.resolve(&context), Behavior::CodingWithMusic);
@@ -60,6 +61,7 @@ mod tests {
             media: MediaState::Playing,
             user_activity: UserActivity::Active,
             session_locked: true,
+            typing_active: false,
         };
 
         assert_eq!(BehaviorEngine.resolve(&context), Behavior::Sleeping);

@@ -47,6 +47,18 @@ impl AnimationClip {
 }
 
 impl AnimationSpec {
+    pub fn for_runtime(behavior: Behavior, package: &PetPackage, typing_active: bool) -> Self {
+        let mut spec = Self::for_behavior(behavior, package);
+
+        if behavior == Behavior::Coding && !typing_active {
+            spec.frame_count = 1;
+            spec.interval = None;
+            spec.looping = false;
+        }
+
+        spec
+    }
+
     pub fn for_behavior(behavior: Behavior, package: &PetPackage) -> Self {
         let fallback = Self::fallback_for_behavior(behavior);
 
@@ -174,6 +186,27 @@ mod tests {
         let spec = AnimationSpec::for_behavior(Behavior::Coding, &package);
 
         assert_eq!(package.manifest().id, "sena.official");
+        assert_eq!(spec.frame_count, 4);
+        assert_eq!(spec.interval, Some(Duration::from_millis(220)));
+        assert!(spec.running());
+    }
+
+    #[test]
+    fn coding_stays_static_until_keyboard_activity() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+        let spec = AnimationSpec::for_runtime(Behavior::Coding, &package, false);
+
+        assert_eq!(spec.clip, AnimationClip::Coding);
+        assert_eq!(spec.frame_count, 1);
+        assert_eq!(spec.interval, None);
+        assert!(!spec.running());
+    }
+
+    #[test]
+    fn coding_animates_during_keyboard_activity() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+        let spec = AnimationSpec::for_runtime(Behavior::Coding, &package, true);
+
         assert_eq!(spec.frame_count, 4);
         assert_eq!(spec.interval, Some(Duration::from_millis(220)));
         assert!(spec.running());

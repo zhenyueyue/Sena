@@ -24,6 +24,7 @@ pub struct DesktopContext {
     pub media: MediaState,
     pub user_activity: UserActivity,
     pub session_locked: bool,
+    pub typing_active: bool,
 }
 
 impl DesktopContext {

@@ -1,6 +1,8 @@
+mod keyboard;
 mod media;
 mod session;
 
+pub use keyboard::KeyboardWatcher;
 pub use media::MediaWatcher;
 pub use session::SessionWatcher;
 

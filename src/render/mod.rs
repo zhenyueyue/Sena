@@ -196,7 +196,7 @@ pub fn apply_context(window: &PetWindow, context: &DesktopContext, behavior: Beh
         Behavior::Sleeping => "Sleeping",
     };
 
-    let animation = AnimationSpec::for_behavior(behavior, active_package());
+    let animation = AnimationSpec::for_runtime(behavior, active_package(), context.typing_active);
     let clip = animation.clip as i32;
 
     if window.get_animation_clip() != clip {
@@ -204,7 +204,11 @@ pub fn apply_context(window: &PetWindow, context: &DesktopContext, behavior: Beh
         window.set_animation_clip(clip);
     }
 
-    let current_frame = window.get_animation_frame().max(0) as usize;
+    let mut current_frame = window.get_animation_frame().max(0) as usize;
+    if current_frame >= animation.frame_count.max(1) as usize {
+        current_frame = 0;
+        window.set_animation_frame(0);
+    }
     let interval_ms = active_package()
         .animation_frame_duration_ms(behavior, current_frame)
         .map(|milliseconds| milliseconds.min(i32::MAX as u64) as i32)

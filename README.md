@@ -44,6 +44,7 @@ The current UI is intentionally a tiny placeholder.
 - Windows Global System Media Transport Controls playback state.
 - Windows lock/unlock session notifications through WTS session events.
 - User idle duration through GetLastInputInfo.
+- Windows low-level keyboard activity pulses for input-driven Coding; Sena does not retain key codes, text, scan codes, or modifier state.
 - Live transitions between Idle, Coding, ListeningMusic, CodingWithMusic, Drowsy, and Sleeping.
 
 Foreground, media, and lock/unlock observation are event-driven. User idle time is the only sampled signal and is checked once every 5 seconds with a single GetLastInputInfo call. The UI is only updated when the activity level actually changes.
@@ -97,7 +98,9 @@ The official package now also ships a four-frame Coding v1 set. Coding is trigge
 
 High-resolution Sprite sources are downsampled to their physical display size before caching. Alpha hit regions are reused across frames within the same behavior instead of being rebuilt on every animation tick.
 
-A static Coding pose measured effectively zero CPU over a 12-second sample on the development machine, while continuous multi-frame Coding redraws were measurably more expensive. The next runtime milestone is therefore input-aware Coding: keep the focused Coding pose static while the keyboard is quiet, and run short typing bursts only around actual keyboard activity.
+Coding is now input-aware. When a supported IDE is foreground but the keyboard is quiet, Sena freezes on the focused Coding pose with no animation timer. A real key-down pulse starts the Coding animation and keeps it active for 650 ms after the most recent keyboard activity; subsequent key activity extends that burst. Leaving the IDE or locking Windows cancels the burst immediately. The watcher is event-driven and only emits activity pulses; it does not record which key was pressed.
+
+On the development machine, the static Coding pose measured effectively zero CPU over a 12-second sample. Continuous multi-frame Coding remains intentionally limited to the short periods in which the user is actively typing.
 
 ## License
 
