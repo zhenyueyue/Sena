@@ -158,11 +158,27 @@ mod tests {
     }
 
     #[test]
-    fn bundled_package_drives_animation_timing() {
-        let package = PetPackage::load_default().expect("default pet package should load");
+    fn placeholder_package_drives_animation_timing() {
+        let package = PetPackage::load_from_dir(
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("pets")
+                .join("default"),
+        )
+        .expect("placeholder package should load");
         let spec = AnimationSpec::for_behavior(Behavior::ListeningMusic, &package);
 
         assert_eq!(spec.frame_count, 4);
         assert_eq!(spec.interval, Some(Duration::from_millis(240)));
+    }
+
+    #[test]
+    fn official_single_frame_package_falls_back_without_starting_a_timer() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+        let spec = AnimationSpec::for_behavior(Behavior::Coding, &package);
+
+        assert_eq!(package.manifest().id, "sena.official");
+        assert_eq!(spec.frame_count, 1);
+        assert_eq!(spec.interval, None);
+        assert!(!spec.running());
     }
 }

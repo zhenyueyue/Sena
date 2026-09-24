@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "sena.official",
+  "name": "Sena",
+  "display_name": "星奈",
+  "version": "0.1.0",
+  "author": "Sena Project",
+  "renderer": "sprite",
+  "sprite": {
+    "scale": 0.9,
+    "alpha_threshold": 8
+  },
+  "license": "All rights reserved",
+  "animations": {
+    "idle": {
+      "frames": [
+        "animations/idle/000.webp"
+      ],
+      "interval_ms": null,
+      "looping": true
+    }
+  }
+}
