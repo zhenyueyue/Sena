@@ -475,4 +475,29 @@ mod tests {
         assert_eq!(settings.scale, 1.0);
         assert_eq!(settings.alpha_threshold, 8);
     }
+
+    #[test]
+    fn official_sena_package_template_matches_current_schema() {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("pets")
+            .join("sena")
+            .join("pet.template.json");
+        let json = fs::read_to_string(path).expect("Sena pet template should be readable");
+        let manifest: PetManifest =
+            serde_json::from_str(&json).expect("Sena pet template should match schema");
+
+        assert_eq!(manifest.id, "sena.official");
+        assert_eq!(manifest.renderer, RendererKind::Sprite);
+        assert_eq!(manifest.sprite.scale, 0.36);
+        assert_eq!(manifest.animations.len(), 6);
+        assert_eq!(
+            manifest
+                .animations
+                .get(&AnimationKey::Idle)
+                .expect("idle animation")
+                .frames
+                .len(),
+            4
+        );
+    }
 }

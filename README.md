@@ -85,7 +85,9 @@ The Sprite renderer is now connected end-to-end. PNG/WebP frames are decoded onl
 
 Sprite packages now control character scale and use alpha-aware native Windows regions. The native window follows the source image size multiplied by the package scale, while transparent pixels are excluded from the window region so they do not block clicks to applications underneath.
 
-The next milestone is the first real Sena character asset set, followed by tray/settings controls and position/configuration persistence.
+The first official Sena character production spec now lives in [pets/sena](pets/sena): it defines the visual identity, fixed 768×1024 Sprite canvas, six initial behavior animations, frame cadence, alpha requirements, and the target `sena.official` package manifest.
+
+The next milestone is producing and approving Sena's neutral master character image, then deriving the first Idle Sprite frames from that locked reference before expanding to the other behaviors.
 
 ## License
 

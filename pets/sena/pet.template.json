@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "id": "sena.official",
+  "name": "Sena",
+  "display_name": "星奈",
+  "version": "0.1.0",
+  "author": "Sena Project",
+  "renderer": "sprite",
+  "sprite": {
+    "scale": 0.36,
+    "alpha_threshold": 8
+  },
+  "license": "SEE-ASSET-LICENSE",
+  "animations": {
+    "idle": {
+      "frames": [
+        "animations/idle/000.webp",
+        "animations/idle/001.webp",
+        "animations/idle/002.webp",
+        "animations/idle/003.webp"
+      ],
+      "interval_ms": 650,
+      "looping": true
+    },
+    "coding": {
+      "frames": [
+        "animations/coding/000.webp",
+        "animations/coding/001.webp",
+        "animations/coding/002.webp",
+        "animations/coding/003.webp"
+      ],
+      "interval_ms": 180,
+      "looping": true
+    },
+    "listening_music": {
+      "frames": [
+        "animations/listening_music/000.webp",
+        "animations/listening_music/001.webp",
+        "animations/listening_music/002.webp",
+        "animations/listening_music/003.webp"
+      ],
+      "interval_ms": 260,
+      "looping": true
+    },
+    "coding_with_music": {
+      "frames": [
+        "animations/coding_with_music/000.webp",
+        "animations/coding_with_music/001.webp",
+        "animations/coding_with_music/002.webp",
+        "animations/coding_with_music/003.webp"
+      ],
+      "interval_ms": 180,
+      "looping": true
+    },
+    "drowsy": {
+      "frames": [
+        "animations/drowsy/000.webp",
+        "animations/drowsy/001.webp",
+        "animations/drowsy/002.webp"
+      ],
+      "interval_ms": 850,
+      "looping": true
+    },
+    "sleeping": {
+      "frames": [
+        "animations/sleeping/000.webp",
+        "animations/sleeping/001.webp",
+        "animations/sleeping/002.webp"
+      ],
+      "interval_ms": 1400,
+      "looping": true
+    }
+  }
+}
