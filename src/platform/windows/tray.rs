@@ -10,6 +10,7 @@ use windows::{
         Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, WPARAM},
         System::LibraryLoader::GetModuleHandleW,
         UI::{
+            Input::KeyboardAndMouse::SetActiveWindow,
             Shell::{
                 NIF_ICON, NIF_MESSAGE, NIF_TIP, NIM_ADD, NIM_DELETE, NOTIFYICONDATAW,
                 Shell_NotifyIconW,
@@ -293,6 +294,7 @@ pub fn show_pet_context_menu(
     }
 
     unsafe {
+        let _ = SetActiveWindow(hwnd);
         let _ = SetForegroundWindow(hwnd);
     }
 
