@@ -17,7 +17,7 @@ use windows::{
             WindowsAndMessaging::{
                 AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu,
                 DestroyWindow, DispatchMessageW, GetCursorPos, GetMessageW, IDI_APPLICATION,
-                LoadIconW, MF_SEPARATOR, MF_STRING, MSG, PostMessageW, PostQuitMessage,
+                LoadIconW, MF_CHECKED, MF_SEPARATOR, MF_STRING, MSG, PostMessageW, PostQuitMessage,
                 RegisterClassW, SetForegroundWindow, TPM_LEFTALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
                 TrackPopupMenu, TranslateMessage, WINDOW_EX_STYLE, WINDOW_STYLE, WM_APP, WM_CLOSE,
                 WM_CONTEXTMENU, WM_DESTROY, WM_LBUTTONDBLCLK, WM_LBUTTONUP, WM_RBUTTONUP,
@@ -37,6 +37,7 @@ const CMD_HIDE: usize = 1002;
 const CMD_SCALE_80: usize = 1010;
 const CMD_SCALE_100: usize = 1011;
 const CMD_SCALE_120: usize = 1012;
+const CMD_TOGGLE_TOPMOST: usize = 1020;
 const CMD_EXIT: usize = 1099;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -45,6 +46,7 @@ pub enum TrayAction {
     Show,
     Hide,
     SetScale(f32),
+    ToggleAlwaysOnTop,
     Exit,
 }
 
@@ -254,6 +256,77 @@ unsafe fn show_context_menu(hwnd: HWND) {
     }
 }
 
+pub fn show_pet_context_menu(
+    window: &slint::Window,
+    current_scale: f32,
+    always_on_top: bool,
+) -> Option<TrayAction> {
+    let hwnd = super::hwnd_from_slint_window(window)?;
+    let menu = unsafe { CreatePopupMenu() }.ok()?;
+
+    let scale_80_flags = checked_menu_flags(scale_matches(current_scale, 0.8));
+    let scale_100_flags = checked_menu_flags(scale_matches(current_scale, 1.0));
+    let scale_120_flags = checked_menu_flags(scale_matches(current_scale, 1.2));
+    let topmost_flags = checked_menu_flags(always_on_top);
+
+    unsafe {
+        let _ = AppendMenuW(menu, MF_STRING, CMD_SETTINGS, w!("设置..."));
+        let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
+
+        let _ = AppendMenuW(menu, scale_80_flags, CMD_SCALE_80, w!("大小 80%"));
+        let _ = AppendMenuW(menu, scale_100_flags, CMD_SCALE_100, w!("大小 100%"));
+        let _ = AppendMenuW(menu, scale_120_flags, CMD_SCALE_120, w!("大小 120%"));
+
+        let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
+        let _ = AppendMenuW(menu, topmost_flags, CMD_TOGGLE_TOPMOST, w!("始终置顶"));
+
+        let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
+        let _ = AppendMenuW(menu, MF_STRING, CMD_EXIT, w!("退出"));
+    }
+
+    let mut point = POINT::default();
+    if unsafe { GetCursorPos(&mut point) }.is_err() {
+        unsafe {
+            let _ = DestroyMenu(menu);
+        }
+        return None;
+    }
+
+    unsafe {
+        let _ = SetForegroundWindow(hwnd);
+    }
+
+    let command = unsafe {
+        TrackPopupMenu(
+            menu,
+            TPM_LEFTALIGN | TPM_RIGHTBUTTON | TPM_RETURNCMD,
+            point.x,
+            point.y,
+            None,
+            hwnd,
+            None,
+        )
+    };
+
+    unsafe {
+        let _ = DestroyMenu(menu);
+    }
+
+    action_for_command(command.0 as usize)
+}
+
+fn checked_menu_flags(checked: bool) -> windows::Win32::UI::WindowsAndMessaging::MENU_ITEM_FLAGS {
+    if checked {
+        MF_STRING | MF_CHECKED
+    } else {
+        MF_STRING
+    }
+}
+
+fn scale_matches(current: f32, target: f32) -> bool {
+    (current - target).abs() < 0.01
+}
+
 fn action_for_command(command: usize) -> Option<TrayAction> {
     match command {
         CMD_SETTINGS => Some(TrayAction::Settings),
@@ -262,6 +335,7 @@ fn action_for_command(command: usize) -> Option<TrayAction> {
         CMD_SCALE_80 => Some(TrayAction::SetScale(0.8)),
         CMD_SCALE_100 => Some(TrayAction::SetScale(1.0)),
         CMD_SCALE_120 => Some(TrayAction::SetScale(1.2)),
+        CMD_TOGGLE_TOPMOST => Some(TrayAction::ToggleAlwaysOnTop),
         CMD_EXIT => Some(TrayAction::Exit),
         _ => None,
     }
@@ -345,7 +419,18 @@ mod tests {
             action_for_command(CMD_SCALE_120),
             Some(TrayAction::SetScale(1.2))
         );
+        assert_eq!(
+            action_for_command(CMD_TOGGLE_TOPMOST),
+            Some(TrayAction::ToggleAlwaysOnTop)
+        );
         assert_eq!(action_for_command(CMD_EXIT), Some(TrayAction::Exit));
         assert_eq!(action_for_command(9999), None);
+    }
+
+    #[test]
+    fn context_menu_marks_nearby_scale_as_selected() {
+        assert!(scale_matches(0.8, 0.8));
+        assert!(scale_matches(1.0001, 1.0));
+        assert!(!scale_matches(1.2, 1.0));
     }
 }
