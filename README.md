@@ -89,9 +89,11 @@ The first official Sena character production spec now lives in [pets/sena](pets/
 
 The package runtime now prefers a valid official `pets/sena/pet.json` over the placeholder package. Sprite behaviors can also be produced incrementally: unfinished states fall back to that package's Idle frames so the official character stays visible.
 
-The official `pets/sena/pet.json` is now active with the first real Sena + cat Idle Sprite. The initial runtime asset is a lightweight 256×341 transparent WebP prototype displayed at `sprite.scale = 0.9`; it keeps the full Sprite/alpha-hit-test pipeline testable while higher-resolution production animation frames are prepared.
+The official `pets/sena/pet.json` now ships the first complete four-frame Sena + cat Idle loop on a normalized 768×1024 transparent canvas. The cat and Sena blink on different frames, with per-frame timing of 1800 / 120 / 2300 / 120 ms so closed-eye frames read as brief natural blinks rather than synchronized sleepiness.
 
-The next asset milestone is deriving the remaining Idle frames from the locked reference, then replacing the lightweight prototype with the normalized 768×1024 production set without changing renderer code.
+Runtime decoding downsamples high-resolution Sprite sources to the actual physical display size before caching them. This preserves the 768×1024 production source while avoiding the memory cost of keeping every full-resolution RGBA frame resident when Sena is displayed much smaller on the desktop.
+
+The next asset milestone is the Coding animation set. Until it is ready, the behavior engine still reports Coding while the renderer safely falls back to the finished Idle loop.
 
 ## License
 

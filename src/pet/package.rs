@@ -659,4 +659,23 @@ mod tests {
         assert_eq!(definition.frame_duration_ms(0), Some(240));
         assert_eq!(definition.frame_duration_ms(1), Some(240));
     }
+
+    #[test]
+    fn official_sena_idle_keeps_staggered_blinks() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+        let idle = package
+            .animation(Behavior::Idle)
+            .expect("official Sena package should contain Idle");
+
+        assert_eq!(
+            idle.frames,
+            vec![
+                "animations/idle/000.webp",
+                "animations/idle/001.webp",
+                "animations/idle/002.webp",
+                "animations/idle/003.webp",
+            ]
+        );
+        assert_eq!(idle.frame_durations_ms, vec![1800, 120, 2300, 120]);
+    }
 }
