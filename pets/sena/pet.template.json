@@ -49,7 +49,12 @@
         "animations/listening_music/002.webp",
         "animations/listening_music/003.webp"
       ],
-      "interval_ms": 260,
+      "frame_durations_ms": [
+        240,
+        220,
+        240,
+        220
+      ],
       "looping": true
     },
     "coding_with_music": {

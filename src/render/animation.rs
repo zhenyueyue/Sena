@@ -258,7 +258,7 @@ mod tests {
     }
 
     #[test]
-    fn official_listening_fallback_stays_static_until_assets_exist() {
+    fn official_listening_assets_sleep_between_motion_bursts() {
         let package = PetPackage::load_default().expect("official Sena package should load");
         let quiet = AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, false);
         let motion = AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, true);
@@ -266,7 +266,8 @@ mod tests {
         assert_eq!(package.manifest().id, "sena.official");
         assert!(!quiet.running());
         assert_eq!(quiet.frame_count, 1);
-        assert!(!motion.running());
-        assert_eq!(motion.frame_count, 1);
+        assert!(motion.running());
+        assert_eq!(motion.frame_count, 4);
+        assert_eq!(motion.interval, Some(Duration::from_millis(240)));
     }
 }

@@ -102,7 +102,7 @@ Coding is now input-aware. When a supported IDE is foreground but the keyboard i
 
 On the development machine, the static Coding pose measured effectively zero CPU over a 12-second sample. Continuous multi-frame Coding remains intentionally limited to the short periods in which the user is actively typing.
 
-ListeningMusic now follows the same low-duty-cycle principle. Media playback itself does not justify a permanent animation loop: when dedicated Listening assets are available, Sena stays on the first pose most of the time and wakes for brief motion bursts at staggered intervals. Stopping media or locking Windows cancels pending music motion immediately. Until dedicated Listening assets are shipped, the official package stays on a static Idle fallback rather than continuously replaying the Idle loop. CodingWithMusic currently reuses the finished Coding visual set, so typing remains input-driven even while music is playing.
+ListeningMusic now follows the same low-duty-cycle principle and the official package ships a four-frame Listening v1 set. Media playback itself does not justify a permanent animation loop: Sena stays on listening/000 most of the time and wakes for brief 240 / 220 / 240 / 220 ms motion bursts at staggered 7 / 11 / 9 / 13 second rest intervals. Stopping media or locking Windows cancels pending music motion immediately. CodingWithMusic currently reuses the finished Coding visual set, so typing remains input-driven even while music is playing.
 
 ## License
 

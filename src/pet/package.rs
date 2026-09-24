@@ -699,4 +699,23 @@ mod tests {
         );
         assert_eq!(coding.frame_durations_ms, vec![220, 180, 900, 180]);
     }
+
+    #[test]
+    fn official_sena_listening_keeps_v1_frame_timing() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+        let listening = package
+            .animation(Behavior::ListeningMusic)
+            .expect("official Sena package should contain ListeningMusic");
+
+        assert_eq!(
+            listening.frames,
+            vec![
+                "animations/listening_music/000.webp",
+                "animations/listening_music/001.webp",
+                "animations/listening_music/002.webp",
+                "animations/listening_music/003.webp",
+            ]
+        );
+        assert_eq!(listening.frame_durations_ms, vec![240, 220, 240, 220]);
+    }
 }
