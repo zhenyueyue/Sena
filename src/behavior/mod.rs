@@ -51,6 +51,7 @@ mod tests {
             typing_active: false,
             music_motion_active: false,
             drowsy_motion_active: false,
+            sleeping_motion_active: false,
         };
 
         assert_eq!(BehaviorEngine.resolve(&context), Behavior::CodingWithMusic);
@@ -66,6 +67,7 @@ mod tests {
             typing_active: false,
             music_motion_active: false,
             drowsy_motion_active: false,
+            sleeping_motion_active: false,
         };
 
         assert_eq!(BehaviorEngine.resolve(&context), Behavior::Sleeping);

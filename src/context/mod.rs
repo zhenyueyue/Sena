@@ -27,6 +27,7 @@ pub struct DesktopContext {
     pub typing_active: bool,
     pub music_motion_active: bool,
     pub drowsy_motion_active: bool,
+    pub sleeping_motion_active: bool,
 }
 
 impl DesktopContext {

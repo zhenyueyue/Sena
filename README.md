@@ -70,7 +70,7 @@ Behavior is mapped to renderer-independent animation clips before the current Sl
 - ListeningMusic: static between occasional one-shot music-motion bursts; the current rest pattern is 7 / 11 / 9 / 13 seconds with a short 900 ms motion window.
 - CodingWithMusic: prefers dedicated combined assets when available, otherwise reuses Coding assets before falling back further.
 - Drowsy: static sleepy pose between occasional 1.6-second three-frame motion bursts; current rest pattern is 18 / 27 / 22 / 31 seconds.
-- Sleeping: 2-frame breathing/Zzz motion at 1500 ms per frame.
+- Sleeping: completely static while Windows is locked; when unlocked after 10 minutes of inactivity, occasional 2.4-second three-frame breathing/Zzz bursts use a 35 / 52 / 43 / 61 second rest pattern.
 
 There is intentionally no global 60 FPS ticker. Each behavior owns its own cadence, and static states stop animation scheduling entirely.
 
@@ -105,6 +105,8 @@ On the development machine, the static Coding pose measured effectively zero CPU
 ListeningMusic now follows the same low-duty-cycle principle and the official package ships a four-frame Listening v1 set. Media playback itself does not justify a permanent animation loop: Sena stays on listening/000 most of the time and wakes for brief 240 / 220 / 240 / 220 ms motion bursts at staggered 7 / 11 / 9 / 13 second rest intervals. Stopping media or locking Windows cancels pending music motion immediately. CodingWithMusic currently reuses the finished Coding visual set, so typing remains input-driven even while music is playing.
 
 Drowsy now follows the same event-sleep model and the official package ships a three-frame Drowsy v1 set. After 5 minutes without user input, Sena stays on drowsy/000 most of the time and wakes for short 420 / 760 / 420 ms sleepy-motion bursts after staggered 18 / 27 / 22 / 31 second rests. Real input, media playback, session lock, or the 10-minute transition to Sleeping cancels pending Drowsy motion immediately.
+
+Sleeping is now prepared for the same low-duty-cycle runtime. If the desktop remains unlocked after 10 minutes of inactivity and dedicated Sleeping assets exist, Sena stays on sleeping/000 and only wakes for short 700 / 1000 / 700 ms breathing/Zzz bursts after staggered 35 / 52 / 43 / 61 second rests. Locking Windows cancels all pending Sleeping motion and keeps the pose completely static, because the desktop is not visible anyway. Until Sleeping art is shipped, the official package remains static in its Idle fallback.
 
 ## License
 

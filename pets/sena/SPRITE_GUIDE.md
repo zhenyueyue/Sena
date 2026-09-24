@@ -93,12 +93,15 @@ One burst is approximately **1.6 seconds**, then Sena freezes on `000` again. No
 
 ### Sleeping — 3 frames
 
-Cadence: **1400 ms/frame**
+Sleeping is even lower-duty-cycle than Drowsy. When Windows is still unlocked and the user has been inactive for at least 10 minutes, Sena stays on frame `000` most of the time. The runtime triggers one short breathing / `Zzz` burst after staggered rests of **35 / 52 / 43 / 61 seconds**. If Windows is locked, Sleeping stays completely static and no motion burst is scheduled.
 
-- Stable sleeping pose.
-- Very subtle breathing expansion/contraction.
-- Eyes stay closed.
-- No position jump between frames.
+| Frame | Visual | Hold |
+| --- | --- | ---: |
+| `000` | Stable sleeping pose, eyes closed | 700 ms |
+| `001` | Tiny breathing rise / subtle `Zzz` accent | 1000 ms |
+| `002` | Breathing settles back to rest | 700 ms |
+
+One unlocked Sleeping burst is approximately **2.4 seconds**, then Sena freezes on `000` again. Keep the cat asleep and still; never introduce body-position drift or large floating effects.
 
 ## Frame naming
 

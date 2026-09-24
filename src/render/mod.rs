@@ -209,6 +209,7 @@ pub fn apply_context(window: &PetWindow, context: &DesktopContext, behavior: Beh
         context.typing_active,
         context.music_motion_active,
         context.drowsy_motion_active,
+        context.sleeping_motion_active,
     );
     let clip = animation.clip as i32;
 

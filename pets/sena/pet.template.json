@@ -86,7 +86,11 @@
         "animations/sleeping/001.webp",
         "animations/sleeping/002.webp"
       ],
-      "interval_ms": 1400,
+      "frame_durations_ms": [
+        700,
+        1000,
+        700
+      ],
       "looping": true
     }
   }
