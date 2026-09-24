@@ -271,20 +271,22 @@ impl PetPackage {
         &self,
         behavior: Behavior,
     ) -> Option<(Behavior, &AnimationDefinition)> {
-        if let Some(definition) = self.animation(behavior)
-            && self.animation_is_renderable(definition)
-        {
-            return Some((behavior, definition));
-        }
+        let candidates: &[Behavior] = match behavior {
+            Behavior::CodingWithMusic => &[
+                Behavior::CodingWithMusic,
+                Behavior::Coding,
+                Behavior::ListeningMusic,
+                Behavior::Idle,
+            ],
+            Behavior::Idle => &[Behavior::Idle],
+            _ => &[behavior, Behavior::Idle],
+        };
 
-        if behavior != Behavior::Idle
-            && let Some(idle) = self.animation(Behavior::Idle)
-            && self.animation_is_renderable(idle)
-        {
-            return Some((Behavior::Idle, idle));
-        }
-
-        None
+        candidates.iter().find_map(|candidate| {
+            let definition = self.animation(*candidate)?;
+            self.animation_is_renderable(definition)
+                .then_some((*candidate, definition))
+        })
     }
 
     fn animation_is_renderable(&self, definition: &AnimationDefinition) -> bool {

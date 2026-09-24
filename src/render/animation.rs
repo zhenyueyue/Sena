@@ -47,10 +47,31 @@ impl AnimationClip {
 }
 
 impl AnimationSpec {
-    pub fn for_runtime(behavior: Behavior, package: &PetPackage, typing_active: bool) -> Self {
+    pub fn for_runtime(
+        behavior: Behavior,
+        package: &PetPackage,
+        typing_active: bool,
+        music_motion_active: bool,
+    ) -> Self {
         let mut spec = Self::for_behavior(behavior, package);
+        let resolved = package
+            .animation_with_idle_fallback(behavior)
+            .map(|(resolved, _)| resolved)
+            .unwrap_or(behavior);
 
-        if behavior == Behavior::Coding && !typing_active {
+        let should_animate = match behavior {
+            Behavior::Coding => typing_active,
+            Behavior::ListeningMusic => resolved == Behavior::ListeningMusic && music_motion_active,
+            Behavior::CodingWithMusic => match resolved {
+                Behavior::Coding => typing_active,
+                Behavior::ListeningMusic => music_motion_active,
+                Behavior::CodingWithMusic => typing_active || music_motion_active,
+                _ => true,
+            },
+            _ => true,
+        };
+
+        if !should_animate {
             spec.frame_count = 1;
             spec.interval = None;
             spec.looping = false;
@@ -194,7 +215,7 @@ mod tests {
     #[test]
     fn coding_stays_static_until_keyboard_activity() {
         let package = PetPackage::load_default().expect("official Sena package should load");
-        let spec = AnimationSpec::for_runtime(Behavior::Coding, &package, false);
+        let spec = AnimationSpec::for_runtime(Behavior::Coding, &package, false, false);
 
         assert_eq!(spec.clip, AnimationClip::Coding);
         assert_eq!(spec.frame_count, 1);
@@ -205,7 +226,7 @@ mod tests {
     #[test]
     fn coding_animates_during_keyboard_activity() {
         let package = PetPackage::load_default().expect("official Sena package should load");
-        let spec = AnimationSpec::for_runtime(Behavior::Coding, &package, true);
+        let spec = AnimationSpec::for_runtime(Behavior::Coding, &package, true, false);
 
         assert_eq!(spec.frame_count, 4);
         assert_eq!(spec.interval, Some(Duration::from_millis(220)));
@@ -213,13 +234,39 @@ mod tests {
     }
 
     #[test]
-    fn official_package_uses_idle_animation_for_unfinished_behaviors() {
+    fn dedicated_listening_animation_can_sleep_between_motion_bursts() {
+        let package = PetPackage::builtin_placeholder();
+        let quiet = AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, false);
+        let moving = AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, true);
+
+        assert!(!quiet.running());
+        assert_eq!(quiet.frame_count, 1);
+        assert!(moving.running());
+        assert_eq!(moving.frame_count, 4);
+    }
+
+    #[test]
+    fn coding_with_music_reuses_coding_when_combined_assets_are_missing() {
         let package = PetPackage::load_default().expect("official Sena package should load");
-        let spec = AnimationSpec::for_behavior(Behavior::ListeningMusic, &package);
+        let quiet = AnimationSpec::for_runtime(Behavior::CodingWithMusic, &package, false, false);
+        let typing = AnimationSpec::for_runtime(Behavior::CodingWithMusic, &package, true, false);
+
+        assert!(!quiet.running());
+        assert_eq!(quiet.frame_count, 1);
+        assert!(typing.running());
+        assert_eq!(typing.frame_count, 4);
+    }
+
+    #[test]
+    fn official_listening_fallback_stays_static_until_assets_exist() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+        let quiet = AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, false);
+        let motion = AnimationSpec::for_runtime(Behavior::ListeningMusic, &package, false, true);
 
         assert_eq!(package.manifest().id, "sena.official");
-        assert_eq!(spec.frame_count, 4);
-        assert_eq!(spec.interval, Some(Duration::from_millis(1800)));
-        assert!(spec.running());
+        assert!(!quiet.running());
+        assert_eq!(quiet.frame_count, 1);
+        assert!(!motion.running());
+        assert_eq!(motion.frame_count, 1);
     }
 }

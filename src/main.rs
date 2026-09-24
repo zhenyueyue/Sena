@@ -13,7 +13,7 @@ use std::{
 };
 
 use behavior::BehaviorEngine;
-use context::{DesktopContext, UserActivity};
+use context::{DesktopContext, MediaState, UserActivity};
 
 slint::include_modules!();
 
@@ -26,6 +26,8 @@ fn main() -> Result<(), slint::PlatformError> {
 
     #[cfg(target_os = "windows")]
     let typing_generation = Arc::new(AtomicU64::new(0));
+    #[cfg(target_os = "windows")]
+    let music_generation = Arc::new(AtomicU64::new(0));
 
     render::install(&window);
 
@@ -180,9 +182,10 @@ fn main() -> Result<(), slint::PlatformError> {
         let window = window.as_weak();
         let context = Arc::clone(&context);
         let typing_generation = Arc::clone(&typing_generation);
+        let music_generation = Arc::clone(&music_generation);
 
         platform::windows::SessionWatcher::start(move |locked| {
-            let (changed, typing_was_cleared) = {
+            let (changed, typing_was_cleared, music_was_cleared, media_playing) = {
                 let mut context = context.lock().expect("desktop context lock poisoned");
                 let changed = context.session_locked != locked;
                 context.session_locked = locked;
@@ -192,24 +195,40 @@ fn main() -> Result<(), slint::PlatformError> {
                     context.typing_active = false;
                 }
 
-                (changed, typing_was_cleared)
+                let music_was_cleared = locked && context.music_motion_active;
+                if music_was_cleared {
+                    context.music_motion_active = false;
+                }
+
+                (
+                    changed,
+                    typing_was_cleared,
+                    music_was_cleared,
+                    context.media == MediaState::Playing,
+                )
             };
 
             if typing_was_cleared {
                 typing_generation.fetch_add(1, Ordering::Release);
             }
 
-            let changed = changed || typing_was_cleared;
+            let changed = changed || typing_was_cleared || music_was_cleared;
 
             if !changed {
                 return;
             }
 
+            let music_token = music_generation.fetch_add(1, Ordering::AcqRel) + 1;
             let window = window.clone();
             let context = Arc::clone(&context);
+            let music_generation = Arc::clone(&music_generation);
             let _ = slint::invoke_from_event_loop(move || {
-                if let Some(window) = window.upgrade() {
-                    render_current_context(&window, &context);
+                if let Some(strong_window) = window.upgrade() {
+                    render_current_context(&strong_window, &context);
+                }
+
+                if !locked && media_playing {
+                    schedule_music_motion(window, context, music_generation, music_token, 0);
                 }
             });
         })
@@ -220,17 +239,27 @@ fn main() -> Result<(), slint::PlatformError> {
     let _media_watcher = {
         let window = window.as_weak();
         let context = Arc::clone(&context);
+        let music_generation = Arc::clone(&music_generation);
 
         platform::windows::MediaWatcher::start(move |media| {
-            {
-                context.lock().expect("desktop context lock poisoned").media = media;
-            }
+            let token = music_generation.fetch_add(1, Ordering::AcqRel) + 1;
+            let should_schedule = {
+                let mut context = context.lock().expect("desktop context lock poisoned");
+                context.media = media;
+                context.music_motion_active = false;
+                media == MediaState::Playing && !context.session_locked
+            };
 
             let window = window.clone();
             let context = Arc::clone(&context);
+            let music_generation = Arc::clone(&music_generation);
             let _ = slint::invoke_from_event_loop(move || {
-                if let Some(window) = window.upgrade() {
-                    render_current_context(&window, &context);
+                if let Some(strong_window) = window.upgrade() {
+                    render_current_context(&strong_window, &context);
+                }
+
+                if should_schedule {
+                    schedule_music_motion(window, context, music_generation, token, 0);
                 }
             });
         })
@@ -238,6 +267,77 @@ fn main() -> Result<(), slint::PlatformError> {
     };
 
     window.run()
+}
+
+#[cfg(target_os = "windows")]
+fn schedule_music_motion(
+    window: slint::Weak<PetWindow>,
+    context: Arc<Mutex<DesktopContext>>,
+    generation: Arc<AtomicU64>,
+    token: u64,
+    cycle: u64,
+) {
+    let rest = match cycle % 4 {
+        0 => Duration::from_secs(7),
+        1 => Duration::from_secs(11),
+        2 => Duration::from_secs(9),
+        _ => Duration::from_secs(13),
+    };
+
+    slint::Timer::single_shot(rest, move || {
+        if generation.load(Ordering::Acquire) != token {
+            return;
+        }
+
+        let should_start = {
+            let mut context = context.lock().expect("desktop context lock poisoned");
+            if context.media != MediaState::Playing || context.session_locked {
+                false
+            } else {
+                context.music_motion_active = true;
+                true
+            }
+        };
+
+        if !should_start {
+            return;
+        }
+
+        if let Some(strong_window) = window.upgrade() {
+            render_current_context(&strong_window, &context);
+        }
+
+        let finish_window = window.clone();
+        let finish_context = Arc::clone(&context);
+        let finish_generation = Arc::clone(&generation);
+        slint::Timer::single_shot(Duration::from_millis(900), move || {
+            if finish_generation.load(Ordering::Acquire) != token {
+                return;
+            }
+
+            let still_playing = {
+                let mut context = finish_context
+                    .lock()
+                    .expect("desktop context lock poisoned");
+                context.music_motion_active = false;
+                context.media == MediaState::Playing && !context.session_locked
+            };
+
+            if let Some(strong_window) = finish_window.upgrade() {
+                render_current_context(&strong_window, &finish_context);
+            }
+
+            if still_playing {
+                schedule_music_motion(
+                    finish_window,
+                    finish_context,
+                    finish_generation,
+                    token,
+                    cycle + 1,
+                );
+            }
+        });
+    });
 }
 
 #[cfg(target_os = "windows")]

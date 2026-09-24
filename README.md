@@ -66,9 +66,9 @@ Gravity or playful throw physics may be added later as an explicit optional mode
 Behavior is mapped to renderer-independent animation clips before the current Slint placeholder draws anything. The placeholder now demonstrates the same scheduling rules a future sprite or Live2D backend will consume:
 
 - Idle: static, no permanent timer.
-- Coding: 2-frame typing motion at 160 ms per frame.
-- ListeningMusic: 4-frame low-frequency sway at 240 ms per frame.
-- CodingWithMusic: combined typing and music motion at 160 ms per frame.
+- Coding: static focused pose while the keyboard is quiet; short typing bursts only around real key activity.
+- ListeningMusic: static between occasional one-shot music-motion bursts; the current rest pattern is 7 / 11 / 9 / 13 seconds with a short 900 ms motion window.
+- CodingWithMusic: prefers dedicated combined assets when available, otherwise reuses Coding assets before falling back further.
 - Drowsy: 2-frame slow motion at 900 ms per frame.
 - Sleeping: 2-frame breathing/Zzz motion at 1500 ms per frame.
 
@@ -101,6 +101,8 @@ High-resolution Sprite sources are downsampled to their physical display size be
 Coding is now input-aware. When a supported IDE is foreground but the keyboard is quiet, Sena freezes on the focused Coding pose with no animation timer. A real key-down pulse starts the Coding animation and keeps it active for 650 ms after the most recent keyboard activity; subsequent key activity extends that burst. Leaving the IDE or locking Windows cancels the burst immediately. The watcher is event-driven and only emits activity pulses; it does not record which key was pressed.
 
 On the development machine, the static Coding pose measured effectively zero CPU over a 12-second sample. Continuous multi-frame Coding remains intentionally limited to the short periods in which the user is actively typing.
+
+ListeningMusic now follows the same low-duty-cycle principle. Media playback itself does not justify a permanent animation loop: when dedicated Listening assets are available, Sena stays on the first pose most of the time and wakes for brief motion bursts at staggered intervals. Stopping media or locking Windows cancels pending music motion immediately. Until dedicated Listening assets are shipped, the official package stays on a static Idle fallback rather than continuously replaying the Idle loop. CodingWithMusic currently reuses the finished Coding visual set, so typing remains input-driven even while music is playing.
 
 ## License
 

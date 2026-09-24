@@ -196,7 +196,12 @@ pub fn apply_context(window: &PetWindow, context: &DesktopContext, behavior: Beh
         Behavior::Sleeping => "Sleeping",
     };
 
-    let animation = AnimationSpec::for_runtime(behavior, active_package(), context.typing_active);
+    let animation = AnimationSpec::for_runtime(
+        behavior,
+        active_package(),
+        context.typing_active,
+        context.music_motion_active,
+    );
     let clip = animation.clip as i32;
 
     if window.get_animation_clip() != clip {
