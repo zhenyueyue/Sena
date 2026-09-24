@@ -165,16 +165,18 @@ pub fn apply_context(window: &PetWindow, context: &DesktopContext, behavior: Beh
         window.set_animation_clip(clip);
     }
 
+    let current_frame = window.get_animation_frame().max(0) as usize;
+    let interval_ms = active_package()
+        .animation_frame_duration_ms(behavior, current_frame)
+        .map(|milliseconds| milliseconds.min(i32::MAX as u64) as i32)
+        .unwrap_or_else(|| animation.interval_ms());
+
     window.set_animation_frame_count(animation.frame_count);
-    window.set_animation_interval_ms(animation.interval_ms());
+    window.set_animation_interval_ms(interval_ms);
     window.set_animation_running(animation.running());
     window.set_animation_looping(animation.looping);
 
-    apply_sprite_frame(
-        window,
-        behavior,
-        window.get_animation_frame().max(0) as usize,
-    );
+    apply_sprite_frame(window, behavior, current_frame);
 
     window.set_activity_label(label.into());
     window.set_is_drowsy(matches!(behavior, Behavior::Drowsy));
