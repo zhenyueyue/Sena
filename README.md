@@ -55,11 +55,16 @@ Idle behavior defaults to 5 minutes for Drowsy and 10 minutes for Sleeping. Acti
 
 - Drag the visible pet body with the left mouse button.
 - Releasing the pet leaves it exactly where the user placed it; there is no default gravity or throw inertia.
-- Dragging is constrained to the active monitor work area, including the taskbar boundary.
+- The final drag position is persisted and restored on the next launch.
+- Dragging and restored positions are constrained to the nearest monitor work area, including the taskbar boundary.
+- The Windows notification-area icon provides **Show Sena**, **Hide Sena**, **80% / 100% / 120% size**, and **Exit** actions.
+- Size changes are persisted and immediately re-render the Sprite at the new physical display size.
+- User preferences are stored in %APPDATA%\\Sena\\preferences.json; no database or background sync is required.
 - There is no permanent physics or movement timer.
 - The native Windows region is clipped to the visible pet body, so transparent corner pixels do not block clicks to applications underneath.
+- The tray implementation is event-driven on a blocked Win32 message loop; it does not add a polling timer.
 
-Gravity or playful throw physics may be added later as an explicit optional mode rather than default behavior.
+Gravity or playful throw physics may be added later as an explicit optional mode rather than default behavior. A dedicated settings window and startup-at-login toggle can build on the same preferences layer.
 
 ### Animation runtime
 

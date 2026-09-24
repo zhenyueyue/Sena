@@ -35,6 +35,10 @@ thread_local! {
         RefCell::new(HashMap::new());
 }
 
+pub fn clear_cache() {
+    IMAGE_CACHE.with(|cache| cache.borrow_mut().clear());
+}
+
 pub fn load_cached(
     path: &Path,
     alpha_threshold: u8,

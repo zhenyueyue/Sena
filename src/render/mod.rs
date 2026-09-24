@@ -1,7 +1,13 @@
 mod animation;
 mod sprite;
 
-use std::{cell::RefCell, sync::OnceLock};
+use std::{
+    cell::RefCell,
+    sync::{
+        OnceLock,
+        atomic::{AtomicU32, Ordering},
+    },
+};
 
 use animation::{AnimationClip, AnimationSpec};
 use slint::{ComponentHandle, LogicalSize, Timer};
@@ -9,6 +15,7 @@ use slint::{ComponentHandle, LogicalSize, Timer};
 use crate::{PetWindow, behavior::Behavior, context::DesktopContext, pet::PetPackage};
 
 static PET_PACKAGE: OnceLock<PetPackage> = OnceLock::new();
+static USER_SCALE_BITS: AtomicU32 = AtomicU32::new(1.0f32.to_bits());
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct AlphaRegionKey {
@@ -43,6 +50,25 @@ fn active_package() -> &'static PetPackage {
             PetPackage::builtin_placeholder()
         }
     })
+}
+
+pub fn set_user_scale(scale: f32) {
+    let scale = if scale.is_finite() {
+        scale.clamp(0.6, 1.4)
+    } else {
+        1.0
+    };
+    let bits = scale.to_bits();
+    let previous = USER_SCALE_BITS.swap(bits, Ordering::AcqRel);
+
+    if previous != bits {
+        sprite::clear_cache();
+        ALPHA_REGION_KEY.with(|current| *current.borrow_mut() = None);
+    }
+}
+
+pub fn user_scale() -> f32 {
+    f32::from_bits(USER_SCALE_BITS.load(Ordering::Acquire))
 }
 
 pub fn has_dedicated_animation(behavior: Behavior) -> bool {
@@ -103,18 +129,19 @@ fn apply_sprite_frame(window: &PetWindow, behavior: Behavior, frame: usize) {
 
     let settings = package.sprite_settings();
     let scale_factor = window.window().scale_factor();
+    let effective_scale = settings.scale * user_scale();
     let Some(sprite) = sprite::load_cached(
         &path,
         settings.alpha_threshold,
-        settings.scale,
+        effective_scale,
         scale_factor,
     ) else {
         use_placeholder(window);
         return;
     };
 
-    let logical_width = sprite.source_width as f32 * settings.scale;
-    let logical_height = sprite.source_height as f32 * settings.scale;
+    let logical_width = sprite.source_width as f32 * effective_scale;
+    let logical_height = sprite.source_height as f32 * effective_scale;
     let target_width = (logical_width * scale_factor).round().max(1.0) as u32;
     let target_height = (logical_height * scale_factor).round().max(1.0) as u32;
     let current_size = window.window().size();

@@ -2,6 +2,7 @@ mod behavior;
 mod context;
 mod pet;
 mod platform;
+mod preferences;
 mod render;
 
 use std::{
@@ -14,6 +15,8 @@ use std::{
 
 use behavior::BehaviorEngine;
 use context::{DesktopContext, MediaState, UserActivity};
+use preferences::PreferencesStore;
+use slint::ComponentHandle;
 
 slint::include_modules!();
 
@@ -23,6 +26,14 @@ fn main() -> Result<(), slint::PlatformError> {
     // No timer is started here. Slint's event loop sleeps while Sena
     // is idle and wakes only when the window system has work to process.
     let context = Arc::new(Mutex::new(DesktopContext::default()));
+    let preferences = Arc::new(Mutex::new(PreferencesStore::load_default()));
+
+    let initial_preferences = preferences
+        .lock()
+        .expect("preferences lock poisoned")
+        .value()
+        .clone();
+    render::set_user_scale(initial_preferences.scale);
 
     #[cfg(target_os = "windows")]
     let typing_generation = Arc::new(AtomicU64::new(0));
@@ -50,7 +61,89 @@ fn main() -> Result<(), slint::PlatformError> {
     render_current_context(&window, &context);
 
     #[cfg(target_os = "windows")]
-    pet::install_motion(&window);
+    if let Some((x, y)) = initial_preferences.position() {
+        let window = window.as_weak();
+        let preferences = Arc::clone(&preferences);
+        slint::Timer::single_shot(Duration::from_millis(250), move || {
+            let Some(window) = window.upgrade() else {
+                return;
+            };
+
+            pet::restore_position(&window, slint::PhysicalPosition::new(x, y));
+            let position = window.window().position();
+
+            if position.x != x || position.y != y {
+                let mut preferences = preferences.lock().expect("preferences lock poisoned");
+                preferences.set_position(position.x, position.y);
+                if let Err(error) = preferences.save() {
+                    eprintln!("failed to save clamped Sena position: {error}");
+                }
+            }
+        });
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let preferences = Arc::clone(&preferences);
+        pet::install_motion(&window, move |position| {
+            let mut preferences = preferences.lock().expect("preferences lock poisoned");
+            preferences.set_position(position.x, position.y);
+            if let Err(error) = preferences.save() {
+                eprintln!("failed to save Sena preferences: {error}");
+            }
+        });
+    }
+
+    #[cfg(target_os = "windows")]
+    let _tray_icon = {
+        let window = window.as_weak();
+        let context = Arc::clone(&context);
+        let preferences = Arc::clone(&preferences);
+
+        match platform::windows::TrayIcon::start(move |action| {
+            let window = window.clone();
+            let context = Arc::clone(&context);
+            let preferences = Arc::clone(&preferences);
+
+            let _ = slint::invoke_from_event_loop(move || match action {
+                platform::windows::TrayAction::Show => {
+                    if let Some(window) = window.upgrade() {
+                        let _ = window.show();
+                    }
+                }
+                platform::windows::TrayAction::Hide => {
+                    if let Some(window) = window.upgrade() {
+                        let _ = window.hide();
+                    }
+                }
+                platform::windows::TrayAction::SetScale(scale) => {
+                    render::set_user_scale(scale);
+
+                    if let Some(window) = window.upgrade() {
+                        render_current_context(&window, &context);
+                        let position = pet::clamp_current_position(&window);
+
+                        let mut preferences =
+                            preferences.lock().expect("preferences lock poisoned");
+                        preferences.set_scale(scale);
+                        preferences.set_position(position.x, position.y);
+                        if let Err(error) = preferences.save() {
+                            eprintln!("failed to save Sena preferences: {error}");
+                        }
+                    }
+                }
+                platform::windows::TrayAction::Exit => {
+                    let _ = slint::quit_event_loop();
+                }
+            });
+        }) {
+            Ok(tray) => Some(tray),
+            Err(error) => {
+                eprintln!("system tray unavailable: {error}");
+                None
+            }
+        }
+    };
 
     #[cfg(target_os = "windows")]
     {

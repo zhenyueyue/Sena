@@ -1,10 +1,12 @@
 mod keyboard;
 mod media;
 mod session;
+mod tray;
 
 pub use keyboard::KeyboardWatcher;
 pub use media::MediaWatcher;
 pub use session::SessionWatcher;
+pub use tray::{TrayAction, TrayIcon};
 
 use std::{cell::RefCell, path::Path, time::Duration};
 

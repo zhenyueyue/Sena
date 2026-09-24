@@ -11,7 +11,10 @@ struct MotionState {
     drag_offset_y: i32,
 }
 
-pub fn install_motion(window: &PetWindow) {
+pub fn install_motion(
+    window: &PetWindow,
+    on_position_changed: impl Fn(PhysicalPosition) + 'static,
+) {
     let state = Rc::new(RefCell::new(MotionState::default()));
 
     {
@@ -72,10 +75,18 @@ pub fn install_motion(window: &PetWindow) {
 
     {
         let state = Rc::clone(&state);
+        let window = window.as_weak();
 
-        window.on_drag_end(move || {
-            state.borrow_mut().dragging = false;
-        });
+        window
+            .upgrade()
+            .expect("pet window must be alive")
+            .on_drag_end(move || {
+                state.borrow_mut().dragging = false;
+
+                if let Some(window) = window.upgrade() {
+                    on_position_changed(window.window().position());
+                }
+            });
     }
 
     // Window handles are typically available after the first event-loop turn.
@@ -89,4 +100,25 @@ pub fn install_motion(window: &PetWindow) {
             );
         }
     });
+}
+
+pub fn restore_position(window: &PetWindow, position: PhysicalPosition) {
+    let size = window.window().size();
+    let mut x = position.x;
+    let mut y = position.y;
+
+    if let Some(work_area) = windows::work_area_for_point(position) {
+        let max_x = (work_area.right - size.width as i32).max(work_area.left);
+        let max_y = (work_area.bottom - size.height as i32).max(work_area.top);
+        x = x.clamp(work_area.left, max_x);
+        y = y.clamp(work_area.top, max_y);
+    }
+
+    window.window().set_position(PhysicalPosition::new(x, y));
+}
+
+pub fn clamp_current_position(window: &PetWindow) -> PhysicalPosition {
+    let current = window.window().position();
+    restore_position(window, current);
+    window.window().position()
 }
