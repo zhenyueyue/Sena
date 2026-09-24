@@ -20,6 +20,9 @@ export component PetWindow inherits Window {
     in property <bool> animation-running: false;
     in property <bool> animation-looping: true;
 
+    in property <image> sprite-image;
+    in property <bool> use-sprite: false;
+
     property <length> body-bob: (
         animation-clip == 2 || animation-clip == 3
     ) && Math.mod(animation-frame, 2) == 1 ? -2px : 0px;
@@ -31,6 +34,7 @@ export component PetWindow inherits Window {
     callback drag-start();
     callback drag-move();
     callback drag-end();
+    callback animation-tick(int, int);
 
     animation-timer := Timer {
         interval: root.animation-interval-ms * 1ms;
@@ -43,8 +47,10 @@ export component PetWindow inherits Window {
                         root.animation-frame + 1,
                         root.animation-frame-count
                     );
+                    root.animation-tick(root.animation-clip, root.animation-frame);
                 } else if root.animation-frame + 1 < root.animation-frame-count {
                     root.animation-frame += 1;
+                    root.animation-tick(root.animation-clip, root.animation-frame);
                 } else {
                     self.running = false;
                 }
@@ -52,7 +58,39 @@ export component PetWindow inherits Window {
         }
     }
 
+    Image {
+        visible: root.use-sprite;
+        x: 0px;
+        y: 0px;
+        width: parent.width;
+        height: parent.height;
+        source: root.sprite-image;
+        image-fit: contain;
+    }
+
+    TouchArea {
+        visible: root.use-sprite;
+        width: parent.width;
+        height: parent.height;
+        mouse-cursor: MouseCursor.grab;
+
+        pointer-event(event) => {
+            if event.button == PointerEventButton.left && event.kind == PointerEventKind.down {
+                root.drag-start();
+            } else if event.button == PointerEventButton.left && event.kind == PointerEventKind.up {
+                root.drag-end();
+            } else if event.kind == PointerEventKind.cancel {
+                root.drag-end();
+            }
+        }
+
+        moved => {
+            root.drag-move();
+        }
+    }
+
     Rectangle {
+        visible: !root.use-sprite;
         x: 20px;
         y: 28px + root.body-bob;
         width: 180px;

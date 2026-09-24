@@ -21,6 +21,8 @@ fn main() -> Result<(), slint::PlatformError> {
     // is idle and wakes only when the window system has work to process.
     let context = Arc::new(Mutex::new(DesktopContext::default()));
 
+    render::install(&window);
+
     #[cfg(target_os = "windows")]
     {
         if let Some(process) = platform::windows::current_foreground_process() {

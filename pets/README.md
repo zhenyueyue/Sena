@@ -56,10 +56,10 @@ Supported animation keys are:
 Supported renderer identifiers are currently reserved as:
 
 - `placeholder` — Sena's built-in development renderer.
-- `sprite` — transparent PNG/WebP frame packages.
+- `sprite` — active transparent PNG/WebP frame renderer with lazy decoded-frame caching.
 - `live2d` — reserved for the future Cubism renderer.
 
-Sprite asset paths must be relative to the package directory. Absolute paths and `..` path traversal are rejected.
+Sprite asset paths must be relative to the package directory. Absolute paths and `..` path traversal are rejected. Sprite frame files are intentionally limited to PNG and WebP so Sena does not ship unnecessary image decoders.
 
 ## Recommended Sprite Layout
 

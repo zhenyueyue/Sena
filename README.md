@@ -81,7 +81,9 @@ The bundled `pets/default/pet.json` drives the current placeholder. Sprite packa
 
 Set `SENA_PET_PACKAGE` to a package directory to override the default package during development. See [pets/README.md](pets/README.md) for the schema and directory layout.
 
-The next milestone is connecting the declared Sprite/WebP frame assets to the renderer, followed by tray/settings controls and position/configuration persistence.
+The Sprite renderer is now connected end-to-end. PNG/WebP frames are decoded only when first used and then cached in memory, so animation ticks do not repeatedly read or decode files from disk. Missing or invalid frames safely fall back to the built-in placeholder.
+
+The next milestone is sprite-aware hit testing/window sizing for real character artwork, followed by the first Sena character asset set, tray/settings controls, and position/configuration persistence.
 
 ## License
 

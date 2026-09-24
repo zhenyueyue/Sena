@@ -209,6 +209,20 @@ impl PetPackage {
     pub fn animation(&self, behavior: Behavior) -> Option<&AnimationDefinition> {
         self.manifest.animations.get(&AnimationKey::from(behavior))
     }
+
+    pub fn is_sprite(&self) -> bool {
+        self.manifest.renderer == RendererKind::Sprite
+    }
+
+    pub fn sprite_frame_path(&self, behavior: Behavior, frame: usize) -> Option<PathBuf> {
+        if !self.is_sprite() {
+            return None;
+        }
+
+        let definition = self.animation(behavior)?;
+        let relative = definition.frames.get(frame)?;
+        Some(self.root.join(relative))
+    }
 }
 
 fn default_package_candidates() -> Vec<PathBuf> {
@@ -260,8 +274,14 @@ fn validate_manifest(root: &Path, manifest: &PetManifest) -> Result<(), PackageE
                 return Err(PackageError::UnsafeAssetPath(frame.clone()));
             }
 
-            if manifest.renderer == RendererKind::Sprite && !root.join(relative).is_file() {
-                return Err(PackageError::MissingAsset(root.join(relative)));
+            if manifest.renderer == RendererKind::Sprite {
+                if !is_supported_sprite_asset(relative) {
+                    return Err(PackageError::UnsupportedAssetFormat(frame.clone()));
+                }
+
+                if !root.join(relative).is_file() {
+                    return Err(PackageError::MissingAsset(root.join(relative)));
+                }
             }
         }
     }
@@ -288,6 +308,14 @@ fn is_safe_relative_path(path: &Path) -> bool {
             .all(|component| matches!(component, Component::Normal(_)))
 }
 
+fn is_supported_sprite_asset(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            extension.eq_ignore_ascii_case("png") || extension.eq_ignore_ascii_case("webp")
+        })
+}
+
 #[derive(Debug)]
 pub enum PackageError {
     NotFound(Vec<PathBuf>),
@@ -305,6 +333,7 @@ pub enum PackageError {
     },
     InvalidManifest(String),
     UnsafeAssetPath(String),
+    UnsupportedAssetFormat(String),
     MissingAsset(PathBuf),
 }
 
@@ -333,6 +362,12 @@ impl fmt::Display for PackageError {
             Self::InvalidManifest(message) => write!(f, "invalid pet package: {message}"),
             Self::UnsafeAssetPath(path) => {
                 write!(f, "pet package contains unsafe asset path: {path}")
+            }
+            Self::UnsupportedAssetFormat(path) => {
+                write!(
+                    f,
+                    "unsupported sprite asset format: {path}; expected PNG or WebP"
+                )
             }
             Self::MissingAsset(path) => {
                 write!(f, "pet package asset does not exist: {}", path.display())
@@ -384,5 +419,13 @@ mod tests {
         };
 
         assert_eq!(definition.effective_frame_count(), 3);
+    }
+
+    #[test]
+    fn sprite_assets_are_limited_to_png_and_webp() {
+        assert!(is_supported_sprite_asset(Path::new("idle.PNG")));
+        assert!(is_supported_sprite_asset(Path::new("idle.webp")));
+        assert!(!is_supported_sprite_asset(Path::new("idle.jpg")));
+        assert!(!is_supported_sprite_asset(Path::new("model.moc3")));
     }
 }

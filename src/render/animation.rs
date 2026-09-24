@@ -21,6 +21,31 @@ pub struct AnimationSpec {
     pub looping: bool,
 }
 
+impl AnimationClip {
+    pub const fn from_i32(value: i32) -> Option<Self> {
+        match value {
+            0 => Some(Self::Static),
+            1 => Some(Self::Coding),
+            2 => Some(Self::Listening),
+            3 => Some(Self::CodingWithMusic),
+            4 => Some(Self::Drowsy),
+            5 => Some(Self::Sleeping),
+            _ => None,
+        }
+    }
+
+    pub const fn behavior(self) -> Behavior {
+        match self {
+            Self::Static => Behavior::Idle,
+            Self::Coding => Behavior::Coding,
+            Self::Listening => Behavior::ListeningMusic,
+            Self::CodingWithMusic => Behavior::CodingWithMusic,
+            Self::Drowsy => Behavior::Drowsy,
+            Self::Sleeping => Behavior::Sleeping,
+        }
+    }
+}
+
 impl AnimationSpec {
     pub fn for_behavior(behavior: Behavior, package: &PetPackage) -> Self {
         let fallback = Self::fallback_for_behavior(behavior);

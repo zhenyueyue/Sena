@@ -161,10 +161,17 @@ pub fn work_area_for_point(point: PhysicalPosition) -> Option<WorkArea> {
 ///
 /// Windows does not hit-test pixels outside the region, so transparent corner
 /// areas pass mouse input to the desktop or application underneath.
-pub fn apply_pet_window_region_if_available(window: &slint::Window) {
+pub fn apply_pet_window_region_if_available(window: &slint::Window, placeholder: bool) {
     let Some(hwnd) = hwnd_from_slint_window(window) else {
         return;
     };
+
+    if !placeholder {
+        unsafe {
+            let _ = SetWindowRgn(hwnd, None, true);
+        }
+        return;
+    }
 
     let scale = window.scale_factor();
     let left = (20.0 * scale).round() as i32;

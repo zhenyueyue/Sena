@@ -1,8 +1,10 @@
 mod animation;
+mod sprite;
 
 use std::sync::OnceLock;
 
-use animation::AnimationSpec;
+use animation::{AnimationClip, AnimationSpec};
+use slint::ComponentHandle;
 
 use crate::{PetWindow, behavior::Behavior, context::DesktopContext, pet::PetPackage};
 
@@ -30,7 +32,39 @@ fn active_package() -> &'static PetPackage {
     })
 }
 
-/// Renderer boundary for the current Slint placeholder.
+pub fn install(window: &PetWindow) {
+    let window_weak = window.as_weak();
+
+    window.on_animation_tick(move |clip, frame| {
+        let Some(window) = window_weak.upgrade() else {
+            return;
+        };
+        let Some(clip) = AnimationClip::from_i32(clip) else {
+            return;
+        };
+
+        apply_sprite_frame(&window, clip.behavior(), frame.max(0) as usize);
+    });
+}
+
+fn apply_sprite_frame(window: &PetWindow, behavior: Behavior, frame: usize) {
+    let package = active_package();
+
+    let Some(path) = package.sprite_frame_path(behavior, frame) else {
+        window.set_use_sprite(false);
+        return;
+    };
+
+    let Some(image) = sprite::load_cached(&path) else {
+        window.set_use_sprite(false);
+        return;
+    };
+
+    window.set_sprite_image(image);
+    window.set_use_sprite(true);
+}
+
+/// Renderer boundary for the current Slint placeholder and Sprite backend.
 ///
 /// The behavior engine only emits semantic states. Sprite and Live2D backends
 /// can later map the same states to completely different visuals.
@@ -56,6 +90,12 @@ pub fn apply_context(window: &PetWindow, context: &DesktopContext, behavior: Beh
     window.set_animation_interval_ms(animation.interval_ms());
     window.set_animation_running(animation.running());
     window.set_animation_looping(animation.looping);
+
+    apply_sprite_frame(
+        window,
+        behavior,
+        window.get_animation_frame().max(0) as usize,
+    );
 
     window.set_activity_label(label.into());
     window.set_is_drowsy(matches!(behavior, Behavior::Drowsy));

@@ -83,7 +83,10 @@ pub fn install_motion(window: &PetWindow) {
     let window = window.as_weak();
     Timer::single_shot(Duration::from_millis(100), move || {
         if let Some(window) = window.upgrade() {
-            windows::apply_pet_window_region_if_available(&window.window());
+            windows::apply_pet_window_region_if_available(
+                &window.window(),
+                !window.get_use_sprite(),
+            );
         }
     });
 }
