@@ -300,6 +300,38 @@ fn main() -> Result<(), slint::PlatformError> {
     window.run()
 }
 
+fn sleeping_context_allows_motion(context: &DesktopContext) -> bool {
+    context.user_activity == UserActivity::Idle
+        && context.media != MediaState::Playing
+        && !context.session_locked
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sleeping_motion_requires_unlocked_idle_without_media() {
+        let mut context = DesktopContext {
+            user_activity: UserActivity::Idle,
+            ..DesktopContext::default()
+        };
+
+        assert!(sleeping_context_allows_motion(&context));
+
+        context.session_locked = true;
+        assert!(!sleeping_context_allows_motion(&context));
+
+        context.session_locked = false;
+        context.media = MediaState::Playing;
+        assert!(!sleeping_context_allows_motion(&context));
+
+        context.media = MediaState::Stopped;
+        context.user_activity = UserActivity::Drowsy;
+        assert!(!sleeping_context_allows_motion(&context));
+    }
+}
+
 #[cfg(target_os = "windows")]
 fn restart_sleeping_motion(
     window: slint::Weak<PetWindow>,
@@ -311,9 +343,7 @@ fn restart_sleeping_motion(
         let mut context = context.lock().expect("desktop context lock poisoned");
         context.sleeping_motion_active = false;
 
-        context.user_activity == UserActivity::Idle
-            && context.media != MediaState::Playing
-            && !context.session_locked
+        sleeping_context_allows_motion(&context)
             && render::has_dedicated_animation(behavior::Behavior::Sleeping)
     };
 
@@ -351,11 +381,7 @@ fn schedule_sleeping_motion(
             let idle_long_enough = platform::windows::idle_duration()
                 .is_some_and(|duration| duration >= Duration::from_secs(10 * 60));
 
-            if context.user_activity != UserActivity::Idle
-                || context.media == MediaState::Playing
-                || context.session_locked
-                || !idle_long_enough
-            {
+            if !sleeping_context_allows_motion(&context) || !idle_long_enough {
                 false
             } else {
                 context.sleeping_motion_active = true;
@@ -384,9 +410,7 @@ fn schedule_sleeping_motion(
                     .lock()
                     .expect("desktop context lock poisoned");
                 context.sleeping_motion_active = false;
-                context.user_activity == UserActivity::Idle
-                    && context.media != MediaState::Playing
-                    && !context.session_locked
+                sleeping_context_allows_motion(&context)
             };
 
             if let Some(strong_window) = finish_window.upgrade() {

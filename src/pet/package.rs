@@ -736,4 +736,22 @@ mod tests {
         );
         assert_eq!(drowsy.frame_durations_ms, vec![420, 760, 420]);
     }
+
+    #[test]
+    fn official_sena_sleeping_keeps_v1_frame_timing() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+        let sleeping = package
+            .animation(Behavior::Sleeping)
+            .expect("official Sena package should contain Sleeping");
+
+        assert_eq!(
+            sleeping.frames,
+            vec![
+                "animations/sleeping/000.webp",
+                "animations/sleeping/001.webp",
+                "animations/sleeping/002.webp",
+            ]
+        );
+        assert_eq!(sleeping.frame_durations_ms, vec![700, 1000, 700]);
+    }
 }

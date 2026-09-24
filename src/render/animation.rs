@@ -336,17 +336,19 @@ mod tests {
     }
 
     #[test]
-    fn official_sleeping_fallback_stays_static_until_assets_exist() {
+    fn official_sleeping_assets_sleep_between_motion_bursts() {
         let package = PetPackage::load_default().expect("official Sena package should load");
         let quiet =
             AnimationSpec::for_runtime(Behavior::Sleeping, &package, false, false, false, false);
         let motion =
             AnimationSpec::for_runtime(Behavior::Sleeping, &package, false, false, false, true);
 
+        assert_eq!(package.manifest().id, "sena.official");
         assert!(!quiet.running());
         assert_eq!(quiet.frame_count, 1);
-        assert!(!motion.running());
-        assert_eq!(motion.frame_count, 1);
+        assert!(motion.running());
+        assert_eq!(motion.frame_count, 3);
+        assert_eq!(motion.interval, Some(Duration::from_millis(700)));
     }
 
     #[test]

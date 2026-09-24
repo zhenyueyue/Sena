@@ -69,6 +69,19 @@
         420
       ],
       "looping": true
+    },
+    "sleeping": {
+      "frames": [
+        "animations/sleeping/000.webp",
+        "animations/sleeping/001.webp",
+        "animations/sleeping/002.webp"
+      ],
+      "frame_durations_ms": [
+        700,
+        1000,
+        700
+      ],
+      "looping": true
     }
   }
 }

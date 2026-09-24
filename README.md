@@ -106,7 +106,7 @@ ListeningMusic now follows the same low-duty-cycle principle and the official pa
 
 Drowsy now follows the same event-sleep model and the official package ships a three-frame Drowsy v1 set. After 5 minutes without user input, Sena stays on drowsy/000 most of the time and wakes for short 420 / 760 / 420 ms sleepy-motion bursts after staggered 18 / 27 / 22 / 31 second rests. Real input, media playback, session lock, or the 10-minute transition to Sleeping cancels pending Drowsy motion immediately.
 
-Sleeping is now prepared for the same low-duty-cycle runtime. If the desktop remains unlocked after 10 minutes of inactivity and dedicated Sleeping assets exist, Sena stays on sleeping/000 and only wakes for short 700 / 1000 / 700 ms breathing/Zzz bursts after staggered 35 / 52 / 43 / 61 second rests. Locking Windows cancels all pending Sleeping motion and keeps the pose completely static, because the desktop is not visible anyway. Until Sleeping art is shipped, the official package remains static in its Idle fallback.
+Sleeping now follows the same low-duty-cycle runtime and the official package ships a three-frame Sleeping v1 set. If the desktop remains unlocked after 10 minutes of inactivity, Sena stays on sleeping/000 and only wakes for short 700 / 1000 / 700 ms breathing/Zzz bursts after staggered 35 / 52 / 43 / 61 second rests. Locking Windows cancels all pending Sleeping motion and keeps the pose completely static, because the desktop is not visible anyway.
 
 ## License
 
