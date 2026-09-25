@@ -594,6 +594,10 @@ R2B 当前仍保留 per-batch immutable vertex/index buffer，目的是先锁定
 - R3B 合同新增 60 个核心 slot、63 个必需 attachment 和 22 条相对 draw-order 约束。
 - Slot Gate 会拒绝错误 slot bone、错误 setup attachment、缺失 alternate attachment、Region/Mesh 类型错误、blend 错误以及前后绘制顺序倒置。
 - 嘴型固定为一个 `mouth` slot + 四个 attachment（neutral/smile/open/sleep），避免用多个 slot 同时叠嘴。
+- spine-c bridge / Rust runtime 现在可精确查询“某 attachment 是否直接属于指定 skin”，R3B full gate 要求 63 个核心 attachment 真正属于 `base`，不接受 fallback 假通过。
+- spine-c bridge / Rust runtime 现在可枚举 animation 的每条 timeline：timeline type、target kind（bone/slot/constraint/global）和 target name。
+- R3B animation scope 合同：`idle` 4–6 秒并禁止内嵌 blink；`blink_l/r` 0.08–0.35 秒且左右 target 集合完全隔离。
+- 已加入合成 Spine 3.8 正反回归：标准左右 blink 通过；`blink_l` key 到 `eye_r` 会失败；`idle` 对 `eye_l` 使用 scale 模拟眨眼会失败。
 - 当前 R3B 必需动画：`idle`、`blink_l`、`blink_r`。
 - 会实际播放 `idle` 并再次提取 render frame。
 - 顶点数超过 1500 给 warning，超过约 2500 给更强 warning。

@@ -14,7 +14,7 @@ mod spine;
 
 use spine::{
     SpineAnimationInfo, SpineAttachmentType, SpineBlendMode, SpineBoneInfo, SpineRenderFrame,
-    SpineRuntime, SpineSlotInfo,
+    SpineRuntime, SpineSlotInfo, SpineTimelineTargetKind, SpineTimelineType,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -23,6 +23,27 @@ struct GeometryBudget {
     warning_effective_vertices: usize,
     minimum_setup_width: f32,
     minimum_setup_height: f32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct ForbiddenTimelineRule {
+    target_kind: String,
+    target: String,
+    timeline_types: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct AnimationScopeContract {
+    intended_track: u32,
+    min_duration_seconds: f32,
+    max_duration_seconds: f32,
+    require_any_timeline: bool,
+    allowed_bones: Option<Vec<String>>,
+    allowed_slots: Option<Vec<String>>,
+    allowed_timeline_types: Option<Vec<String>>,
+    forbid_global_timelines: bool,
+    forbid_constraint_timelines: bool,
+    forbidden_timelines: Vec<ForbiddenTimelineRule>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -46,6 +67,8 @@ struct AssetContract {
     spine_editor_major_minor: String,
     default_skin: String,
     required_animations: Vec<String>,
+    require_required_attachments_in_default_skin: bool,
+    animation_scopes: BTreeMap<String, AnimationScopeContract>,
     recommended_next_animations: Vec<String>,
     required_bones: Vec<String>,
     required_bone_parents: BTreeMap<String, Option<String>>,
@@ -233,6 +256,8 @@ fn run() -> Result<(), String> {
             ));
         }
     }
+    verify_animation_scopes(&contract, &runtime, &animations)?;
+    verify_required_skin_attachments(&contract, &runtime)?;
 
     runtime
         .set_skin(&skin)
@@ -269,6 +294,11 @@ fn run() -> Result<(), String> {
     println!(
         "  [OK] animations {}",
         contract.required_animations.join(" / ")
+    );
+    println!("  [OK] animation duration / timeline isolation scopes");
+    println!(
+        "  [OK] required attachments are owned by skin {}",
+        contract.default_skin
     );
     println!(
         "  [OK] required bones {}",
@@ -525,6 +555,163 @@ fn validate_contract(contract: &AssetContract) -> Result<(), String> {
     }
     ensure_acyclic_draw_order(contract)?;
 
+    let required_animation_names = contract.required_animations.iter().collect::<BTreeSet<_>>();
+    let scope_names = contract.animation_scopes.keys().collect::<BTreeSet<_>>();
+    if required_animation_names != scope_names {
+        return Err("contract animation_scopes keys must exactly match required_animations".into());
+    }
+
+    for (animation_name, scope) in &contract.animation_scopes {
+        if scope.intended_track > 3 {
+            return Err(format!(
+                "animation {animation_name} intended_track {} is outside 0..=3",
+                scope.intended_track
+            ));
+        }
+        if !scope.min_duration_seconds.is_finite()
+            || !scope.max_duration_seconds.is_finite()
+            || scope.min_duration_seconds <= 0.0
+            || scope.max_duration_seconds < scope.min_duration_seconds
+        {
+            return Err(format!(
+                "animation {animation_name} has invalid duration range {:.3}..{:.3}",
+                scope.min_duration_seconds, scope.max_duration_seconds
+            ));
+        }
+
+        if let Some(bones) = &scope.allowed_bones {
+            ensure_unique(
+                &format!("animation_scopes.{animation_name}.allowed_bones"),
+                bones,
+            )?;
+            for bone in bones {
+                if !contract
+                    .required_bones
+                    .iter()
+                    .any(|required| required == bone)
+                {
+                    return Err(format!(
+                        "animation {animation_name} allows unknown/non-required bone {bone}"
+                    ));
+                }
+            }
+        }
+
+        if let Some(slots) = &scope.allowed_slots {
+            ensure_unique(
+                &format!("animation_scopes.{animation_name}.allowed_slots"),
+                slots,
+            )?;
+            for slot in slots {
+                if !contract.required_slots.contains_key(slot) {
+                    return Err(format!(
+                        "animation {animation_name} allows unknown slot {slot}"
+                    ));
+                }
+            }
+        }
+
+        if let Some(types) = &scope.allowed_timeline_types {
+            ensure_unique(
+                &format!("animation_scopes.{animation_name}.allowed_timeline_types"),
+                types,
+            )?;
+            for timeline_type in types {
+                if !is_timeline_type_name(timeline_type) {
+                    return Err(format!(
+                        "animation {animation_name} allows unsupported timeline type {timeline_type}"
+                    ));
+                }
+            }
+        }
+
+        for rule in &scope.forbidden_timelines {
+            if !matches!(rule.target_kind.as_str(), "bone" | "slot") {
+                return Err(format!(
+                    "animation {animation_name} forbidden timeline uses unsupported target kind {}",
+                    rule.target_kind
+                ));
+            }
+            match rule.target_kind.as_str() {
+                "bone"
+                    if !contract
+                        .required_bones
+                        .iter()
+                        .any(|bone| bone == &rule.target) =>
+                {
+                    return Err(format!(
+                        "animation {animation_name} forbids unknown bone {}",
+                        rule.target
+                    ));
+                }
+                "slot" if !contract.required_slots.contains_key(&rule.target) => {
+                    return Err(format!(
+                        "animation {animation_name} forbids unknown slot {}",
+                        rule.target
+                    ));
+                }
+                _ => {}
+            }
+            if rule.timeline_types.is_empty() {
+                return Err(format!(
+                    "animation {animation_name} forbidden timeline rule for {} has no types",
+                    rule.target
+                ));
+            }
+            ensure_unique(
+                &format!(
+                    "animation_scopes.{animation_name}.forbidden_timelines.{}",
+                    rule.target
+                ),
+                &rule.timeline_types,
+            )?;
+            for timeline_type in &rule.timeline_types {
+                if !is_timeline_type_name(timeline_type) {
+                    return Err(format!(
+                        "animation {animation_name} forbids unsupported timeline type {timeline_type}"
+                    ));
+                }
+            }
+        }
+    }
+
+    if let (Some(left), Some(right)) = (
+        contract.animation_scopes.get("blink_l"),
+        contract.animation_scopes.get("blink_r"),
+    ) {
+        let left_bones = left
+            .allowed_bones
+            .as_deref()
+            .unwrap_or(&[])
+            .iter()
+            .collect::<BTreeSet<_>>();
+        let right_bones = right
+            .allowed_bones
+            .as_deref()
+            .unwrap_or(&[])
+            .iter()
+            .collect::<BTreeSet<_>>();
+        if !left_bones.is_disjoint(&right_bones) {
+            return Err("blink_l and blink_r allowed_bones must be disjoint".into());
+        }
+
+        let left_slots = left
+            .allowed_slots
+            .as_deref()
+            .unwrap_or(&[])
+            .iter()
+            .collect::<BTreeSet<_>>();
+        let right_slots = right
+            .allowed_slots
+            .as_deref()
+            .unwrap_or(&[])
+            .iter()
+            .collect::<BTreeSet<_>>();
+        if !left_slots.is_disjoint(&right_slots) {
+            return Err("blink_l and blink_r allowed_slots must be disjoint".into());
+        }
+    }
+
     let budget = &contract.geometry_budget;
     if budget.preferred_effective_vertices == 0
         || budget.warning_effective_vertices < budget.preferred_effective_vertices
@@ -770,6 +957,211 @@ fn attachment_type_name(attachment_type: SpineAttachmentType) -> &'static str {
     }
 }
 
+fn verify_required_skin_attachments(
+    contract: &AssetContract,
+    runtime: &SpineRuntime,
+) -> Result<(), String> {
+    if !contract.require_required_attachments_in_default_skin {
+        return Ok(());
+    }
+
+    for (slot_name, slot) in &contract.required_slots {
+        for (attachment_name, allowed_types) in &slot.attachments {
+            let actual = runtime
+                .skin_attachment_type(
+                    &contract.default_skin,
+                    slot_name,
+                    attachment_name,
+                )
+                .map_err(|error| {
+                    format!(
+                        "required attachment must belong directly to skin {}: slot={}, attachment={}: {error}",
+                        contract.default_skin, slot_name, attachment_name
+                    )
+                })?;
+            let actual_name = attachment_type_name(actual);
+            if !allowed_types.iter().any(|allowed| allowed == actual_name) {
+                return Err(format!(
+                    "skin {} attachment type mismatch: slot={}, attachment={}, expected one of [{}], got {}",
+                    contract.default_skin,
+                    slot_name,
+                    attachment_name,
+                    allowed_types.join(", "),
+                    actual_name
+                ));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn verify_animation_scopes(
+    contract: &AssetContract,
+    runtime: &SpineRuntime,
+    animations: &[SpineAnimationInfo],
+) -> Result<(), String> {
+    for (animation_name, scope) in &contract.animation_scopes {
+        let animation = animation_info(animations, animation_name).ok_or_else(|| {
+            format!("animation scope references missing animation {animation_name}")
+        })?;
+
+        if animation.duration_seconds < scope.min_duration_seconds
+            || animation.duration_seconds > scope.max_duration_seconds
+        {
+            return Err(format!(
+                "animation {animation_name} duration {:.3}s is outside contract range {:.3}..{:.3}s",
+                animation.duration_seconds, scope.min_duration_seconds, scope.max_duration_seconds
+            ));
+        }
+
+        let timelines = runtime.animation_timelines(animation_name)?;
+        if scope.require_any_timeline && timelines.is_empty() {
+            return Err(format!(
+                "animation {animation_name} must contain at least one timeline"
+            ));
+        }
+
+        for timeline in &timelines {
+            if scope.forbid_global_timelines
+                && timeline.target_kind == SpineTimelineTargetKind::Global
+            {
+                return Err(format!(
+                    "animation {animation_name} contains forbidden global timeline {}",
+                    timeline_type_name(timeline.timeline_type)
+                ));
+            }
+            if scope.forbid_constraint_timelines
+                && timeline.target_kind == SpineTimelineTargetKind::Constraint
+            {
+                return Err(format!(
+                    "animation {animation_name} contains forbidden constraint timeline {} on {}",
+                    timeline_type_name(timeline.timeline_type),
+                    timeline.target_name.as_deref().unwrap_or("<unknown>")
+                ));
+            }
+
+            if let Some(allowed_types) = &scope.allowed_timeline_types {
+                let actual = timeline_type_name(timeline.timeline_type);
+                if !allowed_types.iter().any(|allowed| allowed == actual) {
+                    return Err(format!(
+                        "animation {animation_name} timeline type {actual} is outside allowed scope [{}]",
+                        allowed_types.join(", ")
+                    ));
+                }
+            }
+
+            match timeline.target_kind {
+                SpineTimelineTargetKind::Bone => {
+                    let target = timeline.target_name.as_deref().ok_or_else(|| {
+                        format!(
+                            "animation {animation_name} has bone timeline {} without target name",
+                            timeline_type_name(timeline.timeline_type)
+                        )
+                    })?;
+                    if let Some(allowed) = &scope.allowed_bones {
+                        if !allowed.iter().any(|bone| bone == target) {
+                            return Err(format!(
+                                "animation {animation_name} touches forbidden bone {target} via {}",
+                                timeline_type_name(timeline.timeline_type)
+                            ));
+                        }
+                    }
+                }
+                SpineTimelineTargetKind::Slot => {
+                    let target = timeline.target_name.as_deref().ok_or_else(|| {
+                        format!(
+                            "animation {animation_name} has slot timeline {} without target name",
+                            timeline_type_name(timeline.timeline_type)
+                        )
+                    })?;
+                    if let Some(allowed) = &scope.allowed_slots {
+                        if !allowed.iter().any(|slot| slot == target) {
+                            return Err(format!(
+                                "animation {animation_name} touches forbidden slot {target} via {}",
+                                timeline_type_name(timeline.timeline_type)
+                            ));
+                        }
+                    }
+                }
+                SpineTimelineTargetKind::Global | SpineTimelineTargetKind::Constraint => {}
+            }
+
+            for rule in &scope.forbidden_timelines {
+                if timeline_target_kind_name(timeline.target_kind) != rule.target_kind {
+                    continue;
+                }
+                if timeline.target_name.as_deref() != Some(rule.target.as_str()) {
+                    continue;
+                }
+                let actual_type = timeline_type_name(timeline.timeline_type);
+                if rule
+                    .timeline_types
+                    .iter()
+                    .any(|forbidden| forbidden == actual_type)
+                {
+                    return Err(format!(
+                        "animation {animation_name} contains forbidden {actual_type} timeline on {} {}",
+                        rule.target_kind, rule.target
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn timeline_type_name(timeline_type: SpineTimelineType) -> &'static str {
+    match timeline_type {
+        SpineTimelineType::Rotate => "rotate",
+        SpineTimelineType::Translate => "translate",
+        SpineTimelineType::Scale => "scale",
+        SpineTimelineType::Shear => "shear",
+        SpineTimelineType::Attachment => "attachment",
+        SpineTimelineType::Color => "color",
+        SpineTimelineType::Deform => "deform",
+        SpineTimelineType::Event => "event",
+        SpineTimelineType::DrawOrder => "draw_order",
+        SpineTimelineType::IkConstraint => "ik_constraint",
+        SpineTimelineType::TransformConstraint => "transform_constraint",
+        SpineTimelineType::PathConstraintPosition => "path_constraint_position",
+        SpineTimelineType::PathConstraintSpacing => "path_constraint_spacing",
+        SpineTimelineType::PathConstraintMix => "path_constraint_mix",
+        SpineTimelineType::TwoColor => "two_color",
+    }
+}
+
+fn timeline_target_kind_name(kind: SpineTimelineTargetKind) -> &'static str {
+    match kind {
+        SpineTimelineTargetKind::Global => "global",
+        SpineTimelineTargetKind::Bone => "bone",
+        SpineTimelineTargetKind::Slot => "slot",
+        SpineTimelineTargetKind::Constraint => "constraint",
+    }
+}
+
+fn is_timeline_type_name(value: &str) -> bool {
+    matches!(
+        value,
+        "rotate"
+            | "translate"
+            | "scale"
+            | "shear"
+            | "attachment"
+            | "color"
+            | "deform"
+            | "event"
+            | "draw_order"
+            | "ik_constraint"
+            | "transform_constraint"
+            | "path_constraint_position"
+            | "path_constraint_spacing"
+            | "path_constraint_mix"
+            | "two_color"
+    )
+}
+
 fn ensure_unique(label: &str, values: &[String]) -> Result<(), String> {
     let unique = values.iter().collect::<BTreeSet<_>>();
     if unique.len() == values.len() {
@@ -944,6 +1336,58 @@ mod tests {
             .collect()
     }
 
+    fn timeline_scope_fixture(blink_l_bone: &str, idle_scales_left_eye: bool) -> String {
+        let idle_eye = if idle_scales_left_eye {
+            r#", "eye_l": { "scale": [
+                { "time": 0.0, "x": 1.0, "y": 1.0 },
+                { "time": 2.0, "x": 1.0, "y": 0.1 },
+                { "time": 4.0, "x": 1.0, "y": 1.0 }
+            ] }"#
+        } else {
+            ""
+        };
+
+        format!(
+            r#"{{
+              "skeleton": {{ "hash": "", "spine": "3.8.75", "width": 0, "height": 0 }},
+              "bones": [
+                {{ "name": "root" }},
+                {{ "name": "eye_l", "parent": "root" }},
+                {{ "name": "eye_r", "parent": "root" }}
+              ],
+              "animations": {{
+                "idle": {{
+                  "bones": {{
+                    "root": {{ "rotate": [
+                      {{ "time": 0.0, "angle": 0 }},
+                      {{ "time": 2.0, "angle": 1 }},
+                      {{ "time": 4.0, "angle": 0 }}
+                    ] }}{idle_eye}
+                  }}
+                }},
+                "blink_l": {{
+                  "bones": {{
+                    "{blink_l_bone}": {{ "scale": [
+                      {{ "time": 0.0, "x": 1.0, "y": 1.0 }},
+                      {{ "time": 0.1, "x": 1.0, "y": 0.1 }},
+                      {{ "time": 0.2, "x": 1.0, "y": 1.0 }}
+                    ] }}
+                  }}
+                }},
+                "blink_r": {{
+                  "bones": {{
+                    "eye_r": {{ "scale": [
+                      {{ "time": 0.0, "x": 1.0, "y": 1.0 }},
+                      {{ "time": 0.1, "x": 1.0, "y": 0.1 }},
+                      {{ "time": 0.2, "x": 1.0, "y": 1.0 }}
+                    ] }}
+                  }}
+                }}
+              }}
+            }}"#
+        )
+    }
+
     #[test]
     fn bundled_contract_is_valid() {
         let contract = bundled_contract();
@@ -1047,5 +1491,59 @@ mod tests {
         let error = validate_contract(&contract).expect_err("draw-order cycle should fail");
         assert!(error.contains("draw_order"));
         assert!(error.contains("cycle"));
+    }
+
+    #[test]
+    fn isolated_left_and_right_blinks_are_accepted() {
+        let contract = bundled_contract();
+        let runtime = SpineRuntime::from_json(&timeline_scope_fixture("eye_l", false))
+            .expect("valid timeline fixture");
+        let animations = runtime.animations();
+
+        verify_animation_scopes(&contract, &runtime, &animations)
+            .expect("isolated blink timelines should pass");
+    }
+
+    #[test]
+    fn blink_l_touching_right_eye_is_rejected() {
+        let contract = bundled_contract();
+        let runtime = SpineRuntime::from_json(&timeline_scope_fixture("eye_r", false))
+            .expect("valid timeline fixture");
+        let animations = runtime.animations();
+
+        let error = verify_animation_scopes(&contract, &runtime, &animations)
+            .expect_err("blink_l must not touch eye_r");
+        assert!(error.contains("blink_l"));
+        assert!(error.contains("eye_r"));
+    }
+
+    #[test]
+    fn idle_baking_eye_scale_blink_is_rejected() {
+        let contract = bundled_contract();
+        let runtime = SpineRuntime::from_json(&timeline_scope_fixture("eye_l", true))
+            .expect("valid timeline fixture");
+        let animations = runtime.animations();
+
+        let error = verify_animation_scopes(&contract, &runtime, &animations)
+            .expect_err("idle must not bake blink scale into eye_l");
+        assert!(error.contains("idle"));
+        assert!(error.contains("eye_l"));
+        assert!(error.contains("scale"));
+    }
+
+    #[test]
+    fn blink_scope_contracts_are_disjoint() {
+        let mut contract = bundled_contract();
+        contract
+            .animation_scopes
+            .get_mut("blink_r")
+            .expect("blink_r scope")
+            .allowed_bones = Some(vec!["eye_l".into()]);
+
+        let error = validate_contract(&contract)
+            .expect_err("left/right blink target sets must remain disjoint");
+        assert!(error.contains("blink_l"));
+        assert!(error.contains("blink_r"));
+        assert!(error.contains("disjoint"));
     }
 }

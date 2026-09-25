@@ -115,6 +115,32 @@ unsafe extern "C" {
         slot_name: *const c_char,
         attachment_name: *const c_char,
     ) -> c_int;
+    pub fn sena_spine_runtime_skin_attachment_type(
+        runtime: *const SenaSpineRuntimeOpaque,
+        skin_name: *const c_char,
+        slot_name: *const c_char,
+        attachment_name: *const c_char,
+    ) -> c_int;
+
+    pub fn sena_spine_runtime_animation_timeline_count(
+        runtime: *const SenaSpineRuntimeOpaque,
+        animation_name: *const c_char,
+    ) -> c_int;
+    pub fn sena_spine_runtime_animation_timeline_type(
+        runtime: *const SenaSpineRuntimeOpaque,
+        animation_name: *const c_char,
+        timeline_index: c_int,
+    ) -> c_int;
+    pub fn sena_spine_runtime_animation_timeline_target_kind(
+        runtime: *const SenaSpineRuntimeOpaque,
+        animation_name: *const c_char,
+        timeline_index: c_int,
+    ) -> c_int;
+    pub fn sena_spine_runtime_animation_timeline_target_name(
+        runtime: *const SenaSpineRuntimeOpaque,
+        animation_name: *const c_char,
+        timeline_index: c_int,
+    ) -> *const c_char;
 
     pub fn sena_spine_runtime_update(runtime: *mut SenaSpineRuntimeOpaque, delta_seconds: c_float);
 

@@ -8,6 +8,96 @@
     "blink_l",
     "blink_r"
   ],
+  "require_required_attachments_in_default_skin": true,
+  "animation_scopes": {
+    "idle": {
+      "intended_track": 0,
+      "min_duration_seconds": 4.0,
+      "max_duration_seconds": 6.0,
+      "require_any_timeline": true,
+      "allowed_bones": null,
+      "allowed_slots": null,
+      "allowed_timeline_types": null,
+      "forbid_global_timelines": true,
+      "forbid_constraint_timelines": true,
+      "forbidden_timelines": [
+        {"target_kind": "bone", "target": "eye_l", "timeline_types": ["scale", "shear"]},
+        {"target_kind": "bone", "target": "eye_r", "timeline_types": ["scale", "shear"]},
+        {"target_kind": "slot", "target": "eye_white_l", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "iris_l", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "pupil_l", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "eye_highlight_l", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "eyelid_upper_l", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "eyelid_lower_l", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "lash_l", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "eye_white_r", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "iris_r", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "pupil_r", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "eye_highlight_r", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "eyelid_upper_r", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "eyelid_lower_r", "timeline_types": ["attachment", "deform"]},
+        {"target_kind": "slot", "target": "lash_r", "timeline_types": ["attachment", "deform"]}
+      ]
+    },
+    "blink_l": {
+      "intended_track": 3,
+      "min_duration_seconds": 0.08,
+      "max_duration_seconds": 0.35,
+      "require_any_timeline": true,
+      "allowed_bones": ["eye_l"],
+      "allowed_slots": [
+        "eye_white_l",
+        "iris_l",
+        "pupil_l",
+        "eye_highlight_l",
+        "eyelid_upper_l",
+        "eyelid_lower_l",
+        "lash_l"
+      ],
+      "allowed_timeline_types": [
+        "rotate",
+        "translate",
+        "scale",
+        "shear",
+        "attachment",
+        "color",
+        "deform",
+        "two_color"
+      ],
+      "forbid_global_timelines": true,
+      "forbid_constraint_timelines": true,
+      "forbidden_timelines": []
+    },
+    "blink_r": {
+      "intended_track": 3,
+      "min_duration_seconds": 0.08,
+      "max_duration_seconds": 0.35,
+      "require_any_timeline": true,
+      "allowed_bones": ["eye_r"],
+      "allowed_slots": [
+        "eye_white_r",
+        "iris_r",
+        "pupil_r",
+        "eye_highlight_r",
+        "eyelid_upper_r",
+        "eyelid_lower_r",
+        "lash_r"
+      ],
+      "allowed_timeline_types": [
+        "rotate",
+        "translate",
+        "scale",
+        "shear",
+        "attachment",
+        "color",
+        "deform",
+        "two_color"
+      ],
+      "forbid_global_timelines": true,
+      "forbid_constraint_timelines": true,
+      "forbidden_timelines": []
+    }
+  },
   "recommended_next_animations": [
     "blink_both",
     "idle_sway",

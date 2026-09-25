@@ -139,6 +139,10 @@ The R3B gate currently requires:
 - expected Region / Mesh / Linked Mesh attachment categories.
 - required blend modes, including additive `bow_glow`.
 - 22 relative draw-order constraints for rear hair, layered skirt and eye stacks.
+- all required attachments must belong directly to `base`; fallback from another/default skin does not count.
+- `idle` must be 4–6 seconds and may not bake blink scale/shear or eye attachment/deform timelines.
+- `blink_l` / `blink_r` must be 0.08–0.35 seconds and their timeline targets must stay completely on their own eye side.
+- blink animations may not contain global Event/DrawOrder timelines or constraint timelines.
 - a non-empty renderable setup pose.
 - finite geometry and valid triangle indices.
 - every texture page referenced by the atlas to exist on disk.

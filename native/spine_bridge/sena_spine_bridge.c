@@ -467,6 +467,160 @@ int sena_spine_runtime_attachment_type(
     return attachment ? (int)attachment->type : -1;
 }
 
+int sena_spine_runtime_skin_attachment_type(
+    const SenaSpineRuntime* runtime,
+    const char* skin_name,
+    const char* slot_name,
+    const char* attachment_name
+) {
+    int slot_index;
+    spSkin* skin;
+    spAttachment* attachment;
+
+    if (!runtime || !runtime->skeleton_data || !skin_name || !slot_name || !attachment_name) return -1;
+
+    skin = spSkeletonData_findSkin(runtime->skeleton_data, skin_name);
+    if (!skin) return -1;
+
+    slot_index = spSkeletonData_findSlotIndex(runtime->skeleton_data, slot_name);
+    if (slot_index < 0) return -1;
+
+    attachment = spSkin_getAttachment(skin, slot_index, attachment_name);
+    return attachment ? (int)attachment->type : -1;
+}
+
+static spAnimation* sena_spine_find_animation(
+    const SenaSpineRuntime* runtime,
+    const char* animation_name
+) {
+    if (!runtime || !runtime->skeleton_data || !animation_name) return 0;
+    return spSkeletonData_findAnimation(runtime->skeleton_data, animation_name);
+}
+
+static spTimeline* sena_spine_find_timeline(
+    const SenaSpineRuntime* runtime,
+    const char* animation_name,
+    int timeline_index
+) {
+    spAnimation* animation = sena_spine_find_animation(runtime, animation_name);
+    if (!animation) return 0;
+    if (timeline_index < 0 || timeline_index >= animation->timelinesCount) return 0;
+    return animation->timelines[timeline_index];
+}
+
+int sena_spine_runtime_animation_timeline_count(
+    const SenaSpineRuntime* runtime,
+    const char* animation_name
+) {
+    spAnimation* animation = sena_spine_find_animation(runtime, animation_name);
+    return animation ? animation->timelinesCount : -1;
+}
+
+int sena_spine_runtime_animation_timeline_type(
+    const SenaSpineRuntime* runtime,
+    const char* animation_name,
+    int timeline_index
+) {
+    spTimeline* timeline = sena_spine_find_timeline(runtime, animation_name, timeline_index);
+    return timeline ? (int)timeline->type : -1;
+}
+
+int sena_spine_runtime_animation_timeline_target_kind(
+    const SenaSpineRuntime* runtime,
+    const char* animation_name,
+    int timeline_index
+) {
+    spTimeline* timeline = sena_spine_find_timeline(runtime, animation_name, timeline_index);
+    if (!timeline) return -1;
+
+    switch (timeline->type) {
+        case SP_TIMELINE_ROTATE:
+        case SP_TIMELINE_TRANSLATE:
+        case SP_TIMELINE_SCALE:
+        case SP_TIMELINE_SHEAR:
+            return 1;
+        case SP_TIMELINE_ATTACHMENT:
+        case SP_TIMELINE_COLOR:
+        case SP_TIMELINE_DEFORM:
+        case SP_TIMELINE_TWOCOLOR:
+            return 2;
+        case SP_TIMELINE_IKCONSTRAINT:
+        case SP_TIMELINE_TRANSFORMCONSTRAINT:
+        case SP_TIMELINE_PATHCONSTRAINTPOSITION:
+        case SP_TIMELINE_PATHCONSTRAINTSPACING:
+        case SP_TIMELINE_PATHCONSTRAINTMIX:
+            return 3;
+        case SP_TIMELINE_EVENT:
+        case SP_TIMELINE_DRAWORDER:
+        default:
+            return 0;
+    }
+}
+
+const char* sena_spine_runtime_animation_timeline_target_name(
+    const SenaSpineRuntime* runtime,
+    const char* animation_name,
+    int timeline_index
+) {
+    int index;
+    spTimeline* timeline = sena_spine_find_timeline(runtime, animation_name, timeline_index);
+    if (!timeline || !runtime || !runtime->skeleton_data) return 0;
+
+    switch (timeline->type) {
+        case SP_TIMELINE_ROTATE:
+        case SP_TIMELINE_TRANSLATE:
+        case SP_TIMELINE_SCALE:
+        case SP_TIMELINE_SHEAR:
+            index = ((spBaseTimeline*)timeline)->boneIndex;
+            if (index < 0 || index >= runtime->skeleton_data->bonesCount) return 0;
+            return runtime->skeleton_data->bones[index]->name;
+
+        case SP_TIMELINE_ATTACHMENT:
+            index = ((spAttachmentTimeline*)timeline)->slotIndex;
+            break;
+        case SP_TIMELINE_COLOR:
+            index = ((spColorTimeline*)timeline)->slotIndex;
+            break;
+        case SP_TIMELINE_DEFORM:
+            index = ((spDeformTimeline*)timeline)->slotIndex;
+            break;
+        case SP_TIMELINE_TWOCOLOR:
+            index = ((spTwoColorTimeline*)timeline)->slotIndex;
+            break;
+
+        case SP_TIMELINE_IKCONSTRAINT:
+            index = ((spIkConstraintTimeline*)timeline)->ikConstraintIndex;
+            if (index < 0 || index >= runtime->skeleton_data->ikConstraintsCount) return 0;
+            return runtime->skeleton_data->ikConstraints[index]->name;
+
+        case SP_TIMELINE_TRANSFORMCONSTRAINT:
+            index = ((spTransformConstraintTimeline*)timeline)->transformConstraintIndex;
+            if (index < 0 || index >= runtime->skeleton_data->transformConstraintsCount) return 0;
+            return runtime->skeleton_data->transformConstraints[index]->name;
+
+        case SP_TIMELINE_PATHCONSTRAINTPOSITION:
+            index = ((spPathConstraintPositionTimeline*)timeline)->pathConstraintIndex;
+            if (index < 0 || index >= runtime->skeleton_data->pathConstraintsCount) return 0;
+            return runtime->skeleton_data->pathConstraints[index]->name;
+        case SP_TIMELINE_PATHCONSTRAINTSPACING:
+            index = ((spPathConstraintSpacingTimeline*)timeline)->pathConstraintIndex;
+            if (index < 0 || index >= runtime->skeleton_data->pathConstraintsCount) return 0;
+            return runtime->skeleton_data->pathConstraints[index]->name;
+        case SP_TIMELINE_PATHCONSTRAINTMIX:
+            index = ((spPathConstraintMixTimeline*)timeline)->pathConstraintIndex;
+            if (index < 0 || index >= runtime->skeleton_data->pathConstraintsCount) return 0;
+            return runtime->skeleton_data->pathConstraints[index]->name;
+
+        case SP_TIMELINE_EVENT:
+        case SP_TIMELINE_DRAWORDER:
+        default:
+            return 0;
+    }
+
+    if (index < 0 || index >= runtime->skeleton_data->slotsCount) return 0;
+    return runtime->skeleton_data->slots[index]->name;
+}
+
 void sena_spine_runtime_update(SenaSpineRuntime* runtime, float delta_seconds) {
     if (!runtime || delta_seconds < 0.0f) return;
 

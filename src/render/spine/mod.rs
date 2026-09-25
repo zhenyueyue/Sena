@@ -9,5 +9,6 @@ pub use dcomp::SpineDcompRenderer;
 #[allow(unused_imports)]
 pub use runtime::{
     BoneWorldTransform, SpineAnimationInfo, SpineAttachmentType, SpineBlendMode, SpineBoneInfo,
-    SpineRenderBatch, SpineRenderFrame, SpineRuntime, SpineSlotInfo, SpineVertex,
+    SpineRenderBatch, SpineRenderFrame, SpineRuntime, SpineSlotInfo, SpineTimelineInfo,
+    SpineTimelineTargetKind, SpineTimelineType, SpineVertex,
 };

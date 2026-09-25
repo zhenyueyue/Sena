@@ -57,6 +57,40 @@ pub enum SpineAttachmentType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpineTimelineType {
+    Rotate,
+    Translate,
+    Scale,
+    Shear,
+    Attachment,
+    Color,
+    Deform,
+    Event,
+    DrawOrder,
+    IkConstraint,
+    TransformConstraint,
+    PathConstraintPosition,
+    PathConstraintSpacing,
+    PathConstraintMix,
+    TwoColor,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpineTimelineTargetKind {
+    Global,
+    Bone,
+    Slot,
+    Constraint,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpineTimelineInfo {
+    pub timeline_type: SpineTimelineType,
+    pub target_kind: SpineTimelineTargetKind,
+    pub target_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpineBlendMode {
     Normal,
     Additive,
@@ -85,6 +119,41 @@ impl SpineAttachmentType {
             4 => Some(Self::Path),
             5 => Some(Self::Point),
             6 => Some(Self::Clipping),
+            _ => None,
+        }
+    }
+}
+
+impl SpineTimelineType {
+    fn from_raw(value: c_int) -> Option<Self> {
+        match value {
+            0 => Some(Self::Rotate),
+            1 => Some(Self::Translate),
+            2 => Some(Self::Scale),
+            3 => Some(Self::Shear),
+            4 => Some(Self::Attachment),
+            5 => Some(Self::Color),
+            6 => Some(Self::Deform),
+            7 => Some(Self::Event),
+            8 => Some(Self::DrawOrder),
+            9 => Some(Self::IkConstraint),
+            10 => Some(Self::TransformConstraint),
+            11 => Some(Self::PathConstraintPosition),
+            12 => Some(Self::PathConstraintSpacing),
+            13 => Some(Self::PathConstraintMix),
+            14 => Some(Self::TwoColor),
+            _ => None,
+        }
+    }
+}
+
+impl SpineTimelineTargetKind {
+    fn from_raw(value: c_int) -> Option<Self> {
+        match value {
+            0 => Some(Self::Global),
+            1 => Some(Self::Bone),
+            2 => Some(Self::Slot),
+            3 => Some(Self::Constraint),
             _ => None,
         }
     }
@@ -289,6 +358,93 @@ impl SpineRuntime {
         SpineAttachmentType::from_raw(raw).ok_or_else(|| {
             format!("Spine attachment not found: slot={slot_name}, attachment={attachment_name}")
         })
+    }
+
+    pub fn skin_attachment_type(
+        &self,
+        skin_name: &str,
+        slot_name: &str,
+        attachment_name: &str,
+    ) -> Result<SpineAttachmentType, String> {
+        let skin = CString::new(skin_name)
+            .map_err(|_| "Spine skin name contains a NUL byte".to_string())?;
+        let slot = CString::new(slot_name)
+            .map_err(|_| "Spine slot name contains a NUL byte".to_string())?;
+        let attachment = CString::new(attachment_name)
+            .map_err(|_| "Spine attachment name contains a NUL byte".to_string())?;
+        let _guard = runtime_lock();
+        let raw = unsafe {
+            ffi::sena_spine_runtime_skin_attachment_type(
+                self.raw.as_ptr(),
+                skin.as_ptr(),
+                slot.as_ptr(),
+                attachment.as_ptr(),
+            )
+        };
+
+        SpineAttachmentType::from_raw(raw).ok_or_else(|| {
+            format!(
+                "Spine skin attachment not found: skin={skin_name}, slot={slot_name}, attachment={attachment_name}"
+            )
+        })
+    }
+
+    pub fn animation_timelines(
+        &self,
+        animation_name: &str,
+    ) -> Result<Vec<SpineTimelineInfo>, String> {
+        let animation = CString::new(animation_name)
+            .map_err(|_| "Spine animation name contains a NUL byte".to_string())?;
+        let _guard = runtime_lock();
+        let count = unsafe {
+            ffi::sena_spine_runtime_animation_timeline_count(self.raw.as_ptr(), animation.as_ptr())
+        };
+        if count < 0 {
+            return Err(format!("Spine animation not found: {animation_name}"));
+        }
+
+        let mut timelines = Vec::with_capacity(count as usize);
+        for index in 0..count {
+            let raw_type = unsafe {
+                ffi::sena_spine_runtime_animation_timeline_type(
+                    self.raw.as_ptr(),
+                    animation.as_ptr(),
+                    index,
+                )
+            };
+            let timeline_type = SpineTimelineType::from_raw(raw_type).ok_or_else(|| {
+                format!("unsupported Spine timeline type {raw_type} in animation {animation_name}")
+            })?;
+
+            let raw_kind = unsafe {
+                ffi::sena_spine_runtime_animation_timeline_target_kind(
+                    self.raw.as_ptr(),
+                    animation.as_ptr(),
+                    index,
+                )
+            };
+            let target_kind =
+                SpineTimelineTargetKind::from_raw(raw_kind).ok_or_else(|| {
+                    format!(
+                        "unsupported Spine timeline target kind {raw_kind} in animation {animation_name}"
+                    )
+                })?;
+            let target_name = copy_c_string(unsafe {
+                ffi::sena_spine_runtime_animation_timeline_target_name(
+                    self.raw.as_ptr(),
+                    animation.as_ptr(),
+                    index,
+                )
+            });
+
+            timelines.push(SpineTimelineInfo {
+                timeline_type,
+                target_kind,
+                target_name,
+            });
+        }
+
+        Ok(timelines)
     }
 
     pub fn set_animation(
@@ -613,11 +769,33 @@ mod tests {
                 | SpineAttachmentType::Mesh
                 | SpineAttachmentType::LinkedMesh
         ));
+        assert!(matches!(
+            runtime
+                .skin_attachment_type("default", "head", "head")
+                .expect("Spineboy default skin should own head attachment"),
+            SpineAttachmentType::Region
+                | SpineAttachmentType::Mesh
+                | SpineAttachmentType::LinkedMesh
+        ));
+        assert!(
+            runtime
+                .skin_attachment_type("default", "head", "definitely-missing")
+                .is_err()
+        );
         assert!(
             runtime
                 .attachment_type("head", "definitely-missing")
                 .is_err()
         );
+
+        let idle_timelines = runtime
+            .animation_timelines("idle")
+            .expect("Spineboy idle timelines should be inspectable");
+        assert!(!idle_timelines.is_empty());
+        assert!(idle_timelines.iter().any(|timeline| {
+            timeline.target_kind == SpineTimelineTargetKind::Bone && timeline.target_name.is_some()
+        }));
+
         assert!(runtime.set_skin("missing-skin").is_err());
 
         runtime

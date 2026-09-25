@@ -488,6 +488,24 @@ Weighted Mesh 优先用于：
 
 不要为了“看起来专业”给每张图片自动铺高密度网格。
 
+## 6.5 base Skin 所有权
+
+第一份工程的 60 个核心 slot / 63 个核心 attachment 必须真正放在：
+
+```text
+base
+```
+
+Asset Gate 现在使用 `spSkin_getAttachment` 精确检查 `base`，不会因为 Spine runtime 从其他/default skin fallback 到同名 attachment 就误判通过。
+
+所以不要：
+
+- 把角色主体留在另一个 skin。
+- 只创建一个空的 `base` skin。
+- 依赖 default skin fallback 让画面“看起来能显示”。
+
+`base` 本身必须完整拥有 R3B 核心 attachment。
+
 ## 7. Idle
 
 正式名字：
@@ -506,6 +524,17 @@ idle
 - 不要在 `idle` 中制作频繁眨眼；眨眼由 Track 3 独立驱动。
 
 第一份 idle 的目的不是炫技，而是证明 Sena 在桌面上“安静待着也自然”。
+
+Asset Gate 对第一版 `idle` 额外限制：
+
+- duration 必须在 4.0–6.0 秒。
+- 不允许 Event timeline。
+- 不允许 Draw Order timeline。
+- 不允许 IK / Transform / Path Constraint timeline。
+- `eye_l` / `eye_r` 不允许在 idle 中使用 scale / shear 做眨眼。
+- 左右眼相关 slot 不允许在 idle 中使用 attachment / deform timeline 偷塞 blink。
+
+Idle 可以保留轻微 eye look，例如适度 translate / rotate，但眨眼必须交给独立的 Track 3 动画。
 
 ## 8. 左右独立 Blink
 
@@ -531,6 +560,37 @@ blink_both
 - 闭眼形状必须像自然眼睑闭合，不是把眼睛纵向压扁。
 
 Runtime 后续会让左右眼错开 20–90 ms，因此素材本身必须可独立播放。
+
+Asset Gate 会检查 timeline 的真实 target，而不只是动画名：
+
+`blink_l`：
+
+- duration：0.08–0.35 秒。
+- intended Track：3。
+- 只允许 bone `eye_l`。
+- 只允许左眼 7 个核心 slot。
+- 不允许任何右眼 bone / slot。
+- 不允许 Event / Draw Order。
+- 不允许任何 Constraint timeline。
+
+`blink_r` 同理，只允许 `eye_r` 与右眼 slot。
+
+因此下面这种动画会直接失败：
+
+```text
+blink_l
+  eye_l.scale
+  eye_r.scale   <- FAIL
+```
+
+以及：
+
+```text
+idle
+  eye_l.scale   <- FAIL: blink 被烘焙进 idle
+```
+
+`intended_track` 是 Sena runtime 的播放合同；Spine 导出文件本身不存“播放在第几轨”。Gate 验证的是动画内容是否足够隔离，保证它能安全放到对应 Track。
 
 ## 9. 第一轮暂时不要做
 

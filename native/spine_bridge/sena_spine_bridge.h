@@ -96,6 +96,32 @@ int sena_spine_runtime_attachment_type(
     const char* slot_name,
     const char* attachment_name
 );
+int sena_spine_runtime_skin_attachment_type(
+    const SenaSpineRuntime* runtime,
+    const char* skin_name,
+    const char* slot_name,
+    const char* attachment_name
+);
+
+int sena_spine_runtime_animation_timeline_count(
+    const SenaSpineRuntime* runtime,
+    const char* animation_name
+);
+int sena_spine_runtime_animation_timeline_type(
+    const SenaSpineRuntime* runtime,
+    const char* animation_name,
+    int timeline_index
+);
+int sena_spine_runtime_animation_timeline_target_kind(
+    const SenaSpineRuntime* runtime,
+    const char* animation_name,
+    int timeline_index
+);
+const char* sena_spine_runtime_animation_timeline_target_name(
+    const SenaSpineRuntime* runtime,
+    const char* animation_name,
+    int timeline_index
+);
 
 void sena_spine_runtime_update(SenaSpineRuntime* runtime, float delta_seconds);
 
