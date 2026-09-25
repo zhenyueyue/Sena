@@ -334,7 +334,7 @@ wake_committed
 
 - 起始/结束 root 一致。
 - 关键骨骼旋转连续。
-- Physics 在 loop seam 不爆跳。
+- 二级运动 fallback 在 loop seam 连续；运行时 spring reset 后不能爆跳。
 - draw order 不无故改变。
 - attachment 状态一致。
 

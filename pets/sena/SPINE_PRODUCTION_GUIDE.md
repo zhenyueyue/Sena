@@ -22,12 +22,12 @@ Sena 必须首先满足“静止就好看”，其次才是“动起来顺”。
 
 ## 2. 工具线
 
-正式制作假设使用：
+正式制作锁定：
 
-- Spine Editor：**4.3 稳定分支**。
-- 生产级项目默认按 **Spine Professional** 能力设计。
+- Spine Editor：**3.8.75 Professional**（当前制作机版本）。
+- Runtime：官方 **spine-c 3.8** 系列 + Sena 自己的 Windows renderer。
 - PSD / 分层 PNG：绘画工具不限，但必须遵守本文拆层合同。
-- Runtime：官方 spine-c 4.3 系列 + Sena 自己的 Windows renderer。
+- 二级运动：Spine 内制作基础跟随姿态，运行时由 Sena 的 Rust spring system 增强；不依赖 4.x Physics Constraints。
 
 版本规则：
 
@@ -325,11 +325,14 @@ root
 
 原则：形变主要靠骨骼权重，deform timeline 只做必要的小修正。
 
-## 8. Physics 规则
+## 8. 二级运动规则（Spine 3.8）
 
-Physics 只用于二级运动，不替代主动画。
+Spine 3.8 不把 4.x Physics Constraints 作为生产依赖。二级运动拆成两层：
 
-适合使用 Physics：
+1. **Spine authored fallback**：动画师给长发、裙摆、蝴蝶结、猫尾巴做轻微跟随关键帧，保证即使关闭运行时 spring 也不僵硬。
+2. **Rust runtime spring**：运行时在基础动画结果上叠加轻量弹簧骨骼偏移，负责移动、拖拽和急停时的惯性。
+
+适合做 spring chain：
 
 - 后发 3–5 组。
 - 侧发 2–4 组。
@@ -338,14 +341,14 @@ Physics 只用于二级运动，不替代主动画。
 - 雪纺。
 - 猫尾巴。
 
-不使用 Physics：
+不做 spring：
 
 - 眼睛。
 - 主躯干。
 - 手脚主运动。
-- 坐下 / 抱猫等关键姿态。
+- 坐下 / 抱猫等关键姿态骨骼。
 
-第一版目标约 8–16 个 physics-driven bone chains，不追求“每一根头发都物理”。
+第一版目标约 **8–16 条 secondary-motion bone chains**。每条链都必须有合理的 authored rest/fallback 动画，spring 只做增量，不接管主姿态。
 
 ## 9. Skin 设计
 
@@ -491,6 +494,6 @@ Gate A 不通过，禁止做动画。
 - 不再从 Python 从零生成正式人物 Mesh。
 - 不用整张立绘做一个四边形然后骨骼硬拉。
 - 不把所有长发做成一个 mesh。
-- 不让 Physics 代替关键动画。
+- 不让运行时 spring 代替关键动画。
 - 不靠 scaleX 镜像解决正式左右朝向。
 - 不在动作完成前把 transition 当成“以后再补”。

@@ -9,7 +9,7 @@ Rust behavior/context
         ↓
 Spine Director
         ↓
-official spine-c 4.3 runtime
+official spine-c 3.8 runtime
         ↓
 Sena render extraction
         ↓
@@ -35,8 +35,8 @@ Sprite renderer 保留为 fallback。
 - spine-c。
 - 与 Spine Editor / 官方 Runtime 同版本线。
 - Rust 通过 C ABI 调用。
-- AnimationState、Skin、Mesh、Clipping、Physics 等逻辑由官方 Runtime 负责。
-- Sena 只实现 Windows 渲染适配和安全 Rust wrapper。
+- AnimationState、Skin、Mesh、Clipping 等 Spine 3.8 动画逻辑由官方 Runtime 负责。
+- Sena 实现 Windows 渲染适配、安全 Rust wrapper，以及独立的轻量 secondary-motion spring system。
 
 不要自己解析 Spine JSON/binary 实现动画系统。
 
@@ -50,16 +50,18 @@ Sprite renderer 保留为 fallback。
 4. Sena 自己仍可保持 Apache-2.0，但 Spine Runtime 代码和许可声明必须明确作为第三方组件处理。
 5. `THIRD_PARTY_NOTICES.md` 必须列出 Spine Runtime。
 
-生产规范默认使用 Professional 特性，因为正式方案需要 weighted meshes 和 physics constraints。
+生产规范锁定 Spine 3.8 Professional，因为正式方案需要 weighted meshes、deform、skins 与完整约束能力。运行时二级运动不依赖 4.x Physics Constraints。
 
 ## 4. Version Lock
 
 第一版锁定：
 
 ```text
-Spine Editor line : 4.3
-Spine Runtime line: 4.3
+Spine Editor      : 3.8.75 Professional
+Spine Runtime line: 3.8
 ```
+
+如果以后升级 Editor，必须把 Editor 与 Runtime 作为一次完整迁移处理；当前阶段不为了追新版本打断资产制作。
 
 仓库记录：
 
@@ -185,14 +187,15 @@ renderer: "spine"
 
 1. `AnimationState.update(dt)`。
 2. `AnimationState.apply(skeleton)`。
-3. 更新 world transforms / physics。
-4. 按 slot draw order 遍历。
-5. Region attachment -> 4 顶点 / 6 indices。
-6. Mesh attachment -> world vertices + UV + triangles。
-7. Clipping attachment -> 官方 runtime clipping。
-8. 按 texture + blend mode 合批。
-9. 提交 D3D11 dynamic vertex/index buffers。
-10. Present composition swap chain。
+3. 更新 skeleton world transforms。
+4. 运行 Sena secondary-motion spring pass，并再次刷新受影响骨骼/slot world transforms。
+5. 按 slot draw order 遍历。
+6. Region attachment -> 4 顶点 / 6 indices。
+7. Mesh attachment -> world vertices + UV + triangles。
+8. Clipping attachment -> 官方 runtime clipping。
+9. 按 texture + blend mode 合批。
+10. 提交 D3D11 dynamic vertex/index buffers。
+11. Present composition swap chain。
 
 GPU Vertex：
 
@@ -376,16 +379,46 @@ Carry：
 
 Sena / Cat blink RNG 使用不同 seed + 不同 phase。
 
-## 17. Physics
+## 17. Secondary Motion Spring
 
-Physics 更新与角色位移要区分。
+Spine 3.8 的正式方案不依赖 Physics Constraints。Sena 在 Rust 层实现轻量 spring solver，只对明确登记的骨骼链叠加增量旋转/位移。
 
-当 pet window 在桌面上移动时：
+每条 spring chain 配置：
 
-- character world/root movement 应传给 Spine Physics，形成头发/裙摆自然滞后。
-- 瞬移（例如显示器切换、安全纠正）要 reset physics，避免发丝爆飞。
-- 拖拽时可加强 inertia，但限制最大偏移。
-- Sleeping 静止后 Physics 可降低 update rate。
+```text
+root_bone
+tip_bones[]
+stiffness
+damping
+gravity
+inertia
+max_angle
+max_offset
+```
+
+更新顺序：
+
+```text
+Spine AnimationState
+ -> skeleton world transform
+ -> sample pet/window acceleration
+ -> spring integration
+ -> apply additive bone offsets
+ -> refresh affected world transforms
+ -> render
+```
+
+桌面移动规则：
+
+- 正常走动：window/root 加速度进入 spring input，形成头发、裙摆自然滞后。
+- 拖拽：允许更明显 inertia，但必须 clamp 最大角度/偏移。
+- 急停：spring 自然衰减，不瞬间归零。
+- 显示器切换、窗口安全纠正等瞬移：调用 hard reset，避免发丝爆飞。
+- 切换到跨度很大的 posture（例如 sleep）：做 soft reset/短 blend，避免上一姿态的速度残留。
+- Sleeping：spring 可以降频或冻结到 authored fallback。
+- 关闭 secondary motion 时，角色仍靠 Spine 关键帧保持基本生动。
+
+第一版只实现旋转型链条；确实需要后再增加 translation spring。
 
 ## 18. Update / Render Rate
 
@@ -399,7 +432,7 @@ Physics 更新与角色位移要区分。
 ### Ordinary idle
 
 - render/update: 30 Hz。
-- 没有 physics / micro motion 时允许更低。
+- 没有 spring / micro motion 时允许更低。
 
 ### Sleeping
 
@@ -409,7 +442,7 @@ Physics 更新与角色位移要区分。
 ### Hidden / locked
 
 - 停止 render。
-- 停止 physics。
+- 停止 spring update。
 - 仅保留必要的 context timer。
 
 ## 19. Texture / Batch Budget
@@ -453,7 +486,7 @@ Settings / tray 始终可打开。
 ### R0 — License / Version Gate
 
 - 确认 Spine license。
-- 锁定 4.3 runtime commit。
+- 锁定官方 spine-c 3.8 runtime commit。
 - third-party notice。
 
 ### R1 — Skeleton Viewer Equivalent
@@ -482,7 +515,7 @@ Settings / tray 始终可打开。
 - walk_l / walk_r。
 - turn。
 - desktop motion controller 驱动位置。
-- physics secondary motion。
+- Rust secondary-motion spring。
 
 ### R5 — Context State
 
