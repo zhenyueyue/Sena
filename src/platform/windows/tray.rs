@@ -31,6 +31,8 @@ use windows::{
 };
 
 const TRAY_ICON_ID: u32 = 1;
+const APP_ICON_RESOURCE_ID: usize = 1;
+const TRAY_ICON_RESOURCE_ID: usize = 2;
 const TRAY_CALLBACK_MESSAGE: u32 = WM_APP + 41;
 const PET_CONTEXT_SUBCLASS_ID: usize = 0x5345_4E41;
 
@@ -227,7 +229,25 @@ unsafe fn create_hidden_window() -> windows::core::Result<HWND> {
 }
 
 unsafe fn add_tray_icon(hwnd: HWND) -> bool {
-    let icon = match unsafe { LoadIconW(None, IDI_APPLICATION) } {
+    let icon = unsafe {
+        GetModuleHandleW(None)
+            .map(|module| HINSTANCE(module.0))
+            .and_then(|instance| {
+                LoadIconW(
+                    Some(instance),
+                    PCWSTR(TRAY_ICON_RESOURCE_ID as *const u16),
+                )
+                .or_else(|_| {
+                    LoadIconW(
+                        Some(instance),
+                        PCWSTR(APP_ICON_RESOURCE_ID as *const u16),
+                    )
+                })
+            })
+            .or_else(|_| LoadIconW(None, IDI_APPLICATION))
+    };
+
+    let icon = match icon {
         Ok(icon) => icon,
         Err(_) => return false,
     };
