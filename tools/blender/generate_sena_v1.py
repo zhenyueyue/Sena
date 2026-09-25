@@ -62,6 +62,9 @@ def material(name: str, rgba: tuple[float, float, float, float], roughness: floa
         bsdf.inputs["Roughness"].default_value = roughness
         bsdf.inputs["Metallic"].default_value = 0.0
         bsdf.inputs["Alpha"].default_value = rgba[3]
+        specular = bsdf.inputs.get("Specular IOR Level")
+        if specular is not None:
+            specular.default_value = 0.22
     return mat
 
 
@@ -193,6 +196,18 @@ def create_armature() -> bpy.types.Object:
     bone("Neck", (0, 0, 0.91), (0, 0, 0.99), "Chest")
     bone("Head", (0, 0, 0.99), (0, 0, 1.22), "Neck")
 
+    # Spring-ready secondary-motion bones. The V1 clips animate these gently
+    # already; the runtime renderer can later replace/augment that motion with
+    # a lightweight spring solver without changing mesh or node names.
+    bone("HairBackL", (-0.12, 0.10, 1.08), (-0.15, 0.12, 0.72), "Head")
+    bone("HairBackC", (0.00, 0.11, 1.08), (0.00, 0.13, 0.66), "Head")
+    bone("HairBackR", (0.12, 0.10, 1.08), (0.15, 0.12, 0.72), "Head")
+    bone("HairSideL", (-0.22, -0.04, 1.08), (-0.23, -0.07, 0.73), "Head")
+    bone("HairSideR", (0.22, -0.04, 1.08), (0.23, -0.07, 0.73), "Head")
+    bone("BowRoot", (0.22, -0.02, 1.29), (0.29, -0.02, 1.29), "Head")
+    bone("BowTailL", (0.19, -0.01, 1.25), (0.18, -0.01, 1.10), "BowRoot")
+    bone("BowTailR", (0.27, -0.01, 1.25), (0.28, -0.01, 1.09), "BowRoot")
+
     for side, sign in (("Left", 1), ("Right", -1)):
         x0 = 0.17 * sign
         x1 = 0.33 * sign
@@ -252,10 +267,11 @@ def create_sena(armature: bpy.types.Object) -> None:
         (0.205, 0.82, 0.070, 0.34),
     )):
         lock = uv_sphere(f"HairBackLock{index}", (x, 0.115, z), (sx, 0.065, sz), hair_shadow)
-        parent_keep_world(lock, armature, "Head")
+        hair_bone = "HairBackL" if index < 2 else "HairBackC" if index == 2 else "HairBackR"
+        parent_keep_world(lock, armature, hair_bone)
     for side, x in (("L", -0.225), ("R", 0.225)):
         lock = uv_sphere(f"HairSide{side}", (x, -0.075, 0.92), (0.060, 0.052, 0.285), hair)
-        parent_keep_world(lock, armature, "Head")
+        parent_keep_world(lock, armature, f"HairSide{side}")
     for index, (x, z, angle, radius) in enumerate((
         (-0.135, 1.235, -0.30, 0.070),
         (-0.045, 1.250, -0.12, 0.064),
@@ -382,8 +398,10 @@ def create_sena(armature: bpy.types.Object) -> None:
     bow_tail_l.rotation_euler[1] = math.radians(-12)
     bow_tail_r.rotation_euler[1] = math.radians(14)
     bow_crystal = uv_sphere("BowCrystal", (0.225, -0.063, 1.286), (0.025, 0.012, 0.025), white, 18, 12)
-    for obj in (bow_center, bow_upper_l, bow_upper_r, bow_lower_l, bow_lower_r, bow_tail_l, bow_tail_r, bow_crystal):
-        parent_keep_world(obj, armature, "Head")
+    for obj in (bow_center, bow_upper_l, bow_upper_r, bow_lower_l, bow_lower_r, bow_crystal):
+        parent_keep_world(obj, armature, "BowRoot")
+    parent_keep_world(bow_tail_l, armature, "BowTailL")
+    parent_keep_world(bow_tail_r, armature, "BowTailR")
 
 
 def create_cat() -> bpy.types.Object:
@@ -426,6 +444,10 @@ def ensure_action(armature: bpy.types.Object, name: str, end_frame: int, keys) -
     if armature.animation_data is None:
         armature.animation_data_create()
     action = bpy.data.actions.new(name=name)
+    # Actions have no persistent user once detached from animation_data. Mark
+    # them as fake-user assets so the editable .blend keeps every clip after
+    # save/reopen; GLB export alone is not enough for our source workflow.
+    action.use_fake_user = True
     armature.animation_data.action = action
 
     for frame, bone_values in keys:
@@ -455,15 +477,80 @@ def create_actions(armature: bpy.types.Object) -> None:
         "Idle",
         90,
         [
-            (1, [("Hips", zero, (0, 0, 0)), ("Chest", zero, (0, 0, 0))]),
-            (45, [("Hips", zero, (0, 0, 0.010)), ("Chest", (0.018, 0, 0), (0, 0, 0))]),
-            (90, [("Hips", zero, (0, 0, 0)), ("Chest", zero, (0, 0, 0))]),
+            (
+                1,
+                [
+                    ("Hips", zero, (0, 0, 0)),
+                    ("Chest", zero, (0, 0, 0)),
+                    ("HairBackL", zero, (0, 0, 0)),
+                    ("HairBackC", zero, (0, 0, 0)),
+                    ("HairBackR", zero, (0, 0, 0)),
+                    ("HairSideL", zero, (0, 0, 0)),
+                    ("HairSideR", zero, (0, 0, 0)),
+                    ("BowRoot", zero, (0, 0, 0)),
+                    ("BowTailL", zero, (0, 0, 0)),
+                    ("BowTailR", zero, (0, 0, 0)),
+                ],
+            ),
+            (
+                30,
+                [
+                    ("HairBackL", (math.radians(1.6), 0, math.radians(-1.4)), (0, 0, 0)),
+                    ("HairBackC", (math.radians(2.0), 0, 0), (0, 0, 0)),
+                    ("HairBackR", (math.radians(1.4), 0, math.radians(1.2)), (0, 0, 0)),
+                    ("HairSideL", (math.radians(1.2), 0, math.radians(-0.8)), (0, 0, 0)),
+                    ("HairSideR", (math.radians(1.0), 0, math.radians(0.7)), (0, 0, 0)),
+                    ("BowRoot", (0, math.radians(1.2), math.radians(1.1)), (0, 0, 0)),
+                    ("BowTailL", (math.radians(2.5), 0, math.radians(-1.0)), (0, 0, 0)),
+                    ("BowTailR", (math.radians(2.0), 0, math.radians(0.9)), (0, 0, 0)),
+                ],
+            ),
+            (
+                45,
+                [
+                    ("Hips", zero, (0, 0, 0.010)),
+                    ("Chest", (0.018, 0, 0), (0, 0, 0)),
+                    ("HairBackL", (math.radians(2.2), 0, math.radians(-0.8)), (0, 0, 0)),
+                    ("HairBackC", (math.radians(2.8), 0, math.radians(0.3)), (0, 0, 0)),
+                    ("HairBackR", (math.radians(2.0), 0, math.radians(0.9)), (0, 0, 0)),
+                    ("BowRoot", (0, math.radians(1.8), math.radians(0.8)), (0, 0, 0)),
+                ],
+            ),
+            (
+                66,
+                [
+                    ("HairBackL", (math.radians(-1.1), 0, math.radians(0.8)), (0, 0, 0)),
+                    ("HairBackC", (math.radians(-1.6), 0, 0), (0, 0, 0)),
+                    ("HairBackR", (math.radians(-1.0), 0, math.radians(-0.7)), (0, 0, 0)),
+                    ("HairSideL", (math.radians(-0.7), 0, math.radians(0.5)), (0, 0, 0)),
+                    ("HairSideR", (math.radians(-0.6), 0, math.radians(-0.4)), (0, 0, 0)),
+                    ("BowRoot", (0, math.radians(-0.8), math.radians(-0.7)), (0, 0, 0)),
+                    ("BowTailL", (math.radians(-1.8), 0, math.radians(0.7)), (0, 0, 0)),
+                    ("BowTailR", (math.radians(-1.5), 0, math.radians(-0.6)), (0, 0, 0)),
+                ],
+            ),
+            (
+                90,
+                [
+                    ("Hips", zero, (0, 0, 0)),
+                    ("Chest", zero, (0, 0, 0)),
+                    ("HairBackL", zero, (0, 0, 0)),
+                    ("HairBackC", zero, (0, 0, 0)),
+                    ("HairBackR", zero, (0, 0, 0)),
+                    ("HairSideL", zero, (0, 0, 0)),
+                    ("HairSideR", zero, (0, 0, 0)),
+                    ("BowRoot", zero, (0, 0, 0)),
+                    ("BowTailL", zero, (0, 0, 0)),
+                    ("BowTailR", zero, (0, 0, 0)),
+                ],
+            ),
         ],
     )
 
     walk_keys = []
     for frame, phase in ((1, 0), (7, 1), (13, 2), (19, 3), (25, 4)):
         direction = 1 if phase % 2 == 0 else -1
+        lag = -direction
         walk_keys.append(
             (
                 frame,
@@ -473,6 +560,14 @@ def create_actions(armature: bpy.types.Object) -> None:
                     ("RightUpperLeg", (-0.34 * direction, 0, 0), (0, 0, 0)),
                     ("LeftUpperArm", (-0.24 * direction, 0, 0), (0, 0, 0)),
                     ("RightUpperArm", (0.24 * direction, 0, 0), (0, 0, 0)),
+                    ("HairBackL", (math.radians(5.0 * lag), 0, math.radians(2.2 * lag)), (0, 0, 0)),
+                    ("HairBackC", (math.radians(6.0 * lag), 0, math.radians(0.8 * lag)), (0, 0, 0)),
+                    ("HairBackR", (math.radians(5.0 * lag), 0, math.radians(-2.0 * lag)), (0, 0, 0)),
+                    ("HairSideL", (math.radians(3.5 * lag), 0, math.radians(1.8 * lag)), (0, 0, 0)),
+                    ("HairSideR", (math.radians(3.2 * lag), 0, math.radians(-1.7 * lag)), (0, 0, 0)),
+                    ("BowRoot", (0, math.radians(2.2 * lag), math.radians(2.5 * lag)), (0, 0, 0)),
+                    ("BowTailL", (math.radians(6.5 * lag), 0, math.radians(2.0 * lag)), (0, 0, 0)),
+                    ("BowTailR", (math.radians(6.0 * lag), 0, math.radians(-1.8 * lag)), (0, 0, 0)),
                 ],
             )
         )
@@ -572,13 +667,23 @@ def create_actions(armature: bpy.types.Object) -> None:
 
 
 def create_preview_camera_and_light() -> None:
-    bpy.ops.object.light_add(type="AREA", location=(2.5, -3.0, 3.2))
-    key = bpy.context.object
-    key.name = "PreviewKey"
-    key.data.energy = 500
-    key.data.shape = "DISK"
-    key.data.size = 3.0
-    key.rotation_euler = (math.radians(28), 0, math.radians(34))
+    # Simple three-light anime preview rig: broad neutral key, cool fill and a
+    # faint lavender rim. It keeps the GLB materials standard/PBR-compatible
+    # while making the Blender review renders read closer to a toon character.
+    def area_light(name, location, energy, size, color, target=(0.0, 0.0, 0.75)):
+        bpy.ops.object.light_add(type="AREA", location=location)
+        light = bpy.context.object
+        light.name = name
+        light.data.energy = energy
+        light.data.shape = "DISK"
+        light.data.size = size
+        light.data.color = color
+        light.rotation_euler = (Vector(target) - light.location).to_track_quat("-Z", "Y").to_euler()
+        return light
+
+    area_light("PreviewKey", (2.4, -3.1, 3.0), 430, 3.2, (1.0, 0.91, 0.94))
+    area_light("PreviewFill", (-2.2, -2.0, 1.8), 165, 3.5, (0.72, 0.82, 1.0))
+    area_light("PreviewRim", (1.2, 2.3, 2.1), 220, 2.2, (0.74, 0.58, 1.0), (0.0, 0.08, 0.95))
 
     bpy.ops.object.camera_add(location=(0.08, -4.4, 1.0))
     camera = bpy.context.object
@@ -607,7 +712,24 @@ def configure_scene() -> None:
     scene.render.fps = 30
     scene.unit_settings.system = "METRIC"
     scene.unit_settings.scale_length = 1.0
-    scene.world.color = (0.035, 0.025, 0.055)
+    scene.world.color = (0.055, 0.045, 0.075)
+
+    # Freestyle gives the review render a lightweight anime-outline read while
+    # leaving the actual GLB materials standard Principled/PBR for our future
+    # wgpu renderer. This is preview-only and does not add runtime geometry.
+    try:
+        scene.render.use_freestyle = True
+        scene.render.line_thickness = 0.72
+    except (AttributeError, TypeError):
+        pass
+
+    # Standard transform keeps pastel colors cleaner than a filmic/AgX look in
+    # these transparent review renders and is cheap enough for automated checks.
+    try:
+        scene.view_settings.view_transform = "Standard"
+        scene.view_settings.look = "Medium High Contrast"
+    except (AttributeError, TypeError):
+        pass
 
 
 def export(output: Path) -> None:

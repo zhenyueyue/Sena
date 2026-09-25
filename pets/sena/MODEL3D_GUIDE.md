@@ -44,6 +44,14 @@ Use a standard humanoid skeleton compatible with VRM/glTF animation retargeting.
 
 Hair, bow, skirt/ribbons and cat secondary bones may be custom.
 
+Current spring-ready secondary-motion bone contract:
+
+- `HairBackL`, `HairBackC`, `HairBackR`
+- `HairSideL`, `HairSideR`
+- `BowRoot`, `BowTailL`, `BowTailR`
+
+The authored `Idle` and `Walk` clips contain a small secondary-motion fallback so exported GLB previews do not look rigid. The runtime 3D renderer may later layer a lightweight spring solver over these same bones (target ~30 Hz) instead of inventing another naming scheme.
+
 ## Required V1 motion names
 
 The package contract in `pet.template.json` maps semantic names to embedded animation clips. The first production model should provide:
