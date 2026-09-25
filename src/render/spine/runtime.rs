@@ -36,6 +36,26 @@ pub struct SpineBoneInfo {
     pub parent_name: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpineSlotInfo {
+    pub index: usize,
+    pub name: String,
+    pub bone_name: String,
+    pub setup_attachment_name: Option<String>,
+    pub blend_mode: SpineBlendMode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpineAttachmentType {
+    Region,
+    BoundingBox,
+    Mesh,
+    LinkedMesh,
+    Path,
+    Point,
+    Clipping,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpineBlendMode {
     Normal,
@@ -51,6 +71,21 @@ impl SpineBlendMode {
             2 => Self::Multiply,
             3 => Self::Screen,
             _ => Self::Normal,
+        }
+    }
+}
+
+impl SpineAttachmentType {
+    fn from_raw(value: c_int) -> Option<Self> {
+        match value {
+            0 => Some(Self::Region),
+            1 => Some(Self::BoundingBox),
+            2 => Some(Self::Mesh),
+            3 => Some(Self::LinkedMesh),
+            4 => Some(Self::Path),
+            5 => Some(Self::Point),
+            6 => Some(Self::Clipping),
+            _ => None,
         }
     }
 }
@@ -201,6 +236,59 @@ impl SpineRuntime {
                 Some(SpineBoneInfo { name, parent_name })
             })
             .collect()
+    }
+
+    pub fn slots(&self) -> Vec<SpineSlotInfo> {
+        let _guard = runtime_lock();
+        let count = unsafe { ffi::sena_spine_runtime_slot_count(self.raw.as_ptr()) }.max(0);
+
+        (0..count)
+            .filter_map(|index| {
+                let name = copy_c_string(unsafe {
+                    ffi::sena_spine_runtime_slot_name(self.raw.as_ptr(), index)
+                })?;
+                let bone_name = copy_c_string(unsafe {
+                    ffi::sena_spine_runtime_slot_bone_name(self.raw.as_ptr(), index)
+                })?;
+                let setup_attachment_name = copy_c_string(unsafe {
+                    ffi::sena_spine_runtime_slot_setup_attachment_name(self.raw.as_ptr(), index)
+                });
+                let blend_mode = SpineBlendMode::from_raw(unsafe {
+                    ffi::sena_spine_runtime_slot_blend_mode(self.raw.as_ptr(), index)
+                });
+
+                Some(SpineSlotInfo {
+                    index: index as usize,
+                    name,
+                    bone_name,
+                    setup_attachment_name,
+                    blend_mode,
+                })
+            })
+            .collect()
+    }
+
+    pub fn attachment_type(
+        &mut self,
+        slot_name: &str,
+        attachment_name: &str,
+    ) -> Result<SpineAttachmentType, String> {
+        let slot = CString::new(slot_name)
+            .map_err(|_| "Spine slot name contains a NUL byte".to_string())?;
+        let attachment = CString::new(attachment_name)
+            .map_err(|_| "Spine attachment name contains a NUL byte".to_string())?;
+        let _guard = runtime_lock();
+        let raw = unsafe {
+            ffi::sena_spine_runtime_attachment_type(
+                self.raw.as_ptr(),
+                slot.as_ptr(),
+                attachment.as_ptr(),
+            )
+        };
+
+        SpineAttachmentType::from_raw(raw).ok_or_else(|| {
+            format!("Spine attachment not found: slot={slot_name}, attachment={attachment_name}")
+        })
     }
 
     pub fn set_animation(
@@ -505,9 +593,31 @@ mod tests {
             .expect("Spineboy hip bone should exist");
         assert_eq!(hip.parent_name.as_deref(), Some("root"));
 
+        let slots = runtime.slots();
+        let head_slot = slots
+            .iter()
+            .find(|slot| slot.name == "head")
+            .expect("Spineboy head slot should exist");
+        assert_eq!(head_slot.bone_name, "head");
+        assert_eq!(head_slot.setup_attachment_name.as_deref(), Some("head"));
+        assert_eq!(head_slot.blend_mode, SpineBlendMode::Normal);
+
         runtime
             .set_skin("default")
             .expect("Spineboy default skin should exist");
+        assert!(matches!(
+            runtime
+                .attachment_type("head", "head")
+                .expect("Spineboy head attachment should exist"),
+            SpineAttachmentType::Region
+                | SpineAttachmentType::Mesh
+                | SpineAttachmentType::LinkedMesh
+        ));
+        assert!(
+            runtime
+                .attachment_type("head", "definitely-missing")
+                .is_err()
+        );
         assert!(runtime.set_skin("missing-skin").is_err());
 
         runtime

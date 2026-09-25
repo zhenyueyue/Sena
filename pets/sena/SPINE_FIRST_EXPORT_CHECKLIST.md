@@ -306,6 +306,136 @@ skirt_root -> hips
 pets/sena/spine/settings/r3b_contract.json
 ```
 
+## 4.6 Slot / Attachment 合同
+
+第一份 Spine 工程的核心 Slot 结构已经写进：
+
+```text
+pets/sena/spine/settings/r3b_contract.json
+```
+
+当前 R3B 锁定：
+
+- 60 个核心 slot。
+- 63 个必需 attachment。
+- 22 条基础 draw-order 约束。
+- slot -> bone。
+- setup attachment。
+- blend mode。
+- attachment 类型。
+
+Asset Gate 会直接从 spine-c 读取真实工程并逐项比对。
+
+### 嘴型必须共用一个 Slot
+
+正确：
+
+```text
+slot: mouth
+bone: face_root
+setup: mouth_neutral
+
+attachments:
+  mouth_neutral
+  mouth_smile
+  mouth_open
+  mouth_sleep
+```
+
+错误：
+
+```text
+mouth_neutral slot
+mouth_smile slot
+mouth_open slot
+mouth_sleep slot
+```
+
+表情状态应该切 attachment，不应该靠四个嘴同时叠层。
+
+### 左右眼保持独立 Slot
+
+左眼和右眼不能共享同一个 slot。
+
+例如左眼：
+
+```text
+eye_white_l    -> eye_l
+iris_l         -> eye_l
+pupil_l        -> eye_l
+eye_highlight_l -> eye_l
+eyelid_upper_l -> eye_l
+eyelid_lower_l -> eye_l
+lash_l         -> eye_l
+```
+
+右眼同理全部挂 `eye_r`。
+
+这样 `blink_l` / `blink_r` 才能完全独立。
+
+### Mesh / Region 类型
+
+R3B 会阻止明显错误的 attachment 类型。
+
+优先 Region：
+
+- eye white / iris / pupil / highlight。
+- eyebrow。
+- blush。
+- mouth。
+- collar。
+- waist crystal。
+- bow crystal / glow。
+
+优先 Mesh / Linked Mesh：
+
+- rear hair。
+- side hair。
+- bangs / ahoge。
+- skirt layers。
+- chiffon。
+- large bow wings / tails。
+
+部分主体允许 Region 或 Mesh：
+
+- `head_base`。
+- `torso`。
+- `hips`。
+- `bodice`。
+- `ear_l/r`。
+
+### Blend
+
+普通角色素材：
+
+```text
+normal
+```
+
+当前唯一强制 Additive 的核心 slot：
+
+```text
+bow_glow
+```
+
+不要把普通裙子、头发、眼睛误设为 Additive。
+
+### 基础 Draw Order
+
+Asset Gate 不强迫所有 60 个 slot 使用一个死板的绝对顺序，而是检查关键前后关系。
+
+例如：
+
+```text
+rear hair < head_base
+skirt_back < skirt_mid < skirt_front < crystal_hem
+head_base < eye_white < iris < pupil < eye_highlight
+```
+
+其中 `<` 表示左边必须画在右边后面。
+
+这样以后增加手臂、腿、装饰 slot 时可以插入，不会因为索引变化让整个合同失效。
+
 ## 5. Skin
 
 必须创建：

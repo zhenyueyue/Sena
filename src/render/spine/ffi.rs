@@ -93,6 +93,29 @@ unsafe extern "C" {
         index: c_int,
     ) -> *const c_char;
 
+    pub fn sena_spine_runtime_slot_count(runtime: *const SenaSpineRuntimeOpaque) -> c_int;
+    pub fn sena_spine_runtime_slot_name(
+        runtime: *const SenaSpineRuntimeOpaque,
+        index: c_int,
+    ) -> *const c_char;
+    pub fn sena_spine_runtime_slot_bone_name(
+        runtime: *const SenaSpineRuntimeOpaque,
+        index: c_int,
+    ) -> *const c_char;
+    pub fn sena_spine_runtime_slot_setup_attachment_name(
+        runtime: *const SenaSpineRuntimeOpaque,
+        index: c_int,
+    ) -> *const c_char;
+    pub fn sena_spine_runtime_slot_blend_mode(
+        runtime: *const SenaSpineRuntimeOpaque,
+        index: c_int,
+    ) -> c_int;
+    pub fn sena_spine_runtime_attachment_type(
+        runtime: *mut SenaSpineRuntimeOpaque,
+        slot_name: *const c_char,
+        attachment_name: *const c_char,
+    ) -> c_int;
+
     pub fn sena_spine_runtime_update(runtime: *mut SenaSpineRuntimeOpaque, delta_seconds: c_float);
 
     pub fn sena_spine_runtime_extract_frame(

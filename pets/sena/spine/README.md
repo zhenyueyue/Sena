@@ -133,6 +133,12 @@ The R3B gate currently requires:
 - animations `idle`, `blink_l`, and `blink_r`.
 - all R3B bones declared in `r3b_contract.json`.
 - the exact required parent hierarchy for those bones; correct names with the wrong parent still fail.
+- 60 core slots with the required slot -> bone mapping.
+- 63 required attachments, including alternate mouth states on one `mouth` slot.
+- valid setup attachments.
+- expected Region / Mesh / Linked Mesh attachment categories.
+- required blend modes, including additive `bow_glow`.
+- 22 relative draw-order constraints for rear hair, layered skirt and eye stacks.
 - a non-empty renderable setup pose.
 - finite geometry and valid triangle indices.
 - every texture page referenced by the atlas to exist on disk.

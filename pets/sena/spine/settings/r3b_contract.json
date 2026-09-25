@@ -84,6 +84,515 @@
     "headphones_anchor",
     "laptop_anchor"
   ],
+  "required_slots": {
+    "hair_back_c": {
+      "bone": "hair_back_root",
+      "setup_attachment": "hair_back_c",
+      "blend": "normal",
+      "attachments": {
+        "hair_back_c": ["mesh", "linked_mesh"]
+      }
+    },
+    "hair_back_l1": {
+      "bone": "hair_back_root",
+      "setup_attachment": "hair_back_l1",
+      "blend": "normal",
+      "attachments": {
+        "hair_back_l1": ["mesh", "linked_mesh"]
+      }
+    },
+    "hair_back_l2": {
+      "bone": "hair_back_root",
+      "setup_attachment": "hair_back_l2",
+      "blend": "normal",
+      "attachments": {
+        "hair_back_l2": ["mesh", "linked_mesh"]
+      }
+    },
+    "hair_back_r1": {
+      "bone": "hair_back_root",
+      "setup_attachment": "hair_back_r1",
+      "blend": "normal",
+      "attachments": {
+        "hair_back_r1": ["mesh", "linked_mesh"]
+      }
+    },
+    "hair_back_r2": {
+      "bone": "hair_back_root",
+      "setup_attachment": "hair_back_r2",
+      "blend": "normal",
+      "attachments": {
+        "hair_back_r2": ["mesh", "linked_mesh"]
+      }
+    },
+    "skirt_back": {
+      "bone": "skirt_root",
+      "setup_attachment": "skirt_back",
+      "blend": "normal",
+      "attachments": {
+        "skirt_back": ["mesh", "linked_mesh"]
+      }
+    },
+    "skirt_mid_l": {
+      "bone": "skirt_root",
+      "setup_attachment": "skirt_mid_l",
+      "blend": "normal",
+      "attachments": {
+        "skirt_mid_l": ["mesh", "linked_mesh"]
+      }
+    },
+    "skirt_mid_r": {
+      "bone": "skirt_root",
+      "setup_attachment": "skirt_mid_r",
+      "blend": "normal",
+      "attachments": {
+        "skirt_mid_r": ["mesh", "linked_mesh"]
+      }
+    },
+    "skirt_front_l": {
+      "bone": "skirt_root",
+      "setup_attachment": "skirt_front_l",
+      "blend": "normal",
+      "attachments": {
+        "skirt_front_l": ["mesh", "linked_mesh"]
+      }
+    },
+    "skirt_front_c": {
+      "bone": "skirt_root",
+      "setup_attachment": "skirt_front_c",
+      "blend": "normal",
+      "attachments": {
+        "skirt_front_c": ["mesh", "linked_mesh"]
+      }
+    },
+    "skirt_front_r": {
+      "bone": "skirt_root",
+      "setup_attachment": "skirt_front_r",
+      "blend": "normal",
+      "attachments": {
+        "skirt_front_r": ["mesh", "linked_mesh"]
+      }
+    },
+    "chiffon_l": {
+      "bone": "skirt_root",
+      "setup_attachment": "chiffon_l",
+      "blend": "normal",
+      "attachments": {
+        "chiffon_l": ["mesh", "linked_mesh"]
+      }
+    },
+    "chiffon_r": {
+      "bone": "skirt_root",
+      "setup_attachment": "chiffon_r",
+      "blend": "normal",
+      "attachments": {
+        "chiffon_r": ["mesh", "linked_mesh"]
+      }
+    },
+    "crystal_hem": {
+      "bone": "skirt_root",
+      "setup_attachment": "crystal_hem",
+      "blend": "normal",
+      "attachments": {
+        "crystal_hem": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "torso": {
+      "bone": "torso",
+      "setup_attachment": "torso",
+      "blend": "normal",
+      "attachments": {
+        "torso": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "hips": {
+      "bone": "hips",
+      "setup_attachment": "hips",
+      "blend": "normal",
+      "attachments": {
+        "hips": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "bodice": {
+      "bone": "chest",
+      "setup_attachment": "bodice",
+      "blend": "normal",
+      "attachments": {
+        "bodice": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "collar": {
+      "bone": "chest",
+      "setup_attachment": "collar",
+      "blend": "normal",
+      "attachments": {
+        "collar": ["region"]
+      }
+    },
+    "waist_crystal": {
+      "bone": "hips",
+      "setup_attachment": "waist_crystal",
+      "blend": "normal",
+      "attachments": {
+        "waist_crystal": ["region"]
+      }
+    },
+    "head_base": {
+      "bone": "head",
+      "setup_attachment": "head_base",
+      "blend": "normal",
+      "attachments": {
+        "head_base": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "ear_l": {
+      "bone": "head",
+      "setup_attachment": "ear_l",
+      "blend": "normal",
+      "attachments": {
+        "ear_l": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "ear_r": {
+      "bone": "head",
+      "setup_attachment": "ear_r",
+      "blend": "normal",
+      "attachments": {
+        "ear_r": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "brow_l": {
+      "bone": "face_root",
+      "setup_attachment": "brow_l",
+      "blend": "normal",
+      "attachments": {
+        "brow_l": ["region"]
+      }
+    },
+    "brow_r": {
+      "bone": "face_root",
+      "setup_attachment": "brow_r",
+      "blend": "normal",
+      "attachments": {
+        "brow_r": ["region"]
+      }
+    },
+    "eye_white_l": {
+      "bone": "eye_l",
+      "setup_attachment": "eye_white_l",
+      "blend": "normal",
+      "attachments": {
+        "eye_white_l": ["region"]
+      }
+    },
+    "iris_l": {
+      "bone": "eye_l",
+      "setup_attachment": "iris_l",
+      "blend": "normal",
+      "attachments": {
+        "iris_l": ["region"]
+      }
+    },
+    "pupil_l": {
+      "bone": "eye_l",
+      "setup_attachment": "pupil_l",
+      "blend": "normal",
+      "attachments": {
+        "pupil_l": ["region"]
+      }
+    },
+    "eye_highlight_l": {
+      "bone": "eye_l",
+      "setup_attachment": "eye_highlight_l",
+      "blend": "normal",
+      "attachments": {
+        "eye_highlight_l": ["region"]
+      }
+    },
+    "eyelid_upper_l": {
+      "bone": "eye_l",
+      "setup_attachment": "eyelid_upper_l",
+      "blend": "normal",
+      "attachments": {
+        "eyelid_upper_l": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "eyelid_lower_l": {
+      "bone": "eye_l",
+      "setup_attachment": "eyelid_lower_l",
+      "blend": "normal",
+      "attachments": {
+        "eyelid_lower_l": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "lash_l": {
+      "bone": "eye_l",
+      "setup_attachment": "lash_l",
+      "blend": "normal",
+      "attachments": {
+        "lash_l": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "eye_white_r": {
+      "bone": "eye_r",
+      "setup_attachment": "eye_white_r",
+      "blend": "normal",
+      "attachments": {
+        "eye_white_r": ["region"]
+      }
+    },
+    "iris_r": {
+      "bone": "eye_r",
+      "setup_attachment": "iris_r",
+      "blend": "normal",
+      "attachments": {
+        "iris_r": ["region"]
+      }
+    },
+    "pupil_r": {
+      "bone": "eye_r",
+      "setup_attachment": "pupil_r",
+      "blend": "normal",
+      "attachments": {
+        "pupil_r": ["region"]
+      }
+    },
+    "eye_highlight_r": {
+      "bone": "eye_r",
+      "setup_attachment": "eye_highlight_r",
+      "blend": "normal",
+      "attachments": {
+        "eye_highlight_r": ["region"]
+      }
+    },
+    "eyelid_upper_r": {
+      "bone": "eye_r",
+      "setup_attachment": "eyelid_upper_r",
+      "blend": "normal",
+      "attachments": {
+        "eyelid_upper_r": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "eyelid_lower_r": {
+      "bone": "eye_r",
+      "setup_attachment": "eyelid_lower_r",
+      "blend": "normal",
+      "attachments": {
+        "eyelid_lower_r": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "lash_r": {
+      "bone": "eye_r",
+      "setup_attachment": "lash_r",
+      "blend": "normal",
+      "attachments": {
+        "lash_r": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "blush_l": {
+      "bone": "face_root",
+      "setup_attachment": "blush_l",
+      "blend": "normal",
+      "attachments": {
+        "blush_l": ["region"]
+      }
+    },
+    "blush_r": {
+      "bone": "face_root",
+      "setup_attachment": "blush_r",
+      "blend": "normal",
+      "attachments": {
+        "blush_r": ["region"]
+      }
+    },
+    "mouth": {
+      "bone": "face_root",
+      "setup_attachment": "mouth_neutral",
+      "blend": "normal",
+      "attachments": {
+        "mouth_neutral": ["region"],
+        "mouth_smile": ["region"],
+        "mouth_open": ["region"],
+        "mouth_sleep": ["region"]
+      }
+    },
+    "hair_side_l1": {
+      "bone": "head",
+      "setup_attachment": "hair_side_l1",
+      "blend": "normal",
+      "attachments": {
+        "hair_side_l1": ["mesh", "linked_mesh"]
+      }
+    },
+    "hair_side_l2": {
+      "bone": "head",
+      "setup_attachment": "hair_side_l2",
+      "blend": "normal",
+      "attachments": {
+        "hair_side_l2": ["mesh", "linked_mesh"]
+      }
+    },
+    "hair_side_r1": {
+      "bone": "head",
+      "setup_attachment": "hair_side_r1",
+      "blend": "normal",
+      "attachments": {
+        "hair_side_r1": ["mesh", "linked_mesh"]
+      }
+    },
+    "hair_side_r2": {
+      "bone": "head",
+      "setup_attachment": "hair_side_r2",
+      "blend": "normal",
+      "attachments": {
+        "hair_side_r2": ["mesh", "linked_mesh"]
+      }
+    },
+    "bang_l2": {
+      "bone": "head",
+      "setup_attachment": "bang_l2",
+      "blend": "normal",
+      "attachments": {
+        "bang_l2": ["mesh", "linked_mesh"]
+      }
+    },
+    "bang_l1": {
+      "bone": "head",
+      "setup_attachment": "bang_l1",
+      "blend": "normal",
+      "attachments": {
+        "bang_l1": ["mesh", "linked_mesh"]
+      }
+    },
+    "bang_c": {
+      "bone": "head",
+      "setup_attachment": "bang_c",
+      "blend": "normal",
+      "attachments": {
+        "bang_c": ["mesh", "linked_mesh"]
+      }
+    },
+    "bang_r1": {
+      "bone": "head",
+      "setup_attachment": "bang_r1",
+      "blend": "normal",
+      "attachments": {
+        "bang_r1": ["mesh", "linked_mesh"]
+      }
+    },
+    "bang_r2": {
+      "bone": "head",
+      "setup_attachment": "bang_r2",
+      "blend": "normal",
+      "attachments": {
+        "bang_r2": ["mesh", "linked_mesh"]
+      }
+    },
+    "ahoge": {
+      "bone": "head",
+      "setup_attachment": "ahoge",
+      "blend": "normal",
+      "attachments": {
+        "ahoge": ["mesh", "linked_mesh"]
+      }
+    },
+    "bow_knot": {
+      "bone": "bow_root",
+      "setup_attachment": "bow_knot",
+      "blend": "normal",
+      "attachments": {
+        "bow_knot": ["region", "mesh", "linked_mesh"]
+      }
+    },
+    "bow_upper_l": {
+      "bone": "bow_root",
+      "setup_attachment": "bow_upper_l",
+      "blend": "normal",
+      "attachments": {
+        "bow_upper_l": ["mesh", "linked_mesh"]
+      }
+    },
+    "bow_upper_r": {
+      "bone": "bow_root",
+      "setup_attachment": "bow_upper_r",
+      "blend": "normal",
+      "attachments": {
+        "bow_upper_r": ["mesh", "linked_mesh"]
+      }
+    },
+    "bow_lower_l": {
+      "bone": "bow_root",
+      "setup_attachment": "bow_lower_l",
+      "blend": "normal",
+      "attachments": {
+        "bow_lower_l": ["mesh", "linked_mesh"]
+      }
+    },
+    "bow_lower_r": {
+      "bone": "bow_root",
+      "setup_attachment": "bow_lower_r",
+      "blend": "normal",
+      "attachments": {
+        "bow_lower_r": ["mesh", "linked_mesh"]
+      }
+    },
+    "bow_tail_l": {
+      "bone": "bow_root",
+      "setup_attachment": "bow_tail_l",
+      "blend": "normal",
+      "attachments": {
+        "bow_tail_l": ["mesh", "linked_mesh"]
+      }
+    },
+    "bow_tail_r": {
+      "bone": "bow_root",
+      "setup_attachment": "bow_tail_r",
+      "blend": "normal",
+      "attachments": {
+        "bow_tail_r": ["mesh", "linked_mesh"]
+      }
+    },
+    "bow_crystal": {
+      "bone": "bow_root",
+      "setup_attachment": "bow_crystal",
+      "blend": "normal",
+      "attachments": {
+        "bow_crystal": ["region"]
+      }
+    },
+    "bow_glow": {
+      "bone": "bow_root",
+      "setup_attachment": "bow_glow",
+      "blend": "additive",
+      "attachments": {
+        "bow_glow": ["region"]
+      }
+    }
+  },
+  "draw_order_constraints": [
+    {"behind": "hair_back_c", "front": "head_base"},
+    {"behind": "hair_back_l1", "front": "head_base"},
+    {"behind": "hair_back_l2", "front": "head_base"},
+    {"behind": "hair_back_r1", "front": "head_base"},
+    {"behind": "hair_back_r2", "front": "head_base"},
+    {"behind": "skirt_back", "front": "skirt_mid_l"},
+    {"behind": "skirt_back", "front": "skirt_mid_r"},
+    {"behind": "skirt_mid_l", "front": "skirt_front_l"},
+    {"behind": "skirt_mid_l", "front": "skirt_front_c"},
+    {"behind": "skirt_mid_r", "front": "skirt_front_c"},
+    {"behind": "skirt_mid_r", "front": "skirt_front_r"},
+    {"behind": "skirt_front_l", "front": "crystal_hem"},
+    {"behind": "skirt_front_c", "front": "crystal_hem"},
+    {"behind": "skirt_front_r", "front": "crystal_hem"},
+    {"behind": "head_base", "front": "eye_white_l"},
+    {"behind": "eye_white_l", "front": "iris_l"},
+    {"behind": "iris_l", "front": "pupil_l"},
+    {"behind": "pupil_l", "front": "eye_highlight_l"},
+    {"behind": "head_base", "front": "eye_white_r"},
+    {"behind": "eye_white_r", "front": "iris_r"},
+    {"behind": "iris_r", "front": "pupil_r"},
+    {"behind": "pupil_r", "front": "eye_highlight_r"}
+  ],
   "geometry_budget": {
     "preferred_effective_vertices": 1500,
     "warning_effective_vertices": 2500,

@@ -12,7 +12,10 @@ use serde::Deserialize;
 #[path = "../src/render/spine/mod.rs"]
 mod spine;
 
-use spine::{SpineAnimationInfo, SpineBoneInfo, SpineRenderFrame, SpineRuntime};
+use spine::{
+    SpineAnimationInfo, SpineAttachmentType, SpineBlendMode, SpineBoneInfo, SpineRenderFrame,
+    SpineRuntime, SpineSlotInfo,
+};
 
 #[derive(Debug, Clone, Deserialize)]
 struct GeometryBudget {
@@ -20,6 +23,20 @@ struct GeometryBudget {
     warning_effective_vertices: usize,
     minimum_setup_width: f32,
     minimum_setup_height: f32,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RequiredSlotContract {
+    bone: String,
+    setup_attachment: String,
+    blend: String,
+    attachments: BTreeMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct DrawOrderConstraint {
+    behind: String,
+    front: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -33,6 +50,8 @@ struct AssetContract {
     required_bones: Vec<String>,
     required_bone_parents: BTreeMap<String, Option<String>>,
     recommended_next_bones: Vec<String>,
+    required_slots: BTreeMap<String, RequiredSlotContract>,
+    draw_order_constraints: Vec<DrawOrderConstraint>,
     geometry_budget: GeometryBudget,
     required_export_files: Vec<String>,
     skeleton_candidates: Vec<String>,
@@ -120,6 +139,7 @@ fn run() -> Result<(), String> {
     let animations = runtime.animations();
     let atlas_pages = runtime.atlas_pages();
     let bones = runtime.bones();
+    let slots = runtime.slots();
 
     println!("\nSena Spine Asset Gate");
     println!("  skeleton : {}", skeleton.display());
@@ -143,6 +163,21 @@ fn run() -> Result<(), String> {
                 Some(parent) => format!("{}<-{}", bone.name, parent),
                 None => format!("{}<-<root>", bone.name),
             })
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    println!(
+        "  slots    : {}",
+        slots
+            .iter()
+            .map(|slot| format!(
+                "#{} {} -> {} / setup={} / blend={}",
+                slot.index,
+                slot.name,
+                slot.bone_name,
+                slot.setup_attachment_name.as_deref().unwrap_or("<none>"),
+                blend_name(slot.blend_mode)
+            ))
             .collect::<Vec<_>>()
             .join(", ")
     );
@@ -205,6 +240,7 @@ fn run() -> Result<(), String> {
     runtime.update(0.0);
 
     verify_bone_hierarchy(&contract, &bones)?;
+    verify_slot_contract(&contract, &mut runtime, &slots)?;
 
     let setup_frame = runtime
         .render_frame()
@@ -239,6 +275,10 @@ fn run() -> Result<(), String> {
         contract.required_bones.join(" / ")
     );
     println!("  [OK] required bone parent hierarchy");
+    println!(
+        "  [OK] {} required slots / attachments / draw-order constraints",
+        contract.required_slots.len()
+    );
     println!(
         "  [OK] setup pose: {} batches, {} vertices, {} triangles, {:.1} x {:.1}",
         setup_metrics.batches,
@@ -397,6 +437,94 @@ fn validate_contract(contract: &AssetContract) -> Result<(), String> {
     }
     ensure_acyclic_bone_contract(contract)?;
 
+    if contract.required_slots.is_empty() {
+        return Err("contract required_slots must not be empty".into());
+    }
+    for (slot_name, slot) in &contract.required_slots {
+        if slot_name.trim().is_empty()
+            || slot.bone.trim().is_empty()
+            || slot.setup_attachment.trim().is_empty()
+        {
+            return Err("slot name/bone/setup_attachment must not be empty".into());
+        }
+        if !contract
+            .required_bones
+            .iter()
+            .any(|bone| bone == &slot.bone)
+        {
+            return Err(format!(
+                "slot {slot_name} references non-required bone {}",
+                slot.bone
+            ));
+        }
+        if !matches!(
+            slot.blend.as_str(),
+            "normal" | "additive" | "multiply" | "screen"
+        ) {
+            return Err(format!(
+                "slot {slot_name} uses unsupported blend {}",
+                slot.blend
+            ));
+        }
+        if !slot.attachments.contains_key(&slot.setup_attachment) {
+            return Err(format!(
+                "slot {slot_name} setup attachment {} is not declared in attachments",
+                slot.setup_attachment
+            ));
+        }
+        if slot.attachments.is_empty() {
+            return Err(format!("slot {slot_name} declares no attachments"));
+        }
+        for (attachment, allowed_types) in &slot.attachments {
+            if attachment.trim().is_empty() || allowed_types.is_empty() {
+                return Err(format!(
+                    "slot {slot_name} has an empty attachment name/type list"
+                ));
+            }
+            for attachment_type in allowed_types {
+                if !matches!(
+                    attachment_type.as_str(),
+                    "region"
+                        | "bounding_box"
+                        | "mesh"
+                        | "linked_mesh"
+                        | "path"
+                        | "point"
+                        | "clipping"
+                ) {
+                    return Err(format!(
+                        "slot {slot_name} attachment {attachment} uses unsupported type {attachment_type}"
+                    ));
+                }
+            }
+        }
+    }
+
+    let mut draw_edges = BTreeSet::new();
+    for constraint in &contract.draw_order_constraints {
+        if constraint.behind == constraint.front {
+            return Err(format!(
+                "draw order constraint cannot reference the same slot twice: {}",
+                constraint.behind
+            ));
+        }
+        if !contract.required_slots.contains_key(&constraint.behind)
+            || !contract.required_slots.contains_key(&constraint.front)
+        {
+            return Err(format!(
+                "draw order constraint references unknown slot {} -> {}",
+                constraint.behind, constraint.front
+            ));
+        }
+        if !draw_edges.insert((constraint.behind.as_str(), constraint.front.as_str())) {
+            return Err(format!(
+                "duplicate draw order constraint {} -> {}",
+                constraint.behind, constraint.front
+            ));
+        }
+    }
+    ensure_acyclic_draw_order(contract)?;
+
     let budget = &contract.geometry_budget;
     if budget.preferred_effective_vertices == 0
         || budget.warning_effective_vertices < budget.preferred_effective_vertices
@@ -441,6 +569,52 @@ fn ensure_acyclic_bone_contract(contract: &AssetContract) -> Result<(), String> 
     Ok(())
 }
 
+fn ensure_acyclic_draw_order(contract: &AssetContract) -> Result<(), String> {
+    let mut indegree = contract
+        .required_slots
+        .keys()
+        .map(|name| (name.as_str(), 0usize))
+        .collect::<BTreeMap<_, _>>();
+    let mut outgoing = BTreeMap::<&str, Vec<&str>>::new();
+
+    for edge in &contract.draw_order_constraints {
+        *indegree
+            .get_mut(edge.front.as_str())
+            .ok_or("draw-order front slot missing from contract")? += 1;
+        outgoing
+            .entry(edge.behind.as_str())
+            .or_default()
+            .push(edge.front.as_str());
+    }
+
+    let mut ready = indegree
+        .iter()
+        .filter_map(|(name, degree)| (*degree == 0).then_some(*name))
+        .collect::<Vec<_>>();
+    let mut visited = 0usize;
+
+    while let Some(name) = ready.pop() {
+        visited += 1;
+        if let Some(next) = outgoing.get(name) {
+            for target in next {
+                let degree = indegree
+                    .get_mut(target)
+                    .ok_or("draw-order target missing from contract")?;
+                *degree -= 1;
+                if *degree == 0 {
+                    ready.push(target);
+                }
+            }
+        }
+    }
+
+    if visited == indegree.len() {
+        Ok(())
+    } else {
+        Err("contract draw_order_constraints contain a cycle".into())
+    }
+}
+
 fn verify_bone_hierarchy(contract: &AssetContract, bones: &[SpineBoneInfo]) -> Result<(), String> {
     let bone_parents = bones
         .iter()
@@ -483,6 +657,116 @@ fn verify_bone_hierarchy(contract: &AssetContract, bones: &[SpineBoneInfo]) -> R
             "R3B skeleton parent hierarchy mismatch [{}]",
             wrong_parents.join("; ")
         ))
+    }
+}
+
+fn verify_slot_contract(
+    contract: &AssetContract,
+    runtime: &mut SpineRuntime,
+    slots: &[SpineSlotInfo],
+) -> Result<(), String> {
+    let slot_map = slots
+        .iter()
+        .map(|slot| (slot.name.as_str(), slot))
+        .collect::<BTreeMap<_, _>>();
+
+    let missing = contract
+        .required_slots
+        .keys()
+        .filter(|name| !slot_map.contains_key(name.as_str()))
+        .cloned()
+        .collect::<Vec<_>>();
+    if !missing.is_empty() {
+        return Err(format!(
+            "R3B slot contract missing slots [{}]",
+            missing.join(", ")
+        ));
+    }
+
+    for (slot_name, required) in &contract.required_slots {
+        let actual = slot_map
+            .get(slot_name.as_str())
+            .copied()
+            .ok_or_else(|| format!("slot {slot_name} disappeared from inventory"))?;
+
+        if actual.bone_name != required.bone {
+            return Err(format!(
+                "slot {slot_name} bone mismatch: expected {}, got {}",
+                required.bone, actual.bone_name
+            ));
+        }
+        if actual.setup_attachment_name.as_deref() != Some(required.setup_attachment.as_str()) {
+            return Err(format!(
+                "slot {slot_name} setup attachment mismatch: expected {}, got {}",
+                required.setup_attachment,
+                actual.setup_attachment_name.as_deref().unwrap_or("<none>")
+            ));
+        }
+        if blend_name(actual.blend_mode) != required.blend {
+            return Err(format!(
+                "slot {slot_name} blend mismatch: expected {}, got {}",
+                required.blend,
+                blend_name(actual.blend_mode)
+            ));
+        }
+
+        for (attachment_name, allowed_types) in &required.attachments {
+            let actual_type = runtime
+                .attachment_type(slot_name, attachment_name)
+                .map_err(|error| {
+                    format!(
+                        "slot {slot_name} required attachment {attachment_name} missing: {error}"
+                    )
+                })?;
+            let actual_name = attachment_type_name(actual_type);
+            if !allowed_types.iter().any(|allowed| allowed == actual_name) {
+                return Err(format!(
+                    "slot {slot_name} attachment {attachment_name} type mismatch: expected one of [{}], got {actual_name}",
+                    allowed_types.join(", ")
+                ));
+            }
+        }
+    }
+
+    for constraint in &contract.draw_order_constraints {
+        let behind = slot_map
+            .get(constraint.behind.as_str())
+            .copied()
+            .ok_or_else(|| format!("draw-order slot {} missing", constraint.behind))?;
+        let front = slot_map
+            .get(constraint.front.as_str())
+            .copied()
+            .ok_or_else(|| format!("draw-order slot {} missing", constraint.front))?;
+
+        if behind.index >= front.index {
+            return Err(format!(
+                "draw order mismatch: {} must be behind {} (indices {} >= {})",
+                constraint.behind, constraint.front, behind.index, front.index
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn blend_name(blend: SpineBlendMode) -> &'static str {
+    match blend {
+        SpineBlendMode::Normal => "normal",
+        SpineBlendMode::Additive => "additive",
+        SpineBlendMode::Multiply => "multiply",
+        SpineBlendMode::Screen => "screen",
+    }
+}
+
+fn attachment_type_name(attachment_type: SpineAttachmentType) -> &'static str {
+    match attachment_type {
+        SpineAttachmentType::Region => "region",
+        SpineAttachmentType::BoundingBox => "bounding_box",
+        SpineAttachmentType::Mesh => "mesh",
+        SpineAttachmentType::LinkedMesh => "linked_mesh",
+        SpineAttachmentType::Path => "path",
+        SpineAttachmentType::Point => "point",
+        SpineAttachmentType::Clipping => "clipping",
     }
 }
 
@@ -684,6 +968,21 @@ mod tests {
                 .and_then(|parent| parent.as_deref()),
             Some("face_root")
         );
+        assert_eq!(contract.required_slots.len(), 60);
+        assert_eq!(
+            contract
+                .required_slots
+                .get("mouth")
+                .map(|slot| slot.setup_attachment.as_str()),
+            Some("mouth_neutral")
+        );
+        assert_eq!(
+            contract
+                .required_slots
+                .get("bow_glow")
+                .map(|slot| slot.blend.as_str()),
+            Some("additive")
+        );
     }
 
     #[test]
@@ -720,6 +1019,33 @@ mod tests {
             .insert("skirt_root".into(), Some("body_root".into()));
 
         let error = validate_contract(&contract).expect_err("cycle should fail");
+        assert!(error.contains("cycle"));
+    }
+
+    #[test]
+    fn slot_contract_rejects_non_required_bone() {
+        let mut contract = bundled_contract();
+        contract
+            .required_slots
+            .get_mut("mouth")
+            .expect("mouth slot")
+            .bone = "missing_face_bone".into();
+
+        let error = validate_contract(&contract).expect_err("unknown slot bone should fail");
+        assert!(error.contains("mouth"));
+        assert!(error.contains("missing_face_bone"));
+    }
+
+    #[test]
+    fn cyclic_draw_order_is_rejected() {
+        let mut contract = bundled_contract();
+        contract.draw_order_constraints.push(DrawOrderConstraint {
+            behind: "eye_highlight_l".into(),
+            front: "head_base".into(),
+        });
+
+        let error = validate_contract(&contract).expect_err("draw-order cycle should fail");
+        assert!(error.contains("draw_order"));
         assert!(error.contains("cycle"));
     }
 }

@@ -86,6 +86,17 @@ int sena_spine_runtime_bone_count(const SenaSpineRuntime* runtime);
 const char* sena_spine_runtime_bone_name(const SenaSpineRuntime* runtime, int index);
 const char* sena_spine_runtime_bone_parent_name(const SenaSpineRuntime* runtime, int index);
 
+int sena_spine_runtime_slot_count(const SenaSpineRuntime* runtime);
+const char* sena_spine_runtime_slot_name(const SenaSpineRuntime* runtime, int index);
+const char* sena_spine_runtime_slot_bone_name(const SenaSpineRuntime* runtime, int index);
+const char* sena_spine_runtime_slot_setup_attachment_name(const SenaSpineRuntime* runtime, int index);
+int sena_spine_runtime_slot_blend_mode(const SenaSpineRuntime* runtime, int index);
+int sena_spine_runtime_attachment_type(
+    SenaSpineRuntime* runtime,
+    const char* slot_name,
+    const char* attachment_name
+);
+
 void sena_spine_runtime_update(SenaSpineRuntime* runtime, float delta_seconds);
 
 int sena_spine_runtime_extract_frame(

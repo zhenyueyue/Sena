@@ -590,6 +590,10 @@ R2B 当前仍保留 per-batch immutable vertex/index buffer，目的是先锁定
 - gate 会应用 `base` skin，并验证 R3B 必需骨骼。
 - spine-c bridge 现在可枚举全部 bone name + parent bone；Asset Gate 不只检查骨名，还验证 `root -> body_root -> hips -> torso -> chest -> neck -> head`、face/eye、bow、rear-hair、skirt 的父子层级。
 - `r3b_contract.json` 会自检骨骼 parent key 是否完整、root 是否唯一无父骨、parent 是否存在以及是否出现循环层级。
+- spine-c bridge / Rust runtime 现在可枚举 slot index/name/bone/setup attachment/blend，并可按 slot + attachment 名查询当前 skin 中真实 attachment type。
+- R3B 合同新增 60 个核心 slot、63 个必需 attachment 和 22 条相对 draw-order 约束。
+- Slot Gate 会拒绝错误 slot bone、错误 setup attachment、缺失 alternate attachment、Region/Mesh 类型错误、blend 错误以及前后绘制顺序倒置。
+- 嘴型固定为一个 `mouth` slot + 四个 attachment（neutral/smile/open/sleep），避免用多个 slot 同时叠嘴。
 - 当前 R3B 必需动画：`idle`、`blink_l`、`blink_r`。
 - 会实际播放 `idle` 并再次提取 render frame。
 - 顶点数超过 1500 给 warning，超过约 2500 给更强 warning。

@@ -15,6 +15,7 @@
 #include <spine/SkeletonData.h>
 #include <spine/SkeletonJson.h>
 #include <spine/Skin.h>
+#include <spine/SlotData.h>
 #include <spine/extension.h>
 
 #include <stdlib.h>
@@ -407,6 +408,63 @@ const char* sena_spine_runtime_bone_parent_name(const SenaSpineRuntime* runtime,
 
     bone = runtime->skeleton_data->bones[index];
     return bone && bone->parent ? bone->parent->name : 0;
+}
+
+int sena_spine_runtime_slot_count(const SenaSpineRuntime* runtime) {
+    if (!runtime || !runtime->skeleton_data) return 0;
+    return runtime->skeleton_data->slotsCount;
+}
+
+const char* sena_spine_runtime_slot_name(const SenaSpineRuntime* runtime, int index) {
+    spSlotData* slot;
+    if (!runtime || !runtime->skeleton_data) return 0;
+    if (index < 0 || index >= runtime->skeleton_data->slotsCount) return 0;
+
+    slot = runtime->skeleton_data->slots[index];
+    return slot ? slot->name : 0;
+}
+
+const char* sena_spine_runtime_slot_bone_name(const SenaSpineRuntime* runtime, int index) {
+    spSlotData* slot;
+    if (!runtime || !runtime->skeleton_data) return 0;
+    if (index < 0 || index >= runtime->skeleton_data->slotsCount) return 0;
+
+    slot = runtime->skeleton_data->slots[index];
+    return slot && slot->boneData ? slot->boneData->name : 0;
+}
+
+const char* sena_spine_runtime_slot_setup_attachment_name(const SenaSpineRuntime* runtime, int index) {
+    spSlotData* slot;
+    if (!runtime || !runtime->skeleton_data) return 0;
+    if (index < 0 || index >= runtime->skeleton_data->slotsCount) return 0;
+
+    slot = runtime->skeleton_data->slots[index];
+    return slot ? slot->attachmentName : 0;
+}
+
+int sena_spine_runtime_slot_blend_mode(const SenaSpineRuntime* runtime, int index) {
+    spSlotData* slot;
+    if (!runtime || !runtime->skeleton_data) return -1;
+    if (index < 0 || index >= runtime->skeleton_data->slotsCount) return -1;
+
+    slot = runtime->skeleton_data->slots[index];
+    return slot ? (int)slot->blendMode : -1;
+}
+
+int sena_spine_runtime_attachment_type(
+    SenaSpineRuntime* runtime,
+    const char* slot_name,
+    const char* attachment_name
+) {
+    spAttachment* attachment;
+    if (!runtime || !runtime->skeleton || !slot_name || !attachment_name) return -1;
+
+    attachment = spSkeleton_getAttachmentForSlotName(
+        runtime->skeleton,
+        slot_name,
+        attachment_name
+    );
+    return attachment ? (int)attachment->type : -1;
 }
 
 void sena_spine_runtime_update(SenaSpineRuntime* runtime, float delta_seconds) {
