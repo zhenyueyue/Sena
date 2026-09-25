@@ -28,6 +28,9 @@ export component PetWindow inherits Window {
     in-out property <string> interaction-bubble-text: "";
     in-out property <bool> interaction-reaction-active: false;
     in-out property <int> interaction-reaction-phase: 0;
+    in-out property <bool> autonomous-reaction-active: false;
+    in-out property <int> autonomous-reaction-phase: 0;
+    in-out property <int> autonomous-action: 0;
 
     property <length> reaction-x: !interaction-reaction-active ? 0px :
         interaction-reaction-phase == 2 ? -2px :
@@ -41,6 +44,14 @@ export component PetWindow inherits Window {
         interaction-reaction-phase == 5 ? -3px :
         interaction-reaction-phase == 6 ? -1px : 0px;
 
+    property <length> autonomous-x: !autonomous-reaction-active ? 0px :
+        autonomous-action == 1 ? (autonomous-reaction-phase < 4 ? -2px : 2px) :
+        autonomous-action == 2 ? (autonomous-reaction-phase == 2 || autonomous-reaction-phase == 6 ? 1px : 0px) :
+        autonomous-action == 3 ? (autonomous-reaction-phase == 3 ? -1px : autonomous-reaction-phase == 5 ? 1px : 0px) : 0px;
+    property <length> autonomous-y: !autonomous-reaction-active ? 0px :
+        autonomous-action == 0 ? (autonomous-reaction-phase < 4 ? -4px : -1px) :
+        autonomous-action == 2 ? (autonomous-reaction-phase == 3 || autonomous-reaction-phase == 4 ? 2px : 0px) : 0px;
+
     property <length> body-bob: (
         animation-clip == 2 || animation-clip == 3
     ) && Math.mod(animation-frame, 2) == 1 ? -2px : 0px;
@@ -52,8 +63,23 @@ export component PetWindow inherits Window {
     callback drag-start();
     callback drag-move();
     callback drag-end();
+    callback pet-activity();
     callback interact();
     callback animation-tick(int, int);
+
+    autonomous-reaction-timer := Timer {
+        interval: 170ms;
+        running: root.autonomous-reaction-active;
+
+        triggered() => {
+            if root.autonomous-reaction-phase >= 7 {
+                root.autonomous-reaction-active = false;
+                root.autonomous-reaction-phase = 0;
+            } else {
+                root.autonomous-reaction-phase += 1;
+            }
+        }
+    }
 
     reaction-timer := Timer {
         interval: 90ms;
@@ -93,8 +119,8 @@ export component PetWindow inherits Window {
 
     Image {
         visible: root.use-sprite;
-        x: root.reaction-x;
-        y: root.reaction-y;
+        x: root.reaction-x + root.autonomous-x;
+        y: root.reaction-y + root.autonomous-y;
         width: parent.width;
         height: parent.height;
         source: root.sprite-image;
@@ -109,6 +135,7 @@ export component PetWindow inherits Window {
 
         pointer-event(event) => {
             if event.button == PointerEventButton.left && event.kind == PointerEventKind.down {
+                root.pet-activity();
                 root.drag-start();
             } else if event.button == PointerEventButton.left && event.kind == PointerEventKind.up {
                 root.drag-end();
@@ -128,8 +155,8 @@ export component PetWindow inherits Window {
 
     Rectangle {
         visible: !root.use-sprite;
-        x: 20px + root.reaction-x;
-        y: 28px + root.body-bob + root.reaction-y;
+        x: 20px + root.reaction-x + root.autonomous-x;
+        y: 28px + root.body-bob + root.reaction-y + root.autonomous-y;
         width: 180px;
         height: 188px;
         border-radius: 88px;
@@ -291,6 +318,7 @@ export component PetWindow inherits Window {
 
             pointer-event(event) => {
                 if event.button == PointerEventButton.left && event.kind == PointerEventKind.down {
+                    root.pet-activity();
                     root.drag-start();
                 } else if event.button == PointerEventButton.left && event.kind == PointerEventKind.up {
                     root.drag-end();
@@ -307,6 +335,42 @@ export component PetWindow inherits Window {
                 root.interact();
             }
         }
+    }
+
+    Text {
+        visible: root.autonomous-reaction-active && root.autonomous-action == 0;
+        x: 172px;
+        y: 60px - (root.autonomous-reaction-phase * 1px);
+        text: "～";
+        color: #9698bd;
+        font-size: 16px;
+    }
+
+    Text {
+        visible: root.autonomous-reaction-active && root.autonomous-action == 1;
+        x: 28px;
+        y: 74px;
+        text: "♡";
+        color: #d7a5c7;
+        font-size: 14px;
+    }
+
+    Text {
+        visible: root.autonomous-reaction-active && root.autonomous-action == 2;
+        x: 174px;
+        y: 58px - (root.autonomous-reaction-phase * 2px);
+        text: "…";
+        color: #8d90ab;
+        font-size: 16px;
+    }
+
+    Text {
+        visible: root.autonomous-reaction-active && root.autonomous-action == 3;
+        x: 174px;
+        y: 62px;
+        text: "✦";
+        color: #9497df;
+        font-size: 14px;
     }
 
     Text {

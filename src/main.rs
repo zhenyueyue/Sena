@@ -97,7 +97,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let sleeping_generation = Arc::new(AtomicU64::new(0));
 
     render::install(&window);
-    pet::install_interactions(&window);
+    pet::install_interactions(&window, Arc::clone(&context));
 
     #[cfg(target_os = "windows")]
     {
