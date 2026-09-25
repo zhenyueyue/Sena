@@ -4,8 +4,12 @@
 #include <spine/AnimationStateData.h>
 #include <spine/Atlas.h>
 #include <spine/Bone.h>
+#include <spine/ClippingAttachment.h>
+#include <spine/MeshAttachment.h>
+#include <spine/RegionAttachment.h>
 #include <spine/Skeleton.h>
 #include <spine/SkeletonBinary.h>
+#include <spine/SkeletonClipping.h>
 #include <spine/SkeletonData.h>
 #include <spine/SkeletonJson.h>
 #include <spine/extension.h>
@@ -19,7 +23,14 @@ struct SenaSpineRuntime {
     spSkeleton* skeleton;
     spAnimationStateData* animation_state_data;
     spAnimationState* animation_state;
+    spSkeletonClipping* clipper;
+    float* world_vertices;
+    int world_vertices_capacity;
+    SenaSpineVertex* packed_vertices;
+    int packed_vertices_capacity;
 };
+
+static const unsigned short QUAD_TRIANGLES[6] = {0, 1, 2, 2, 3, 0};
 
 static void copy_error(char* buffer, size_t size, const char* message) {
     if (!buffer || size == 0) return;
@@ -114,6 +125,18 @@ static SenaSpineRuntime* create_runtime(
     runtime->skeleton = skeleton;
     runtime->animation_state_data = animation_state_data;
     runtime->animation_state = animation_state;
+    runtime->clipper = spSkeletonClipping_create();
+
+    if (!runtime->clipper) {
+        spAnimationState_dispose(animation_state);
+        spAnimationStateData_dispose(animation_state_data);
+        spSkeleton_dispose(skeleton);
+        spSkeletonData_dispose(skeleton_data);
+        if (atlas) spAtlas_dispose(atlas);
+        free(runtime);
+        copy_error(error_buffer, error_buffer_size, "failed to create Spine clipper");
+        return 0;
+    }
 
     spSkeleton_updateWorldTransform(skeleton);
     return runtime;
@@ -242,6 +265,9 @@ SenaSpineRuntime* sena_spine_runtime_create_files(
 void sena_spine_runtime_dispose(SenaSpineRuntime* runtime) {
     if (!runtime) return;
 
+    spSkeletonClipping_dispose(runtime->clipper);
+    free(runtime->world_vertices);
+    free(runtime->packed_vertices);
     spAnimationState_dispose(runtime->animation_state);
     spAnimationStateData_dispose(runtime->animation_state_data);
     spSkeleton_dispose(runtime->skeleton);
@@ -283,6 +309,236 @@ void sena_spine_runtime_update(SenaSpineRuntime* runtime, float delta_seconds) {
     spAnimationState_update(runtime->animation_state, delta_seconds);
     spAnimationState_apply(runtime->animation_state, runtime->skeleton);
     spSkeleton_updateWorldTransform(runtime->skeleton);
+}
+
+static int ensure_world_vertices(SenaSpineRuntime* runtime, int float_count) {
+    float* resized;
+    if (float_count <= runtime->world_vertices_capacity) return 1;
+
+    resized = (float*)realloc(runtime->world_vertices, sizeof(float) * (size_t)float_count);
+    if (!resized) return 0;
+
+    runtime->world_vertices = resized;
+    runtime->world_vertices_capacity = float_count;
+    return 1;
+}
+
+static int ensure_packed_vertices(SenaSpineRuntime* runtime, int vertex_count) {
+    SenaSpineVertex* resized;
+    if (vertex_count <= runtime->packed_vertices_capacity) return 1;
+
+    resized = (SenaSpineVertex*)realloc(
+        runtime->packed_vertices,
+        sizeof(SenaSpineVertex) * (size_t)vertex_count
+    );
+    if (!resized) return 0;
+
+    runtime->packed_vertices = resized;
+    runtime->packed_vertices_capacity = vertex_count;
+    return 1;
+}
+
+static int sena_blend_mode(spBlendMode blend_mode) {
+    switch (blend_mode) {
+        case SP_BLEND_MODE_ADDITIVE: return SENA_SPINE_BLEND_ADDITIVE;
+        case SP_BLEND_MODE_MULTIPLY: return SENA_SPINE_BLEND_MULTIPLY;
+        case SP_BLEND_MODE_SCREEN: return SENA_SPINE_BLEND_SCREEN;
+        case SP_BLEND_MODE_NORMAL:
+        default:
+            return SENA_SPINE_BLEND_NORMAL;
+    }
+}
+
+int sena_spine_runtime_extract_frame(
+    SenaSpineRuntime* runtime,
+    SenaSpineBatchCallback callback,
+    void* user_data
+) {
+    int slot_index;
+    int batch_count = 0;
+    spSkeleton* skeleton;
+    spSkeletonClipping* clipper;
+
+    if (!runtime || !callback) return 0;
+
+    skeleton = runtime->skeleton;
+    clipper = runtime->clipper;
+    if (!skeleton || skeleton->color.a == 0.0f) return 0;
+
+    spSkeletonClipping_clipEnd2(clipper);
+
+    for (slot_index = 0; slot_index < skeleton->slotsCount; ++slot_index) {
+        spSlot* slot = skeleton->drawOrder[slot_index];
+        spAttachment* attachment = slot->attachment;
+        float* vertices = 0;
+        float* uvs = 0;
+        unsigned short* indices = 0;
+        int vertex_count = 0;
+        int index_count = 0;
+        spColor* attachment_color = 0;
+        spAtlasRegion* atlas_region = 0;
+        int vertex_index;
+        float r, g, b, a;
+        float dark_r, dark_g, dark_b;
+
+        if (!attachment) continue;
+
+        if (slot->color.a == 0.0f || !slot->bone->active) {
+            spSkeletonClipping_clipEnd(clipper, slot);
+            continue;
+        }
+
+        if (attachment->type == SP_ATTACHMENT_REGION) {
+            spRegionAttachment* region = (spRegionAttachment*)attachment;
+            attachment_color = &region->color;
+            if (attachment_color->a == 0.0f) {
+                spSkeletonClipping_clipEnd(clipper, slot);
+                continue;
+            }
+
+            if (!ensure_world_vertices(runtime, 8)) {
+                spSkeletonClipping_clipEnd2(clipper);
+                return -1;
+            }
+
+            spRegionAttachment_computeWorldVertices(
+                region,
+                slot->bone,
+                runtime->world_vertices,
+                0,
+                2
+            );
+            vertices = runtime->world_vertices;
+            vertex_count = 4;
+            uvs = region->uvs;
+            indices = (unsigned short*)QUAD_TRIANGLES;
+            index_count = 6;
+            atlas_region = (spAtlasRegion*)region->rendererObject;
+        } else if (
+            attachment->type == SP_ATTACHMENT_MESH ||
+            attachment->type == SP_ATTACHMENT_LINKED_MESH
+        ) {
+            spMeshAttachment* mesh = (spMeshAttachment*)attachment;
+            int world_vertices_length = mesh->super.worldVerticesLength;
+
+            attachment_color = &mesh->color;
+            if (attachment_color->a == 0.0f) {
+                spSkeletonClipping_clipEnd(clipper, slot);
+                continue;
+            }
+            if (world_vertices_length <= 0) {
+                spSkeletonClipping_clipEnd(clipper, slot);
+                continue;
+            }
+            if (!ensure_world_vertices(runtime, world_vertices_length)) {
+                spSkeletonClipping_clipEnd2(clipper);
+                return -1;
+            }
+
+            spVertexAttachment_computeWorldVertices(
+                SUPER(mesh),
+                slot,
+                0,
+                world_vertices_length,
+                runtime->world_vertices,
+                0,
+                2
+            );
+            vertices = runtime->world_vertices;
+            vertex_count = world_vertices_length >> 1;
+            uvs = mesh->uvs;
+            indices = mesh->triangles;
+            index_count = mesh->trianglesCount;
+            atlas_region = (spAtlasRegion*)mesh->rendererObject;
+        } else if (attachment->type == SP_ATTACHMENT_CLIPPING) {
+            spSkeletonClipping_clipStart(
+                clipper,
+                slot,
+                (spClippingAttachment*)attachment
+            );
+            continue;
+        } else {
+            continue;
+        }
+
+        if (!atlas_region || !atlas_region->page || vertex_count <= 0 || index_count <= 0) {
+            spSkeletonClipping_clipEnd(clipper, slot);
+            continue;
+        }
+
+        if (spSkeletonClipping_isClipping(clipper)) {
+            spSkeletonClipping_clipTriangles(
+                clipper,
+                vertices,
+                vertex_count << 1,
+                indices,
+                index_count,
+                uvs,
+                2
+            );
+            vertices = clipper->clippedVertices->items;
+            vertex_count = clipper->clippedVertices->size >> 1;
+            uvs = clipper->clippedUVs->items;
+            indices = clipper->clippedTriangles->items;
+            index_count = clipper->clippedTriangles->size;
+
+            if (vertex_count <= 0 || index_count <= 0) {
+                spSkeletonClipping_clipEnd(clipper, slot);
+                continue;
+            }
+        }
+
+        if (!ensure_packed_vertices(runtime, vertex_count)) {
+            spSkeletonClipping_clipEnd2(clipper);
+            return -1;
+        }
+
+        r = skeleton->color.r * slot->color.r * attachment_color->r;
+        g = skeleton->color.g * slot->color.g * attachment_color->g;
+        b = skeleton->color.b * slot->color.b * attachment_color->b;
+        a = skeleton->color.a * slot->color.a * attachment_color->a;
+
+        dark_r = slot->darkColor ? slot->darkColor->r : 0.0f;
+        dark_g = slot->darkColor ? slot->darkColor->g : 0.0f;
+        dark_b = slot->darkColor ? slot->darkColor->b : 0.0f;
+
+        for (vertex_index = 0; vertex_index < vertex_count; ++vertex_index) {
+            int float_index = vertex_index << 1;
+            SenaSpineVertex* vertex = &runtime->packed_vertices[vertex_index];
+            vertex->x = vertices[float_index];
+            vertex->y = vertices[float_index + 1];
+            vertex->u = uvs[float_index];
+            vertex->v = uvs[float_index + 1];
+            vertex->r = r;
+            vertex->g = g;
+            vertex->b = b;
+            vertex->a = a;
+            vertex->dark_r = dark_r;
+            vertex->dark_g = dark_g;
+            vertex->dark_b = dark_b;
+        }
+
+        batch_count++;
+        if (!callback(
+            user_data,
+            atlas_region->page->name,
+            slot->data->name,
+            attachment->name,
+            sena_blend_mode(slot->data->blendMode),
+            runtime->packed_vertices,
+            vertex_count,
+            indices,
+            index_count
+        )) {
+            spSkeletonClipping_clipEnd2(clipper);
+            return batch_count;
+        }
+
+        spSkeletonClipping_clipEnd(clipper, slot);
+    }
+
+    spSkeletonClipping_clipEnd2(clipper);
+    return batch_count;
 }
 
 int sena_spine_runtime_bone_world_transform(

@@ -1,6 +1,34 @@
-use std::ffi::{c_char, c_float, c_int, c_void};
+use std::ffi::{c_char, c_float, c_int, c_ushort, c_void};
 
 pub type SenaSpineRuntimeOpaque = c_void;
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct SenaSpineVertexRaw {
+    pub x: c_float,
+    pub y: c_float,
+    pub u: c_float,
+    pub v: c_float,
+    pub r: c_float,
+    pub g: c_float,
+    pub b: c_float,
+    pub a: c_float,
+    pub dark_r: c_float,
+    pub dark_g: c_float,
+    pub dark_b: c_float,
+}
+
+pub type SenaSpineBatchCallback = unsafe extern "C" fn(
+    user_data: *mut c_void,
+    texture_page: *const c_char,
+    slot_name: *const c_char,
+    attachment_name: *const c_char,
+    blend_mode: c_int,
+    vertices: *const SenaSpineVertexRaw,
+    vertex_count: c_int,
+    indices: *const c_ushort,
+    index_count: c_int,
+) -> c_int;
 
 unsafe extern "C" {
     pub fn sena_spine_runtime_create_json(
@@ -27,6 +55,12 @@ unsafe extern "C" {
     ) -> c_int;
 
     pub fn sena_spine_runtime_update(runtime: *mut SenaSpineRuntimeOpaque, delta_seconds: c_float);
+
+    pub fn sena_spine_runtime_extract_frame(
+        runtime: *mut SenaSpineRuntimeOpaque,
+        callback: SenaSpineBatchCallback,
+        user_data: *mut c_void,
+    ) -> c_int;
 
     pub fn sena_spine_runtime_bone_world_transform(
         runtime: *mut SenaSpineRuntimeOpaque,
