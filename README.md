@@ -2,13 +2,13 @@
 
 Sena is a lightweight, context-aware Windows desktop companion inspired by a Japanese anime-style desktop character.
 
-She reacts to what you are doing: coding, listening to music, stepping away from the PC, or locking Windows. The long-term rendering path supports both lightweight sprite pets and richer Live2D characters.
+She reacts to what you are doing: coding, listening to music, stepping away from the PC, or locking Windows. The long-term primary rendering path is a lightweight **chibi 3D** character, while the current Sprite renderer remains a safe fallback.
 
 ## Technical direction
 
 - Rust owns desktop context, behavior decisions, persistence, and Windows integration.
 - Slint owns ordinary UI and the initial lightweight pet surface.
-- Pet behavior is semantic and renderer-independent so a future Live2D backend does not require rewriting the context or behavior engines.
+- Pet behavior is semantic and renderer-independent so the Q版 3D backend can reuse the existing context, personality and behavior engines.
 - Windows integrations should prefer event notifications over polling.
 
 ## Performance rules
@@ -18,7 +18,7 @@ She reacts to what you are doing: coding, listening to music, stepping away from
 3. Idle means event-driven sleep whenever possible.
 4. Foreground-app changes, media changes, session changes, and input-idle changes should use OS events or low-frequency fallbacks.
 5. Animation cadence is chosen per animation and may be overridden per frame for natural low-duty-cycle motion such as blinking.
-6. Expensive renderers such as Live2D are activated only while needed.
+6. The 3D renderer must be demand-driven: quiet/static states reduce or stop continuous rendering, while locomotion and active actions may temporarily render at higher cadence.
 7. React/WebView/Electron are intentionally not part of the pet runtime.
 
 ## Initial architecture
@@ -73,11 +73,11 @@ Gravity or playful throw physics may be added later as an explicit optional mode
 
 ### Animation runtime
 
-Behavior is mapped to renderer-independent animation clips before the current Slint placeholder draws anything. The placeholder now demonstrates the same scheduling rules a future sprite or Live2D backend will consume:
+Behavior is mapped to renderer-independent animation clips before the current Slint/Sprite layer draws anything. The same semantic states will drive the Q版 3D animation controller:
 
 - Idle: static, no permanent timer.
 - Coding: static focused pose while the keyboard is quiet; short typing bursts only around real key activity.
-- ListeningMusic: static between occasional one-shot music-motion bursts; the current rest pattern is 7 / 11 / 9 / 13 seconds with a short 900 ms motion window.
+- ListeningMusic: static between occasional one-shot music-motion bursts; the current rest pattern is 8 / 13 / 10 / 16 seconds with short irregular 630–900 ms motion windows.
 - CodingWithMusic: static combined pose between activity bursts; the official four-frame set responds to both real typing and low-frequency music motion, with Coding fallback retained only for packages that omit combined assets.
 - Drowsy: static sleepy pose between occasional 1.6-second three-frame motion bursts; current rest pattern is 18 / 27 / 22 / 31 seconds.
 - Sleeping: completely static while Windows is locked; when unlocked after 10 minutes of inactivity, occasional 2.4-second three-frame breathing/Zzz bursts use a 35 / 52 / 43 / 61 second rest pattern.
@@ -96,7 +96,7 @@ The Sprite renderer is now connected end-to-end. PNG/WebP frames are decoded onl
 
 Sprite packages now control character scale and use alpha-aware native Windows regions. The native window follows the source image size multiplied by the package scale, while transparent pixels are excluded from the window region so they do not block clicks to applications underneath.
 
-The first official Sena character production spec now lives in [pets/sena](pets/sena): it defines the visual identity, fixed 768×1024 Sprite canvas, six initial behavior animations, frame cadence, alpha requirements, and the target `sena.official` package manifest.
+The official Sena character production spec lives in [pets/sena](pets/sena). The current runtime still ships the 768×1024 Sprite fallback, while [pets/sena/MODEL3D_GUIDE.md](pets/sena/MODEL3D_GUIDE.md) defines the new ~3-head-tall Q版 3D model, rig, animation, attachment and performance contracts.
 
 The package runtime now prefers a valid official `pets/sena/pet.json` over the placeholder package. Sprite behaviors can also be produced incrementally: unfinished states fall back to that package's Idle frames so the official character stays visible.
 
@@ -112,7 +112,7 @@ Coding is now input-aware. When a supported IDE is foreground but the keyboard i
 
 On the development machine, the static Coding pose measured effectively zero CPU over a 12-second sample. Continuous multi-frame Coding remains intentionally limited to the short periods in which the user is actively typing.
 
-ListeningMusic now follows the same low-duty-cycle principle and the official package ships a four-frame Listening v1 set. Media playback itself does not justify a permanent animation loop: Sena stays on listening/000 most of the time and wakes for brief 240 / 220 / 240 / 220 ms motion bursts at staggered 7 / 11 / 9 / 13 second rest intervals. Stopping media or locking Windows cancels pending music motion immediately. The official package now also ships a four-frame CodingWithMusic v1 set: when a supported IDE is foreground while media is playing, Sena holds the combined headphone-and-laptop pose and uses the same short 180 / 160 / 340 / 160 ms burst for either real keyboard activity or the low-frequency music-motion scheduler.
+ListeningMusic follows the same low-duty-cycle principle and the official package ships a four-frame Listening v1 set. Media playback itself does not justify a permanent animation loop: Sena stays on listening/000 most of the time and wakes for short motion bursts at staggered 8 / 13 / 10 / 16 second rest intervals; the context micro-reaction window varies between 630 and 900 ms. Stopping media or locking Windows cancels pending music motion immediately. The official package also ships a four-frame CodingWithMusic v1 set: when a supported IDE is foreground while media is playing, Sena holds the combined headphone-and-laptop pose and responds to either real keyboard activity or the low-frequency music-motion scheduler.
 
 Drowsy now follows the same event-sleep model and the official package ships a three-frame Drowsy v1 set. After 5 minutes without user input, Sena stays on drowsy/000 most of the time and wakes for short 420 / 760 / 420 ms sleepy-motion bursts after staggered 18 / 27 / 22 / 31 second rests. Real input, media playback, session lock, or the 10-minute transition to Sleeping cancels pending Drowsy motion immediately.
 
@@ -122,4 +122,8 @@ Sleeping now follows the same low-duty-cycle runtime and the official package sh
 
 Sena's source code is licensed under the [Apache License 2.0](LICENSE).
 
-Character artwork, Live2D models, animation assets, fonts, and other third-party or bundled media may use separate licenses when explicitly stated. The Apache-2.0 license for the source code does not override those asset-specific terms.
+Character artwork, 3D/VRM models, animation assets, fonts, and other third-party or bundled media may use separate licenses when explicitly stated. The Apache-2.0 license for the source code does not override those asset-specific terms.
+
+## Q版 3D model generation
+
+The first model blockout is generated from code rather than hand-built from scratch. See [tools/blender](tools/blender) and run `./tools/blender/build_sena_v1.ps1` with Blender 4.x installed. The generator creates an editable ~3-head-tall Sena + cat blockout, humanoid armature, required attachment anchors and the initial Idle/Walk/Turn/Sit/CarryCat action set.

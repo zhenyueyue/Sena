@@ -1,1 +1,6 @@
 /target
+/pets/sena/models/generated/
+
+
+__pycache__/
+*.pyc
