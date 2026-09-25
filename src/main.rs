@@ -106,7 +106,8 @@ fn main() -> Result<(), slint::PlatformError> {
     render_current_context(&window, &context);
 
     #[cfg(target_os = "windows")]
-    if let Some((x, y)) = initial_preferences.position() {
+    {
+        let saved_position = initial_preferences.position();
         let window = window.as_weak();
         let preferences = Arc::clone(&preferences);
         slint::Timer::single_shot(Duration::from_millis(250), move || {
@@ -114,14 +115,24 @@ fn main() -> Result<(), slint::PlatformError> {
                 return;
             };
 
-            pet::restore_position(&window, slint::PhysicalPosition::new(x, y));
-            let position = window.window().position();
+            let position = if let Some((x, y)) = saved_position {
+                pet::restore_position(&window, slint::PhysicalPosition::new(x, y));
+                window.window().position()
+            } else {
+                match pet::place_default_position(&window) {
+                    Some(position) => position,
+                    None => return,
+                }
+            };
 
-            if position.x != x || position.y != y {
+            let should_save =
+                saved_position.is_none_or(|(x, y)| position.x != x || position.y != y);
+
+            if should_save {
                 let mut preferences = preferences.lock().expect("preferences lock poisoned");
                 preferences.set_position(position.x, position.y);
                 if let Err(error) = preferences.save() {
-                    eprintln!("failed to save clamped Sena position: {error}");
+                    eprintln!("failed to save Sena position: {error}");
                 }
             }
         });

@@ -102,6 +102,37 @@ pub fn install_motion(
     });
 }
 
+pub fn place_default_position(window: &PetWindow) -> Option<PhysicalPosition> {
+    const EDGE_MARGIN: i32 = 28;
+
+    let cursor = windows::cursor_position()?;
+    let work_area = windows::work_area_for_point(cursor)?;
+    let size = window.window().size();
+    let position = default_position_in_work_area(
+        work_area,
+        size.width as i32,
+        size.height as i32,
+        EDGE_MARGIN,
+    );
+
+    window.window().set_position(position);
+    Some(position)
+}
+
+fn default_position_in_work_area(
+    work_area: windows::WorkArea,
+    width: i32,
+    height: i32,
+    margin: i32,
+) -> PhysicalPosition {
+    let max_x = (work_area.right - width).max(work_area.left);
+    let max_y = (work_area.bottom - height).max(work_area.top);
+    let x = (max_x - margin).max(work_area.left);
+    let y = (max_y - margin).max(work_area.top);
+
+    PhysicalPosition::new(x, y)
+}
+
 pub fn restore_position(window: &PetWindow, position: PhysicalPosition) {
     let size = window.window().size();
     let mut x = position.x;
@@ -121,4 +152,37 @@ pub fn clamp_current_position(window: &PetWindow) -> PhysicalPosition {
     let current = window.window().position();
     restore_position(window, current);
     window.window().position()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_position_uses_bottom_right_margin() {
+        let work_area = windows::WorkArea {
+            left: 0,
+            top: 0,
+            right: 1920,
+            bottom: 1040,
+        };
+
+        let position = default_position_in_work_area(work_area, 220, 240, 28);
+
+        assert_eq!(position, PhysicalPosition::new(1672, 772));
+    }
+
+    #[test]
+    fn default_position_stays_inside_small_work_area() {
+        let work_area = windows::WorkArea {
+            left: 100,
+            top: 50,
+            right: 260,
+            bottom: 200,
+        };
+
+        let position = default_position_in_work_area(work_area, 220, 240, 28);
+
+        assert_eq!(position, PhysicalPosition::new(100, 50));
+    }
 }

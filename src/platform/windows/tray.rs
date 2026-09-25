@@ -233,16 +233,9 @@ unsafe fn add_tray_icon(hwnd: HWND) -> bool {
         GetModuleHandleW(None)
             .map(|module| HINSTANCE(module.0))
             .and_then(|instance| {
-                LoadIconW(
-                    Some(instance),
-                    PCWSTR(TRAY_ICON_RESOURCE_ID as *const u16),
+                LoadIconW(Some(instance), PCWSTR(TRAY_ICON_RESOURCE_ID as *const u16)).or_else(
+                    |_| LoadIconW(Some(instance), PCWSTR(APP_ICON_RESOURCE_ID as *const u16)),
                 )
-                .or_else(|_| {
-                    LoadIconW(
-                        Some(instance),
-                        PCWSTR(APP_ICON_RESOURCE_ID as *const u16),
-                    )
-                })
             })
             .or_else(|_| LoadIconW(None, IDI_APPLICATION))
     };
