@@ -33,6 +33,8 @@ pets/sena/models/base_candidates/
 This prevents a third-party or tool-provided base model from being accidentally
 published in the source repository.
 
+For the first candidate, follow [FIRST_BASE_CANDIDATE.md](FIRST_BASE_CANDIDATE.md). The helper script tools/blender/start_sena_base_workflow.ps1 verifies Blender, the VRM add-on and VRoid Studio locally, creates the ignored candidate directory, and opens VRoid Studio plus that folder.
+
 ## Candidate gate
 
 A base is accepted only if the *unmodified* model already looks good in:
