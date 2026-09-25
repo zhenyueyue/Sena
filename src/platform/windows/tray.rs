@@ -508,4 +508,42 @@ mod tests {
         assert!(scale_matches(1.0001, 1.0));
         assert!(!scale_matches(1.2, 1.0));
     }
+
+    #[test]
+    fn pet_context_subclass_forwards_right_click_messages() {
+        use std::sync::{
+            Arc,
+            atomic::{AtomicUsize, Ordering},
+        };
+
+        let hits = Arc::new(AtomicUsize::new(0));
+        let callback_hits = Arc::clone(&hits);
+        let callback = Box::into_raw(Box::new(PetContextCallback {
+            callback: Box::new(move || {
+                callback_hits.fetch_add(1, Ordering::Relaxed);
+            }),
+        }));
+
+        unsafe {
+            let _ = pet_context_subclass_proc(
+                HWND::default(),
+                WM_RBUTTONUP,
+                WPARAM(0),
+                LPARAM(0),
+                PET_CONTEXT_SUBCLASS_ID,
+                callback as usize,
+            );
+            let _ = pet_context_subclass_proc(
+                HWND::default(),
+                WM_CONTEXTMENU,
+                WPARAM(0),
+                LPARAM(0),
+                PET_CONTEXT_SUBCLASS_ID,
+                callback as usize,
+            );
+            drop(Box::from_raw(callback));
+        }
+
+        assert_eq!(hits.load(Ordering::Relaxed), 2);
+    }
 }
