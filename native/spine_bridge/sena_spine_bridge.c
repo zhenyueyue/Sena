@@ -2,6 +2,7 @@
 
 #include <spine/Animation.h>
 #include <spine/AnimationState.h>
+#include <spine/BoneData.h>
 #include <spine/AnimationStateData.h>
 #include <spine/Atlas.h>
 #include <spine/Bone.h>
@@ -383,6 +384,29 @@ const char* sena_spine_runtime_atlas_page_name(const SenaSpineRuntime* runtime, 
         page = page->next;
     }
     return 0;
+}
+
+int sena_spine_runtime_bone_count(const SenaSpineRuntime* runtime) {
+    if (!runtime || !runtime->skeleton_data) return 0;
+    return runtime->skeleton_data->bonesCount;
+}
+
+const char* sena_spine_runtime_bone_name(const SenaSpineRuntime* runtime, int index) {
+    spBoneData* bone;
+    if (!runtime || !runtime->skeleton_data) return 0;
+    if (index < 0 || index >= runtime->skeleton_data->bonesCount) return 0;
+
+    bone = runtime->skeleton_data->bones[index];
+    return bone ? bone->name : 0;
+}
+
+const char* sena_spine_runtime_bone_parent_name(const SenaSpineRuntime* runtime, int index) {
+    spBoneData* bone;
+    if (!runtime || !runtime->skeleton_data) return 0;
+    if (index < 0 || index >= runtime->skeleton_data->bonesCount) return 0;
+
+    bone = runtime->skeleton_data->bones[index];
+    return bone && bone->parent ? bone->parent->name : 0;
 }
 
 void sena_spine_runtime_update(SenaSpineRuntime* runtime, float delta_seconds) {

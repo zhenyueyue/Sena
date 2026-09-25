@@ -43,6 +43,21 @@
     "hair_back_root",
     "skirt_root"
   ],
+  "required_bone_parents": {
+    "root": null,
+    "body_root": "root",
+    "hips": "body_root",
+    "torso": "hips",
+    "chest": "torso",
+    "neck": "chest",
+    "head": "neck",
+    "face_root": "head",
+    "eye_l": "face_root",
+    "eye_r": "face_root",
+    "bow_root": "head",
+    "hair_back_root": "head",
+    "skirt_root": "body_root"
+  },
   "recommended_next_bones": [
     "brow_l",
     "brow_r",

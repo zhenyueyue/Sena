@@ -587,7 +587,9 @@ R2B 当前仍保留 per-batch immutable vertex/index buffer，目的是先锁定
 - 可枚举 atlas texture pages。
 - gate 会验证所有 atlas page 文件真实存在。
 - gate 会验证 setup pose 可提取出有效 batches / vertices / triangle indices / bounds。
-- gate 会应用 `base` skin，并验证 `root/body_root/head/face_root/eye_l/eye_r`。
+- gate 会应用 `base` skin，并验证 R3B 必需骨骼。
+- spine-c bridge 现在可枚举全部 bone name + parent bone；Asset Gate 不只检查骨名，还验证 `root -> body_root -> hips -> torso -> chest -> neck -> head`、face/eye、bow、rear-hair、skirt 的父子层级。
+- `r3b_contract.json` 会自检骨骼 parent key 是否完整、root 是否唯一无父骨、parent 是否存在以及是否出现循环层级。
 - 当前 R3B 必需动画：`idle`、`blink_l`、`blink_r`。
 - 会实际播放 `idle` 并再次提取 render frame。
 - 顶点数超过 1500 给 warning，超过约 2500 给更强 warning。

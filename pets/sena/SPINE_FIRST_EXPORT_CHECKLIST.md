@@ -267,6 +267,45 @@ skirt_root
 
 建议第一轮同时把左右主手臂、腿和头发 root 一次建好，但它们暂时不阻塞 R3B。
 
+## 4.5 必需骨架父子关系
+
+第一份 R3B 工程不是“有这些骨骼名字就行”，父子层级也必须一致：
+
+```text
+root
+└─ body_root
+   ├─ hips
+   │  └─ torso
+   │     └─ chest
+   │        └─ neck
+   │           └─ head
+   │              ├─ face_root
+   │              │  ├─ eye_l
+   │              │  └─ eye_r
+   │              ├─ bow_root
+   │              └─ hair_back_root
+   └─ skirt_root
+```
+
+Asset Gate 会直接从 spine-c 读取每根骨骼的 parent 并校验。
+
+例如这些都会直接失败：
+
+```text
+eye_l -> head
+bow_root -> chest
+hair_back_root -> body_root
+skirt_root -> hips
+```
+
+即使骨骼名字全部存在也不算通过。
+
+父子关系机器合同位于：
+
+```text
+pets/sena/spine/settings/r3b_contract.json
+```
+
 ## 5. Skin
 
 必须创建：

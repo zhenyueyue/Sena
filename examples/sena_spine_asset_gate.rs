@@ -1,7 +1,7 @@
 #![cfg_attr(not(target_os = "windows"), allow(dead_code, unused_imports))]
 
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     fs,
     path::{Path, PathBuf},
 };
@@ -12,7 +12,7 @@ use serde::Deserialize;
 #[path = "../src/render/spine/mod.rs"]
 mod spine;
 
-use spine::{SpineAnimationInfo, SpineRenderFrame, SpineRuntime};
+use spine::{SpineAnimationInfo, SpineBoneInfo, SpineRenderFrame, SpineRuntime};
 
 #[derive(Debug, Clone, Deserialize)]
 struct GeometryBudget {
@@ -31,6 +31,7 @@ struct AssetContract {
     required_animations: Vec<String>,
     recommended_next_animations: Vec<String>,
     required_bones: Vec<String>,
+    required_bone_parents: BTreeMap<String, Option<String>>,
     recommended_next_bones: Vec<String>,
     geometry_budget: GeometryBudget,
     required_export_files: Vec<String>,
@@ -118,6 +119,7 @@ fn run() -> Result<(), String> {
     let skins = runtime.skins();
     let animations = runtime.animations();
     let atlas_pages = runtime.atlas_pages();
+    let bones = runtime.bones();
 
     println!("\nSena Spine Asset Gate");
     println!("  skeleton : {}", skeleton.display());
@@ -133,6 +135,17 @@ fn run() -> Result<(), String> {
             .join(", ")
     );
     println!("  pages    : {}", join_or_none(&atlas_pages));
+    println!(
+        "  bones    : {}",
+        bones
+            .iter()
+            .map(|bone| match &bone.parent_name {
+                Some(parent) => format!("{}<-{}", bone.name, parent),
+                None => format!("{}<-<root>", bone.name),
+            })
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
 
     verify_atlas_pages_exist(&atlas, &atlas_pages)?;
 
@@ -191,18 +204,7 @@ fn run() -> Result<(), String> {
         .map_err(|error| format!("failed to apply skin {}: {error}", skin))?;
     runtime.update(0.0);
 
-    let missing_bones = contract
-        .required_bones
-        .iter()
-        .filter(|name| runtime.bone_world_transform(name).is_none())
-        .cloned()
-        .collect::<Vec<_>>();
-    if !missing_bones.is_empty() {
-        return Err(format!(
-            "R3B skeleton contract missing bones [{}]",
-            missing_bones.join(", ")
-        ));
-    }
+    verify_bone_hierarchy(&contract, &bones)?;
 
     let setup_frame = runtime
         .render_frame()
@@ -236,6 +238,7 @@ fn run() -> Result<(), String> {
         "  [OK] required bones {}",
         contract.required_bones.join(" / ")
     );
+    println!("  [OK] required bone parent hierarchy");
     println!(
         "  [OK] setup pose: {} batches, {} vertices, {} triangles, {:.1} x {:.1}",
         setup_metrics.batches,
@@ -362,6 +365,38 @@ fn validate_contract(contract: &AssetContract) -> Result<(), String> {
     ensure_unique("required_bones", &contract.required_bones)?;
     ensure_unique("recommended_next_bones", &contract.recommended_next_bones)?;
 
+    let required_bones = contract.required_bones.iter().collect::<BTreeSet<_>>();
+    let parent_keys = contract
+        .required_bone_parents
+        .keys()
+        .collect::<BTreeSet<_>>();
+    if required_bones != parent_keys {
+        return Err("contract required_bone_parents keys must exactly match required_bones".into());
+    }
+    if contract
+        .required_bone_parents
+        .get("root")
+        .is_none_or(Option::is_some)
+    {
+        return Err("contract root bone must have no parent".into());
+    }
+    for (bone, parent) in &contract.required_bone_parents {
+        if bone != "root" && parent.is_none() {
+            return Err(format!("contract bone {bone} must declare a parent"));
+        }
+        if let Some(parent) = parent {
+            if !required_bones.contains(&parent) {
+                return Err(format!(
+                    "contract bone {bone} references non-required parent {parent}"
+                ));
+            }
+            if parent == bone {
+                return Err(format!("contract bone {bone} cannot parent itself"));
+            }
+        }
+    }
+    ensure_acyclic_bone_contract(contract)?;
+
     let budget = &contract.geometry_budget;
     if budget.preferred_effective_vertices == 0
         || budget.warning_effective_vertices < budget.preferred_effective_vertices
@@ -383,6 +418,72 @@ fn validate_contract(contract: &AssetContract) -> Result<(), String> {
         return Err("contract required_export_files must include an .atlas file".into());
     }
     Ok(())
+}
+
+fn ensure_acyclic_bone_contract(contract: &AssetContract) -> Result<(), String> {
+    for bone in &contract.required_bones {
+        let mut current = Some(bone.as_str());
+        let mut visited = BTreeSet::new();
+
+        while let Some(name) = current {
+            if !visited.insert(name) {
+                return Err(format!(
+                    "contract bone hierarchy contains a cycle at {name}"
+                ));
+            }
+            current = contract
+                .required_bone_parents
+                .get(name)
+                .and_then(|parent| parent.as_deref());
+        }
+    }
+
+    Ok(())
+}
+
+fn verify_bone_hierarchy(contract: &AssetContract, bones: &[SpineBoneInfo]) -> Result<(), String> {
+    let bone_parents = bones
+        .iter()
+        .map(|bone| (bone.name.as_str(), bone.parent_name.as_deref()))
+        .collect::<BTreeMap<_, _>>();
+
+    let missing_bones = contract
+        .required_bones
+        .iter()
+        .filter(|name| !bone_parents.contains_key(name.as_str()))
+        .cloned()
+        .collect::<Vec<_>>();
+    if !missing_bones.is_empty() {
+        return Err(format!(
+            "R3B skeleton contract missing bones [{}]",
+            missing_bones.join(", ")
+        ));
+    }
+
+    let wrong_parents = contract
+        .required_bone_parents
+        .iter()
+        .filter_map(|(bone, expected_parent)| {
+            let actual_parent = bone_parents.get(bone.as_str()).copied().flatten();
+            (actual_parent != expected_parent.as_deref()).then(|| {
+                format!(
+                    "{}: expected {}, got {}",
+                    bone,
+                    expected_parent.as_deref().unwrap_or("<root>"),
+                    actual_parent.unwrap_or("<root>")
+                )
+            })
+        })
+        .collect::<Vec<_>>();
+
+    if wrong_parents.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "R3B skeleton parent hierarchy mismatch [{}]",
+            wrong_parents.join("; ")
+        ))
+    }
 }
 
 fn ensure_unique(label: &str, values: &[String]) -> Result<(), String> {
@@ -538,15 +639,30 @@ mod tests {
         assert!(frame_metrics(&SpineRenderFrame::default(), &test_budget()).is_err());
     }
 
-    #[test]
-    fn bundled_contract_is_valid() {
+    fn bundled_contract() -> AssetContract {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("pets")
             .join("sena")
             .join("spine")
             .join("settings")
             .join("r3b_contract.json");
-        let contract = load_contract(&path).expect("load bundled contract");
+        load_contract(&path).expect("load bundled contract")
+    }
+
+    fn matching_bones(contract: &AssetContract) -> Vec<SpineBoneInfo> {
+        contract
+            .required_bone_parents
+            .iter()
+            .map(|(name, parent_name)| SpineBoneInfo {
+                name: name.clone(),
+                parent_name: parent_name.clone(),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn bundled_contract_is_valid() {
+        let contract = bundled_contract();
         validate_contract(&contract).expect("bundled R3B contract should be valid");
         assert_eq!(contract.default_skin, "base");
         assert!(
@@ -561,5 +677,49 @@ mod tests {
                 .iter()
                 .any(|name| name == "bow_root")
         );
+        assert_eq!(
+            contract
+                .required_bone_parents
+                .get("eye_l")
+                .and_then(|parent| parent.as_deref()),
+            Some("face_root")
+        );
+    }
+
+    #[test]
+    fn matching_bone_hierarchy_is_accepted() {
+        let contract = bundled_contract();
+        let bones = matching_bones(&contract);
+        verify_bone_hierarchy(&contract, &bones).expect("matching hierarchy should pass");
+    }
+
+    #[test]
+    fn wrong_bone_parent_is_rejected() {
+        let contract = bundled_contract();
+        let mut bones = matching_bones(&contract);
+        let eye = bones
+            .iter_mut()
+            .find(|bone| bone.name == "eye_l")
+            .expect("eye_l");
+        eye.parent_name = Some("head".into());
+
+        let error = verify_bone_hierarchy(&contract, &bones)
+            .expect_err("wrong parent should fail the gate");
+        assert!(error.contains("eye_l"));
+        assert!(error.contains("face_root"));
+    }
+
+    #[test]
+    fn cyclic_contract_is_rejected() {
+        let mut contract = bundled_contract();
+        contract
+            .required_bone_parents
+            .insert("body_root".into(), Some("skirt_root".into()));
+        contract
+            .required_bone_parents
+            .insert("skirt_root".into(), Some("body_root".into()));
+
+        let error = validate_contract(&contract).expect_err("cycle should fail");
+        assert!(error.contains("cycle"));
     }
 }

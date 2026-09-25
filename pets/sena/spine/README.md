@@ -131,7 +131,8 @@ The R3B gate currently requires:
 - Spine runtime version 3.8.x.
 - skin `base`.
 - animations `idle`, `blink_l`, and `blink_r`.
-- bones `root`, `body_root`, `head`, `face_root`, `eye_l`, and `eye_r`.
+- all R3B bones declared in `r3b_contract.json`.
+- the exact required parent hierarchy for those bones; correct names with the wrong parent still fail.
 - a non-empty renderable setup pose.
 - finite geometry and valid triangle indices.
 - every texture page referenced by the atlas to exist on disk.

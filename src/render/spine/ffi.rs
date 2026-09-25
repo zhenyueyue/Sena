@@ -83,6 +83,16 @@ unsafe extern "C" {
         index: c_int,
     ) -> *const c_char;
 
+    pub fn sena_spine_runtime_bone_count(runtime: *const SenaSpineRuntimeOpaque) -> c_int;
+    pub fn sena_spine_runtime_bone_name(
+        runtime: *const SenaSpineRuntimeOpaque,
+        index: c_int,
+    ) -> *const c_char;
+    pub fn sena_spine_runtime_bone_parent_name(
+        runtime: *const SenaSpineRuntimeOpaque,
+        index: c_int,
+    ) -> *const c_char;
+
     pub fn sena_spine_runtime_update(runtime: *mut SenaSpineRuntimeOpaque, delta_seconds: c_float);
 
     pub fn sena_spine_runtime_extract_frame(

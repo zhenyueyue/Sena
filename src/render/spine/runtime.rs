@@ -30,6 +30,12 @@ pub struct SpineAnimationInfo {
     pub duration_seconds: f32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpineBoneInfo {
+    pub name: String,
+    pub parent_name: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpineBlendMode {
     Normal,
@@ -176,6 +182,23 @@ impl SpineRuntime {
                 copy_c_string(unsafe {
                     ffi::sena_spine_runtime_atlas_page_name(self.raw.as_ptr(), index)
                 })
+            })
+            .collect()
+    }
+
+    pub fn bones(&self) -> Vec<SpineBoneInfo> {
+        let _guard = runtime_lock();
+        let count = unsafe { ffi::sena_spine_runtime_bone_count(self.raw.as_ptr()) }.max(0);
+
+        (0..count)
+            .filter_map(|index| {
+                let name = copy_c_string(unsafe {
+                    ffi::sena_spine_runtime_bone_name(self.raw.as_ptr(), index)
+                })?;
+                let parent_name = copy_c_string(unsafe {
+                    ffi::sena_spine_runtime_bone_parent_name(self.raw.as_ptr(), index)
+                });
+                Some(SpineBoneInfo { name, parent_name })
             })
             .collect()
     }
@@ -469,6 +492,18 @@ mod tests {
                 .any(|animation| animation.name == "idle" && animation.duration_seconds > 0.0)
         );
         assert!(!runtime.atlas_pages().is_empty());
+
+        let bones = runtime.bones();
+        let root = bones
+            .iter()
+            .find(|bone| bone.name == "root")
+            .expect("Spineboy root bone should exist");
+        assert_eq!(root.parent_name, None);
+        let hip = bones
+            .iter()
+            .find(|bone| bone.name == "hip")
+            .expect("Spineboy hip bone should exist");
+        assert_eq!(hip.parent_name.as_deref(), Some("root"));
 
         runtime
             .set_skin("default")

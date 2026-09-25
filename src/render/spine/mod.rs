@@ -8,6 +8,6 @@ mod runtime;
 pub use dcomp::SpineDcompRenderer;
 #[allow(unused_imports)]
 pub use runtime::{
-    BoneWorldTransform, SpineAnimationInfo, SpineBlendMode, SpineRenderBatch, SpineRenderFrame,
-    SpineRuntime, SpineVertex,
+    BoneWorldTransform, SpineAnimationInfo, SpineBlendMode, SpineBoneInfo, SpineRenderBatch,
+    SpineRenderFrame, SpineRuntime, SpineVertex,
 };
