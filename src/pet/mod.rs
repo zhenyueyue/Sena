@@ -1,6 +1,8 @@
+mod interaction;
 mod motion;
 mod package;
 
+pub use interaction::install_interactions;
 pub use package::PetPackage;
 
 #[cfg(target_os = "windows")]

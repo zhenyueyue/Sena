@@ -24,6 +24,9 @@ export component PetWindow inherits Window {
     in property <image> sprite-image;
     in property <bool> use-sprite: false;
 
+    in-out property <bool> interaction-bubble-visible: false;
+    in-out property <string> interaction-bubble-text: "";
+
     property <length> body-bob: (
         animation-clip == 2 || animation-clip == 3
     ) && Math.mod(animation-frame, 2) == 1 ? -2px : 0px;
@@ -35,6 +38,7 @@ export component PetWindow inherits Window {
     callback drag-start();
     callback drag-move();
     callback drag-end();
+    callback interact();
     callback animation-tick(int, int);
 
     animation-timer := Timer {
@@ -87,6 +91,10 @@ export component PetWindow inherits Window {
 
         moved => {
             root.drag-move();
+        }
+
+        clicked => {
+            root.interact();
         }
     }
 
@@ -266,6 +274,44 @@ export component PetWindow inherits Window {
             moved => {
                 root.drag-move();
             }
+
+            clicked => {
+                root.interact();
+            }
+        }
+    }
+
+    Rectangle {
+        visible: root.interaction-bubble-visible;
+        x: 16px;
+        y: 8px;
+        width: parent.width - 32px;
+        height: 42px;
+        border-radius: 15px;
+        background: #fdfcff;
+        border-width: 1px;
+        border-color: #d9d6ef;
+
+        Text {
+            x: 12px;
+            y: 0px;
+            width: parent.width - 24px;
+            height: parent.height;
+            text: root.interaction-bubble-text;
+            color: #54566d;
+            font-size: 11px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        Rectangle {
+            x: parent.width / 2 - 5px;
+            y: parent.height - 1px;
+            width: 10px;
+            height: 5px;
+            border-radius: 5px;
+            background: #fdfcff;
         }
     }
 }
