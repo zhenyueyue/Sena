@@ -1,5 +1,6 @@
 /target
 /pets/sena/models/generated/
+/pets/sena/models/base_candidates/
 
 
 __pycache__/
