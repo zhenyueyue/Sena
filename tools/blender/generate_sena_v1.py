@@ -107,12 +107,57 @@ def cone(name: str, location, radius1: float, radius2: float, depth: float, mat,
     return obj
 
 
-def cube(name: str, location, scale, mat):
+def cube(name: str, location, scale, mat, bevel: float = 0.0):
     bpy.ops.mesh.primitive_cube_add(location=location)
     obj = bpy.context.object
     obj.name = name
     obj.scale = scale
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    assign_material(obj, mat)
+    if bevel > 0:
+        modifier = obj.modifiers.new("SoftEdges", "BEVEL")
+        modifier.width = bevel
+        modifier.segments = 3
+    return obj
+
+
+def curve_tube(name: str, points, radius: float, mat):
+    curve_data = bpy.data.curves.new(name, type="CURVE")
+    curve_data.dimensions = "3D"
+    curve_data.resolution_u = 3
+    curve_data.bevel_depth = radius
+    curve_data.bevel_resolution = 3
+    spline = curve_data.splines.new("BEZIER")
+    spline.bezier_points.add(len(points) - 1)
+    for point, coordinate in zip(spline.bezier_points, points):
+        point.co = coordinate
+        point.handle_left_type = "AUTO"
+        point.handle_right_type = "AUTO"
+    obj = bpy.data.objects.new(name, curve_data)
+    bpy.context.collection.objects.link(obj)
+    assign_material(obj, mat)
+    return obj
+
+
+def star(name: str, location, outer_radius: float, inner_radius: float, depth: float, mat):
+    vertices = []
+    for i in range(10):
+        angle = math.radians(90 + i * 36)
+        radius = outer_radius if i % 2 == 0 else inner_radius
+        vertices.append((math.cos(angle) * radius, 0.0, math.sin(angle) * radius))
+    vertices += [(x, depth, z) for x, _, z in vertices]
+    faces = []
+    faces.append(tuple(range(10)))
+    faces.append(tuple(range(19, 9, -1)))
+    for i in range(10):
+        j = (i + 1) % 10
+        faces.append((i, j, j + 10, i + 10))
+    mesh = bpy.data.meshes.new(name)
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.location = location
+    bpy.context.collection.objects.link(obj)
     assign_material(obj, mat)
     return obj
 
@@ -174,67 +219,144 @@ def create_armature() -> bpy.types.Object:
 
 
 def create_sena(armature: bpy.types.Object) -> None:
-    skin = material("Skin", (1.0, 0.86, 0.86, 1.0), 0.72)
-    hair = material("MoonlightHair", (0.91, 0.88, 0.98, 1.0), 0.52)
-    hair_shadow = material("MoonlightHairShadow", (0.74, 0.68, 0.90, 1.0), 0.58)
-    white = material("PearlWhite", (0.94, 0.94, 1.0, 1.0), 0.62)
-    lilac = material("CrystalLilac", (0.62, 0.48, 0.90, 1.0), 0.46)
-    pale_lilac = material("PaleLilac", (0.82, 0.73, 0.98, 1.0), 0.58)
+    skin = material("Skin", (1.0, 0.84, 0.88, 1.0), 0.78)
+    hair = material("MoonlightHair", (0.93, 0.91, 1.0, 1.0), 0.60)
+    hair_shadow = material("MoonlightHairShadow", (0.76, 0.69, 0.94, 1.0), 0.62)
+    white = material("PearlWhite", (0.97, 0.97, 1.0, 1.0), 0.68)
+    lilac = material("CrystalLilac", (0.66, 0.43, 0.96, 1.0), 0.40)
+    pale_lilac = material("PaleLilac", (0.84, 0.72, 1.0, 1.0), 0.62)
+    ice_blue = material("IceBlue", (0.66, 0.86, 1.0, 1.0), 0.54)
     eye_white = material("EyeWhite", (1.0, 0.99, 1.0, 1.0), 0.48)
     iris = material("VioletPinkEye", (0.56, 0.18, 0.76, 1.0), 0.32)
     dark = material("LashDark", (0.16, 0.11, 0.22, 1.0), 0.64)
     blush = material("Blush", (1.0, 0.48, 0.62, 1.0), 0.72)
 
-    # 3-head-tall readable silhouette.
-    torso = uv_sphere("Body", (0, 0.01, 0.72), (0.25, 0.16, 0.24), white)
+    # Compact hourglass-like chibi torso rather than a single oval body.
+    torso = uv_sphere("Body", (0, 0.015, 0.745), (0.180, 0.130, 0.175), white)
     parent_keep_world(torso, armature, "Chest")
+    waist_body = uv_sphere("WaistBody", (0, 0.020, 0.605), (0.145, 0.112, 0.120), pale_lilac)
+    parent_keep_world(waist_body, armature, "Spine")
 
-    head = uv_sphere("HeadMesh", (0, -0.02, 1.105), (0.275, 0.235, 0.255), skin, 40, 28)
+    # Slightly tapered/flattened head gives a more anime face than the V1 sphere.
+    head = uv_sphere("HeadMesh", (0, -0.02, 1.105), (0.258, 0.215, 0.245), skin, 48, 32)
     parent_keep_world(head, armature, "Head")
 
-    # Back hair mass + chunky strands are intentional for desktop readability.
-    back_hair = uv_sphere("BackHair", (0, 0.075, 1.04), (0.30, 0.19, 0.42), hair)
+    # Back cap + separated long locks establish the silver-white silhouette.
+    back_hair = uv_sphere("BackHair", (0, 0.070, 1.085), (0.275, 0.175, 0.300), hair)
     parent_keep_world(back_hair, armature, "Head")
-    for x in (-0.23, 0.23):
-        lock = uv_sphere("HairSide", (x, 0.015, 0.89), (0.075, 0.07, 0.34), hair_shadow)
+    for index, (x, z, sx, sz) in enumerate((
+        (-0.205, 0.82, 0.070, 0.34),
+        (-0.105, 0.76, 0.075, 0.40),
+        (0.000, 0.74, 0.080, 0.42),
+        (0.105, 0.76, 0.075, 0.40),
+        (0.205, 0.82, 0.070, 0.34),
+    )):
+        lock = uv_sphere(f"HairBackLock{index}", (x, 0.115, z), (sx, 0.065, sz), hair_shadow)
         parent_keep_world(lock, armature, "Head")
-    for x, z, angle, sx in (
-        (-0.14, 1.285, -0.34, 0.085),
-        (-0.045, 1.305, -0.16, 0.075),
-        (0.050, 1.305, 0.14, 0.072),
-        (0.135, 1.275, 0.32, 0.080),
-    ):
-        bang = uv_sphere("Bang", (x, -0.222, z), (sx, 0.032, 0.135), hair)
+    for side, x in (("L", -0.225), ("R", 0.225)):
+        lock = uv_sphere(f"HairSide{side}", (x, -0.075, 0.92), (0.060, 0.052, 0.285), hair)
+        parent_keep_world(lock, armature, "Head")
+    for index, (x, z, angle, radius) in enumerate((
+        (-0.135, 1.235, -0.30, 0.070),
+        (-0.045, 1.250, -0.12, 0.064),
+        (0.048, 1.250, 0.11, 0.061),
+        (0.132, 1.230, 0.28, 0.066),
+    )):
+        bang = cone(f"Bang{index}", (x, -0.220, z), 0.022, radius, 0.235, hair, 28)
         bang.rotation_euler[1] = angle
         parent_keep_world(bang, armature, "Head")
 
-    # Eyes are separate so future blendshape replacement is straightforward.
-    for x in (-0.092, 0.092):
-        eye = uv_sphere("EyeWhite", (x, -0.242, 1.135), (0.064, 0.020, 0.092), eye_white, 24, 16)
-        iris_mesh = uv_sphere("Iris", (x, -0.260, 1.135), (0.036, 0.012, 0.058), iris, 24, 16)
-        pupil = uv_sphere("Pupil", (x, -0.270, 1.137), (0.014, 0.006, 0.030), dark, 20, 12)
-        for obj in (eye, iris_mesh, pupil):
+    # Layered anime eyes with independent meshes for future BlinkLeft/BlinkRight shapes.
+    for index, x in enumerate((-0.090, 0.090)):
+        suffix = "L" if index == 0 else "R"
+        eye = uv_sphere(f"EyeWhite{suffix}", (x, -0.222, 1.135), (0.061, 0.009, 0.087), eye_white, 28, 18)
+        iris_mesh = uv_sphere(f"Iris{suffix}", (x, -0.230, 1.132), (0.035, 0.006, 0.054), iris, 24, 16)
+        pupil = uv_sphere(f"Pupil{suffix}", (x, -0.235, 1.132), (0.013, 0.0035, 0.028), dark, 20, 12)
+        highlight = uv_sphere(f"EyeHighlight{suffix}", (x - 0.010, -0.239, 1.154), (0.010, 0.0025, 0.014), eye_white, 16, 10)
+        for obj in (eye, iris_mesh, pupil, highlight):
             parent_keep_world(obj, armature, "Head")
 
-    mouth = uv_sphere("Mouth", (0, -0.260, 1.045), (0.044, 0.010, 0.014), blush, 20, 12)
-    parent_keep_world(mouth, armature, "Head")
+        sign = -1 if x < 0 else 1
+        lash = curve_tube(
+            f"UpperLash{suffix}",
+            [
+                (x - 0.055 * sign, -0.245, 1.178),
+                (x, -0.255, 1.191),
+                (x + 0.060 * sign, -0.244, 1.174),
+            ],
+            0.0065,
+            dark,
+        )
+        parent_keep_world(lash, armature, "Head")
+        brow = curve_tube(
+            f"Brow{suffix}",
+            [
+                (x - 0.045, -0.224, 1.225),
+                (x, -0.232, 1.234),
+                (x + 0.045, -0.224, 1.225),
+            ],
+            0.0045,
+            hair_shadow,
+        )
+        parent_keep_world(brow, armature, "Head")
 
-    # Simplified crystal dress.
-    dress = cone("Dress", (0, 0.005, 0.50), 0.31, 0.19, 0.40, pale_lilac, 40)
+    # Tiny nose/mouth + subtle cheek blush keep the face readable without realism.
+    nose = uv_sphere("Nose", (0, -0.238, 1.080), (0.015, 0.008, 0.011), skin, 16, 10)
+    mouth = curve_tube(
+        "Mouth",
+        [(-0.035, -0.242, 1.042), (0, -0.250, 1.032), (0.035, -0.242, 1.042)],
+        0.006,
+        blush,
+    )
+    blush_l = uv_sphere("FaceBlushL", (-0.165, -0.225, 1.064), (0.040, 0.006, 0.018), blush, 18, 10)
+    blush_r = uv_sphere("FaceBlushR", (0.165, -0.225, 1.064), (0.040, 0.006, 0.018), blush, 18, 10)
+    for obj in (nose, mouth, blush_l, blush_r):
+        parent_keep_world(obj, armature, "Head")
+
+    # Layered crystal dress: fitted bodice, compact bell skirt and ice-blue hem.
+    bodice = cone("DressBodice", (0, -0.005, 0.69), 0.190, 0.155, 0.26, white, 40)
+    parent_keep_world(bodice, armature, "Chest")
+    neckline = curve_tube(
+        "Neckline",
+        [(-0.090, -0.150, 0.835), (0, -0.162, 0.790), (0.090, -0.150, 0.835)],
+        0.010,
+        lilac,
+    )
+    parent_keep_world(neckline, armature, "Chest")
+    dress = cone("Dress", (0, 0.010, 0.47), 0.295, 0.155, 0.40, pale_lilac, 48)
     parent_keep_world(dress, armature, "Hips")
-    underskirt = cone("DressUnderLayer", (0, 0.025, 0.43), 0.285, 0.18, 0.27, white, 40)
+    underskirt = cone("DressUnderLayer", (0, 0.030, 0.40), 0.270, 0.165, 0.25, white, 48)
     parent_keep_world(underskirt, armature, "Hips")
-    waist = uv_sphere("WaistCrystal", (0, -0.15, 0.68), (0.070, 0.030, 0.055), lilac, 24, 16)
+    hem = cone("IceBlueHem", (0, -0.005, 0.315), 0.300, 0.270, 0.075, ice_blue, 48)
+    parent_keep_world(hem, armature, "Hips")
+    waist = uv_sphere("WaistCrystal", (0, -0.170, 0.655), (0.060, 0.020, 0.052), lilac, 24, 16)
     parent_keep_world(waist, armature, "Spine")
+    waist_wing_l = uv_sphere("WaistWingL", (-0.060, -0.166, 0.660), (0.055, 0.015, 0.032), ice_blue, 20, 12)
+    waist_wing_r = uv_sphere("WaistWingR", (0.060, -0.166, 0.660), (0.055, 0.015, 0.032), ice_blue, 20, 12)
+    waist_wing_l.rotation_euler[1] = math.radians(-22)
+    waist_wing_r.rotation_euler[1] = math.radians(22)
+    for obj in (waist_wing_l, waist_wing_r):
+        parent_keep_world(obj, armature, "Spine")
 
-    # Limbs remain separate blocks for V1 rig debugging.
+    # Small collar butterfly keeps the torso from reading as a blank dress block.
+    collar = uv_sphere("CollarCrystal", (0, -0.153, 0.795), (0.040, 0.018, 0.035), lilac, 20, 12)
+    collar_l = uv_sphere("CollarWingL", (-0.052, -0.151, 0.800), (0.050, 0.014, 0.027), pale_lilac, 20, 12)
+    collar_r = uv_sphere("CollarWingR", (0.052, -0.151, 0.800), (0.050, 0.014, 0.027), pale_lilac, 20, 12)
+    collar_l.rotation_euler[1] = math.radians(-18)
+    collar_r.rotation_euler[1] = math.radians(18)
+    for obj in (collar, collar_l, collar_r):
+        parent_keep_world(obj, armature, "Chest")
+
+    # Puffy sleeves + shorter rounded limbs read better at desktop size.
     for side, sign in (("Left", 1), ("Right", -1)):
-        upper_arm = uv_sphere(f"{side}UpperArmMesh", (0.25 * sign, 0, 0.75), (0.085, 0.075, 0.18), skin)
-        lower_arm = uv_sphere(f"{side}LowerArmMesh", (0.39 * sign, -0.005, 0.63), (0.07, 0.065, 0.15), skin)
-        hand = uv_sphere(f"{side}HandMesh", (0.50 * sign, -0.02, 0.56), (0.085, 0.065, 0.075), skin)
-        upper_leg = uv_sphere(f"{side}UpperLegMesh", (0.11 * sign, 0.01, 0.40), (0.105, 0.095, 0.18), white)
-        lower_leg = uv_sphere(f"{side}LowerLegMesh", (0.11 * sign, -0.005, 0.20), (0.085, 0.075, 0.16), skin)
-        foot = uv_sphere(f"{side}FootMesh", (0.11 * sign, -0.08, 0.07), (0.12, 0.15, 0.065), lilac)
+        sleeve = uv_sphere(f"{side}Sleeve", (0.205 * sign, 0.005, 0.790), (0.095, 0.082, 0.100), pale_lilac)
+        parent_keep_world(sleeve, armature, f"{side}UpperArm")
+        upper_arm = uv_sphere(f"{side}UpperArmMesh", (0.27 * sign, -0.005, 0.715), (0.070, 0.063, 0.145), skin)
+        lower_arm = uv_sphere(f"{side}LowerArmMesh", (0.39 * sign, -0.015, 0.615), (0.060, 0.056, 0.125), skin)
+        hand = uv_sphere(f"{side}HandMesh", (0.485 * sign, -0.030, 0.555), (0.072, 0.058, 0.068), skin)
+        upper_leg = uv_sphere(f"{side}UpperLegMesh", (0.105 * sign, 0.015, 0.400), (0.090, 0.080, 0.155), white)
+        lower_leg = uv_sphere(f"{side}LowerLegMesh", (0.105 * sign, -0.010, 0.205), (0.072, 0.064, 0.145), skin)
+        foot = uv_sphere(f"{side}FootMesh", (0.105 * sign, -0.075, 0.065), (0.105, 0.130, 0.055), lilac)
         for obj, bone in (
             (upper_arm, f"{side}UpperArm"),
             (lower_arm, f"{side}LowerArm"),
@@ -245,13 +367,22 @@ def create_sena(armature: bpy.types.Object) -> None:
         ):
             parent_keep_world(obj, armature, bone)
 
-    # Signature translucent-looking bow, approximated with opaque pastel in blockout.
-    bow_center = uv_sphere("BowCenter", (0.205, 0.075, 1.285), (0.050, 0.030, 0.050), lilac)
-    bow_l = uv_sphere("BowLeft", (0.115, 0.075, 1.30), (0.115, 0.028, 0.068), pale_lilac)
-    bow_r = uv_sphere("BowRight", (0.300, 0.075, 1.30), (0.115, 0.028, 0.068), pale_lilac)
-    bow_l.rotation_euler[1] = math.radians(-18)
-    bow_r.rotation_euler[1] = math.radians(18)
-    for obj in (bow_center, bow_l, bow_r):
+    # Signature butterfly bow is moved toward the visible side silhouette.
+    bow_center = uv_sphere("BowCenter", (0.225, -0.035, 1.285), (0.045, 0.025, 0.045), lilac)
+    bow_upper_l = uv_sphere("BowUpperLeft", (0.155, -0.030, 1.325), (0.090, 0.023, 0.070), pale_lilac)
+    bow_upper_r = uv_sphere("BowUpperRight", (0.305, -0.030, 1.330), (0.105, 0.023, 0.075), pale_lilac)
+    bow_lower_l = uv_sphere("BowLowerLeft", (0.165, -0.028, 1.250), (0.075, 0.021, 0.055), ice_blue)
+    bow_lower_r = uv_sphere("BowLowerRight", (0.300, -0.028, 1.250), (0.085, 0.021, 0.060), ice_blue)
+    bow_upper_l.rotation_euler[1] = math.radians(-25)
+    bow_upper_r.rotation_euler[1] = math.radians(22)
+    bow_lower_l.rotation_euler[1] = math.radians(25)
+    bow_lower_r.rotation_euler[1] = math.radians(-22)
+    bow_tail_l = cone("BowTailLeft", (0.190, -0.015, 1.180), 0.040, 0.018, 0.180, pale_lilac, 20)
+    bow_tail_r = cone("BowTailRight", (0.270, -0.015, 1.175), 0.040, 0.018, 0.190, ice_blue, 20)
+    bow_tail_l.rotation_euler[1] = math.radians(-12)
+    bow_tail_r.rotation_euler[1] = math.radians(14)
+    bow_crystal = uv_sphere("BowCrystal", (0.225, -0.063, 1.286), (0.025, 0.012, 0.025), white, 18, 12)
+    for obj in (bow_center, bow_upper_l, bow_upper_r, bow_lower_l, bow_lower_r, bow_tail_l, bow_tail_r, bow_crystal):
         parent_keep_world(obj, armature, "Head")
 
 
