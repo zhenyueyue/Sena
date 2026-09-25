@@ -16,7 +16,7 @@ use std::{
 };
 
 use behavior::BehaviorEngine;
-use context::{DesktopContext, MediaState, UserActivity};
+use context::{DayPhase, DesktopContext, MediaState, UserActivity};
 use preferences::PreferencesStore;
 use slint::ComponentHandle;
 
@@ -1007,8 +1007,9 @@ fn schedule_sleeping_motion(
 
         let should_start = {
             let mut context = context.lock().expect("desktop context lock poisoned");
+            let (_, sleeping_after) = current_day_phase().idle_threshold_seconds();
             let idle_long_enough = platform::windows::idle_duration()
-                .is_some_and(|duration| duration >= Duration::from_secs(10 * 60));
+                .is_some_and(|duration| duration >= Duration::from_secs(sleeping_after));
 
             if !sleeping_context_allows_motion(&context) || !idle_long_enough {
                 false
@@ -1107,8 +1108,9 @@ fn schedule_drowsy_motion(
 
         let should_start = {
             let mut context = context.lock().expect("desktop context lock poisoned");
+            let (drowsy_after, _) = current_day_phase().idle_threshold_seconds();
             let idle_long_enough = platform::windows::idle_duration()
-                .is_some_and(|duration| duration >= Duration::from_secs(5 * 60));
+                .is_some_and(|duration| duration >= Duration::from_secs(drowsy_after));
 
             if context.user_activity != UserActivity::Drowsy
                 || context.media == MediaState::Playing
@@ -1237,14 +1239,20 @@ fn schedule_music_motion(
 }
 
 #[cfg(target_os = "windows")]
+fn current_day_phase() -> DayPhase {
+    DayPhase::from_hour(platform::windows::local_hour())
+}
+
+#[cfg(target_os = "windows")]
 fn refresh_user_activity(context: &Arc<Mutex<DesktopContext>>) -> bool {
     let Some(idle_for) = platform::windows::idle_duration() else {
         return false;
     };
 
-    let activity = if idle_for >= Duration::from_secs(10 * 60) {
+    let (drowsy_after, sleeping_after) = current_day_phase().idle_threshold_seconds();
+    let activity = if idle_for >= Duration::from_secs(sleeping_after) {
         UserActivity::Idle
-    } else if idle_for >= Duration::from_secs(5 * 60) {
+    } else if idle_for >= Duration::from_secs(drowsy_after) {
         UserActivity::Drowsy
     } else {
         UserActivity::Active

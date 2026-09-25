@@ -11,7 +11,7 @@ use slint::{ComponentHandle, Timer};
 use crate::{
     PetWindow,
     behavior::BehaviorEngine,
-    context::{DesktopContext, MediaState, UserActivity},
+    context::{DayPhase, DesktopContext, MediaState, UserActivity},
     pet::InteractionAnimationKey,
     preferences::PreferencesStore,
     render,
@@ -48,9 +48,12 @@ const AUTONOMOUS_LINES: &[&str] = &[
 ];
 
 // Higher numbers make an action more likely before cooldown rules are applied.
-// Stretch is intentionally the most common physical motion; quiet companionship
-// is the rarest so it stays meaningful instead of becoming background noise.
-const AUTONOMOUS_WEIGHTS: [u64; 4] = [4, 3, 2, 1];
+// The user's frequency setting remains primary; local time only nudges the mix
+// toward livelier daytime motion or quieter late-night companionship.
+const MORNING_AUTONOMOUS_WEIGHTS: [u64; 4] = [6, 3, 1, 1];
+const DAY_AUTONOMOUS_WEIGHTS: [u64; 4] = [4, 3, 2, 1];
+const EVENING_AUTONOMOUS_WEIGHTS: [u64; 4] = [2, 3, 3, 2];
+const LATE_NIGHT_AUTONOMOUS_WEIGHTS: [u64; 4] = [1, 2, 4, 4];
 const AUTONOMOUS_HISTORY_LIMIT: usize = 2;
 
 pub fn install_interactions(
@@ -163,7 +166,8 @@ pub fn install_interactions(
         .expect("preferences lock poisoned")
         .value()
         .autonomous_frequency;
-    let initial_delay = next_autonomous_delay(&random_state, initial_frequency);
+    let initial_delay =
+        next_autonomous_delay(&random_state, initial_frequency, current_day_phase());
 
     schedule_autonomous_behavior(
         window.as_weak(),
@@ -215,7 +219,11 @@ pub fn install_interactions(
             }
 
             last_pet_activity.set(Instant::now());
-            let delay = next_autonomous_delay(&random_state, snapshot.autonomous_frequency);
+            let delay = next_autonomous_delay(
+                &random_state,
+                snapshot.autonomous_frequency,
+                current_day_phase(),
+            );
             schedule_autonomous_behavior(
                 window.as_weak(),
                 Arc::clone(&context),
@@ -271,7 +279,8 @@ fn schedule_autonomous_behavior(
             .expect("preferences lock poisoned")
             .value()
             .clone();
-        let minimum_idle = autonomous_min_idle(preference_snapshot.autonomous_frequency);
+        let day_phase = current_day_phase();
+        let minimum_idle = autonomous_min_idle(preference_snapshot.autonomous_frequency, day_phase);
 
         if preference_snapshot.autonomous_behavior_enabled
             && elapsed >= minimum_idle
@@ -282,7 +291,7 @@ fn schedule_autonomous_behavior(
         {
             let action = {
                 let recent = recent_autonomous_actions.borrow();
-                select_autonomous_action(&random_state, &recent)
+                select_autonomous_action(&random_state, &recent, day_phase)
             };
             remember_autonomous_action(&recent_autonomous_actions, action);
             let animation_key = autonomous_animation_key(action);
@@ -301,8 +310,11 @@ fn schedule_autonomous_behavior(
             last_pet_activity.set(Instant::now());
         }
 
-        let next_delay =
-            next_autonomous_delay(&random_state, preference_snapshot.autonomous_frequency);
+        let next_delay = next_autonomous_delay(
+            &random_state,
+            preference_snapshot.autonomous_frequency,
+            current_day_phase(),
+        );
         schedule_autonomous_behavior(
             window.as_weak(),
             context,
@@ -396,9 +408,13 @@ fn advance_random(state: &Rc<Cell<u64>>) -> u64 {
     next
 }
 
-fn select_autonomous_action(state: &Rc<Cell<u64>>, recent: &VecDeque<usize>) -> usize {
+fn select_autonomous_action(
+    state: &Rc<Cell<u64>>,
+    recent: &VecDeque<usize>,
+    day_phase: DayPhase,
+) -> usize {
     let total_weight: u64 = (0..AUTONOMOUS_LINES.len())
-        .map(|action| autonomous_action_weight(action, recent))
+        .map(|action| autonomous_action_weight(action, recent, day_phase))
         .sum();
 
     if total_weight == 0 {
@@ -407,7 +423,7 @@ fn select_autonomous_action(state: &Rc<Cell<u64>>, recent: &VecDeque<usize>) -> 
 
     let mut roll = advance_random(state) % total_weight;
     for action in 0..AUTONOMOUS_LINES.len() {
-        let weight = autonomous_action_weight(action, recent);
+        let weight = autonomous_action_weight(action, recent, day_phase);
         if roll < weight {
             return action;
         }
@@ -417,8 +433,8 @@ fn select_autonomous_action(state: &Rc<Cell<u64>>, recent: &VecDeque<usize>) -> 
     0
 }
 
-fn autonomous_action_weight(action: usize, recent: &VecDeque<usize>) -> u64 {
-    let Some(base_weight) = AUTONOMOUS_WEIGHTS.get(action).copied() else {
+fn autonomous_action_weight(action: usize, recent: &VecDeque<usize>, day_phase: DayPhase) -> u64 {
+    let Some(base_weight) = autonomous_weights(day_phase).get(action).copied() else {
         return 0;
     };
     let family = autonomous_animation_key(action);
@@ -450,22 +466,52 @@ fn remember_autonomous_action(history: &Rc<RefCell<VecDeque<usize>>>, action: us
     }
 }
 
-fn autonomous_delay_bounds(frequency: u8) -> (u64, u64) {
-    match frequency.min(2) {
-        0 => (180, 300),
-        2 => (40, 75),
-        _ => (75, 135),
+fn autonomous_weights(day_phase: DayPhase) -> &'static [u64; 4] {
+    match day_phase {
+        DayPhase::Morning => &MORNING_AUTONOMOUS_WEIGHTS,
+        DayPhase::Day => &DAY_AUTONOMOUS_WEIGHTS,
+        DayPhase::Evening => &EVENING_AUTONOMOUS_WEIGHTS,
+        DayPhase::LateNight => &LATE_NIGHT_AUTONOMOUS_WEIGHTS,
     }
 }
 
-fn autonomous_min_idle(frequency: u8) -> Duration {
-    Duration::from_secs(autonomous_delay_bounds(frequency).0)
+fn autonomous_delay_bounds(frequency: u8, day_phase: DayPhase) -> (u64, u64) {
+    let base = match frequency.min(2) {
+        0 => (180, 300),
+        2 => (40, 75),
+        _ => (75, 135),
+    };
+
+    let scale = |seconds: u64| match day_phase {
+        DayPhase::Morning => seconds * 9 / 10,
+        DayPhase::Day => seconds,
+        DayPhase::Evening => seconds * 6 / 5,
+        DayPhase::LateNight => seconds * 8 / 5,
+    };
+
+    (scale(base.0).max(1), scale(base.1).max(1))
 }
 
-fn next_autonomous_delay(state: &Rc<Cell<u64>>, frequency: u8) -> Duration {
-    let (minimum, maximum) = autonomous_delay_bounds(frequency);
+fn autonomous_min_idle(frequency: u8, day_phase: DayPhase) -> Duration {
+    Duration::from_secs(autonomous_delay_bounds(frequency, day_phase).0)
+}
+
+fn next_autonomous_delay(state: &Rc<Cell<u64>>, frequency: u8, day_phase: DayPhase) -> Duration {
+    let (minimum, maximum) = autonomous_delay_bounds(frequency, day_phase);
     let span = maximum - minimum + 1;
     Duration::from_secs(minimum + advance_random(state) % span)
+}
+
+fn current_day_phase() -> DayPhase {
+    #[cfg(target_os = "windows")]
+    {
+        DayPhase::from_hour(crate::platform::windows::local_hour())
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        DayPhase::Day
+    }
 }
 
 fn speech_bubbles_enabled(preferences: &Arc<Mutex<PreferencesStore>>) -> bool {
@@ -546,11 +592,27 @@ mod tests {
         for (frequency, minimum, maximum) in [(0, 180, 300), (1, 75, 135), (2, 40, 75)] {
             let state = Rc::new(Cell::new(1234));
             for _ in 0..32 {
-                let delay = next_autonomous_delay(&state, frequency);
+                let delay = next_autonomous_delay(&state, frequency, DayPhase::Day);
                 assert!(delay >= Duration::from_secs(minimum));
                 assert!(delay <= Duration::from_secs(maximum));
             }
         }
+    }
+
+    #[test]
+    fn autonomous_delay_slows_down_toward_late_night() {
+        assert_eq!(autonomous_delay_bounds(1, DayPhase::Morning), (67, 121));
+        assert_eq!(autonomous_delay_bounds(1, DayPhase::Day), (75, 135));
+        assert_eq!(autonomous_delay_bounds(1, DayPhase::Evening), (90, 162));
+        assert_eq!(autonomous_delay_bounds(1, DayPhase::LateNight), (120, 216));
+    }
+
+    #[test]
+    fn autonomous_weights_shift_from_motion_to_quiet_at_night() {
+        assert_eq!(autonomous_weights(DayPhase::Morning), &[6, 3, 1, 1]);
+        assert_eq!(autonomous_weights(DayPhase::Day), &[4, 3, 2, 1]);
+        assert_eq!(autonomous_weights(DayPhase::Evening), &[2, 3, 3, 2]);
+        assert_eq!(autonomous_weights(DayPhase::LateNight), &[1, 2, 4, 4]);
     }
 
     #[test]
@@ -564,10 +626,10 @@ mod tests {
         let mut history = VecDeque::new();
         history.push_back(2);
 
-        assert_eq!(autonomous_action_weight(2, &history), 0);
-        assert_eq!(autonomous_action_weight(3, &history), 0);
-        assert!(autonomous_action_weight(0, &history) > 0);
-        assert!(autonomous_action_weight(1, &history) > 0);
+        assert_eq!(autonomous_action_weight(2, &history, DayPhase::Day), 0);
+        assert_eq!(autonomous_action_weight(3, &history, DayPhase::Day), 0);
+        assert!(autonomous_action_weight(0, &history, DayPhase::Day) > 0);
+        assert!(autonomous_action_weight(1, &history, DayPhase::Day) > 0);
     }
 
     #[test]
@@ -576,10 +638,10 @@ mod tests {
         history.push_back(0);
         history.push_back(1);
 
-        assert_eq!(autonomous_action_weight(0, &history), 2);
-        assert_eq!(autonomous_action_weight(1, &history), 0);
-        assert_eq!(autonomous_action_weight(2, &history), 2);
-        assert_eq!(autonomous_action_weight(3, &history), 1);
+        assert_eq!(autonomous_action_weight(0, &history, DayPhase::Day), 2);
+        assert_eq!(autonomous_action_weight(1, &history, DayPhase::Day), 0);
+        assert_eq!(autonomous_action_weight(2, &history, DayPhase::Day), 2);
+        assert_eq!(autonomous_action_weight(3, &history, DayPhase::Day), 1);
     }
 
     #[test]
@@ -590,7 +652,7 @@ mod tests {
         for _ in 0..128 {
             let action = {
                 let recent = history.borrow();
-                select_autonomous_action(&state, &recent)
+                select_autonomous_action(&state, &recent, DayPhase::Day)
             };
 
             if let Some(previous) = history.borrow().back().copied() {

@@ -871,7 +871,7 @@ export component SettingsWindow inherits Window {
         Text {
             x: 16px;
             y: 13px;
-            text: "自主频率";
+            text: "自主频率 · 随昼夜微调";
             color: #373948;
             font-size: 14px;
             font-weight: 600;
@@ -880,8 +880,8 @@ export component SettingsWindow inherits Window {
         Text {
             x: 16px;
             y: 36px;
-            text: root.autonomous-frequency == 0 ? "安静 · 约 3–5 分钟" :
-                root.autonomous-frequency == 2 ? "活跃 · 约 40–75 秒" : "标准 · 约 75–135 秒";
+            text: root.autonomous-frequency == 0 ? "安静 · 基础约 3–5 分钟" :
+                root.autonomous-frequency == 2 ? "活跃 · 基础约 40–75 秒" : "标准 · 基础约 75–135 秒";
             color: #999aa8;
             font-size: 11px;
         }

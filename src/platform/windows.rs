@@ -27,7 +27,7 @@ use windows::{
             RGNDATA, RGNDATAHEADER, SetWindowRgn,
         },
         System::{
-            SystemInformation::GetTickCount,
+            SystemInformation::{GetLocalTime, GetTickCount},
             Threading::{
                 OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
                 QueryFullProcessImageNameW,
@@ -51,6 +51,10 @@ pub struct WorkArea {
     pub top: i32,
     pub right: i32,
     pub bottom: i32,
+}
+
+pub fn local_hour() -> u8 {
+    unsafe { GetLocalTime().wHour.min(23) as u8 }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
