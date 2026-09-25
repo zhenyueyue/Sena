@@ -355,6 +355,131 @@ component ToggleRow inherits Rectangle {
     }
 }
 
+component GuideCard inherits Rectangle {
+    in property <string> step;
+    in property <string> title;
+    in property <string> description;
+
+    height: 66px;
+    border-radius: 12px;
+    background: #ffffff;
+    border-width: 1px;
+    border-color: #e7e8f0;
+
+    Rectangle {
+        x: 14px;
+        y: 15px;
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+        background: #e4e5ff;
+
+        Text {
+            text: root.step;
+            color: #6265bb;
+            font-size: 12px;
+            font-weight: 600;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+
+    Text {
+        x: 64px;
+        y: 11px;
+        width: parent.width - 78px;
+        text: root.title;
+        color: #343746;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    Text {
+        x: 64px;
+        y: 35px;
+        width: parent.width - 78px;
+        text: root.description;
+        color: #8b8f9f;
+        font-size: 11px;
+        overflow: elide;
+    }
+}
+
+export component WelcomeWindow inherits Window {
+    title: "欢迎使用 Sena";
+    width: 430px;
+    height: 440px;
+    background: #f7f8fb;
+
+    callback finish-onboarding();
+
+    Text {
+        x: 24px;
+        y: 22px;
+        text: "欢迎认识星奈 ✦";
+        color: #2f3240;
+        font-size: 23px;
+        font-weight: 600;
+    }
+
+    Text {
+        x: 24px;
+        y: 58px;
+        width: parent.width - 48px;
+        text: "她会安静待在桌面上，这几个操作记住就够用了。";
+        color: #898d9d;
+        font-size: 12px;
+    }
+
+    GuideCard {
+        x: 24px;
+        y: 94px;
+        width: parent.width - 48px;
+        step: "01";
+        title: "拖动星奈";
+        description: "按住角色拖动，可以把她放到你喜欢的位置。";
+    }
+
+    GuideCard {
+        x: 24px;
+        y: 170px;
+        width: parent.width - 48px;
+        step: "02";
+        title: "右键角色";
+        description: "快速调整大小、始终置顶，或进入设置。";
+    }
+
+    GuideCard {
+        x: 24px;
+        y: 246px;
+        width: parent.width - 48px;
+        step: "03";
+        title: "看看系统托盘";
+        description: "隐藏后星奈仍在运行，可从托盘重新显示。";
+    }
+
+    GuideCard {
+        x: 24px;
+        y: 322px;
+        width: parent.width - 48px;
+        step: "04";
+        title: "按你的习惯设置";
+        description: "开机自启、显示状态和置顶都可以随时修改。";
+    }
+
+    SenaButton {
+        x: parent.width - 130px;
+        y: 398px;
+        width: 106px;
+        height: 30px;
+        label: "开始使用";
+        selected: true;
+        clicked => {
+            root.finish-onboarding();
+        }
+    }
+}
+
 export component SettingsWindow inherits Window {
     title: "Sena 设置";
     width: 420px;

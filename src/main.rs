@@ -24,6 +24,7 @@ slint::include_modules!();
 
 thread_local! {
     static SETTINGS_WINDOW: RefCell<Option<SettingsWindow>> = const { RefCell::new(None) };
+    static WELCOME_WINDOW: RefCell<Option<WelcomeWindow>> = const { RefCell::new(None) };
 }
 
 fn main() -> Result<(), slint::PlatformError> {
@@ -488,6 +489,12 @@ fn main() -> Result<(), slint::PlatformError> {
     };
 
     window.show()?;
+
+    #[cfg(target_os = "windows")]
+    if !initial_preferences.onboarding_completed {
+        show_welcome_window(Arc::clone(&preferences));
+    }
+
     slint::run_event_loop_until_quit()
 }
 
@@ -622,6 +629,42 @@ fn handle_desktop_action(
             let _ = slint::quit_event_loop();
         }
     }
+}
+
+#[cfg(target_os = "windows")]
+fn show_welcome_window(preferences: Arc<Mutex<PreferencesStore>>) {
+    WELCOME_WINDOW.with(|slot| {
+        if slot.borrow().is_none() {
+            let welcome = match WelcomeWindow::new() {
+                Ok(welcome) => welcome,
+                Err(error) => {
+                    eprintln!("failed to create Sena welcome window: {error}");
+                    return;
+                }
+            };
+
+            let welcome_weak = welcome.as_weak();
+            welcome.on_finish_onboarding(move || {
+                {
+                    let mut preferences = preferences.lock().expect("preferences lock poisoned");
+                    preferences.set_onboarding_completed(true);
+                    if let Err(error) = preferences.save() {
+                        eprintln!("failed to save Sena onboarding state: {error}");
+                    }
+                }
+
+                if let Some(welcome) = welcome_weak.upgrade() {
+                    let _ = welcome.hide();
+                }
+            });
+
+            *slot.borrow_mut() = Some(welcome);
+        }
+
+        if let Some(welcome) = slot.borrow().as_ref() {
+            let _ = welcome.show();
+        }
+    });
 }
 
 #[cfg(target_os = "windows")]
