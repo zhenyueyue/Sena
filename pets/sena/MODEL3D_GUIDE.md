@@ -31,6 +31,10 @@ V2 now also replaces the bead-like body with one voxel-fused, watertight `BodyMe
 
 The next visual milestones are layered skirt geometry and a rebuilt cat. Do not promote V2 to the production `sena.vrm` slot until the front, three-quarter, side and representative motion reviews all pass.
 
+## V3 head approval gate
+
+The visual-quality rebuild has moved to an isolated V3 head workflow. See [V3_HEAD_APPROVAL.md](V3_HEAD_APPROVAL.md). V3 does **not** inherit V2 visual meshes as an assumption of quality: it rebuilds the face/head/hair/bow separately and must pass front, three-quarter and side approval before any V3 body/costume work begins. V1/V2 remain technical references and runtime test assets.
+
 ## Runtime budget
 
 V1 target, not a hard file-format restriction:
