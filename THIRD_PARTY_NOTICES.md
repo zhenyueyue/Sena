@@ -5,7 +5,7 @@
 Sena integrates the official Spine Runtimes through `spine-c`, pinned as the
 Git submodule `third_party/spine-runtimes`.
 
-Spine Runtimes License Agreement  
+Spine Runtimes License Agreement
 Last updated May 1, 2019. Replaces all prior versions.
 
 Copyright (c) 2013-2019, Esoteric Software LLC

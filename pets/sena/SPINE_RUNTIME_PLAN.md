@@ -496,8 +496,9 @@ Settings / tray 始终可打开。
 - 官方 spine-c 已作为 pinned Git submodule 接入。
 - 由于 Editor 固定为 3.8.75 Professional，Runtime 精确锁定在 `c0699e23a0c8799710323bdf0e076e18f6ba41a2`。
 - C bridge 隔离官方裸指针与 3.8 legacy API 边界。
-- Rust safe wrapper 可创建 skeleton、设置 track animation、update/apply 并读取 bone world transform。
+- Rust safe wrapper 可创建 skeleton、从文件加载 JSON + Atlas、设置 track animation、update/apply 并读取 bone world transform。
 - 自动 smoke fixture 以 `spine: 3.8.75` 播放 `idle`，验证 root translation / rotation。
+- 文件加载 smoke test 已验证 `sena.json + sena.atlas`；`.skel` binary loader 已接入 bridge，等第一份真实 Spine 3.8.75 导出后做真实资产回归。
 - 缺失动画名在 bridge 中预检查，避免 3.8 `setAnimationByName` 的 null animation 崩溃。
 - spine-c 调用在 Rust 层串行化，避免未来跨线程直接触碰 C runtime 状态。
 - R1 不加载 atlas texture；纹理生命周期从 R2 D3D11 renderer 开始。

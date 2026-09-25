@@ -43,11 +43,7 @@ impl SpineRuntime {
             .ok_or_else(|| error_message(&error))
     }
 
-    pub fn from_files(
-        skeleton_path: &Path,
-        atlas_path: &Path,
-        scale: f32,
-    ) -> Result<Self, String> {
+    pub fn from_files(skeleton_path: &Path, atlas_path: &Path, scale: f32) -> Result<Self, String> {
         if !scale.is_finite() || scale <= 0.0 {
             return Err("Spine scale must be finite and greater than zero".into());
         }
@@ -213,11 +209,41 @@ mod tests {
 
     #[test]
     fn spine_c_38_loads_json_and_atlas_from_files() {
-        let root = std::env::temp_dir().join(format!(
-            "sena-spine-r1-files-{}",
-            std::process::id()
-        ));
+        let root = std::env::temp_dir().join(format!("sena-spine-r1-files-{}", std::process::id()));
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&root).expect("create Spine R1 fixture directory");
 
-        let
+        let skeleton_path = root.join("sena.json");
+        let atlas_path = root.join("sena.atlas");
+        fs::write(&skeleton_path, SMOKE_SKELETON).expect("write Spine JSON fixture");
+        fs::write(
+            &atlas_path,
+            "sena.png\nsize: 1,1\nformat: RGBA8888\nfilter: Linear,Linear\nrepeat: none\n",
+        )
+        .expect("write Spine atlas fixture");
+
+        let mut runtime = SpineRuntime::from_files(&skeleton_path, &atlas_path, 1.0)
+            .expect("Spine JSON + atlas should load from files");
+        runtime
+            .set_animation(0, "idle", true)
+            .expect("idle animation should exist");
+        runtime.update(0.5);
+
+        let root_bone = runtime
+            .bone_world_transform("root")
+            .expect("root bone should exist");
+        assert!(root_bone.x > 3.0);
+        assert!(root_bone.y > 1.0);
+
+        fs::remove_dir_all(root).expect("clean Spine R1 fixture directory");
+    }
+
+    #[test]
+    fn missing_animation_and_bone_are_reported_without_crashing() {
+        let mut runtime =
+            SpineRuntime::from_json(SMOKE_SKELETON).expect("Spine 3.8 smoke skeleton should parse");
+
+        assert!(runtime.set_animation(0, "missing", true).is_err());
+        assert!(runtime.bone_world_transform("missing").is_none());
+    }
+}
