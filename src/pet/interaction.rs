@@ -1,5 +1,6 @@
 use std::{
     cell::{Cell, RefCell},
+    collections::VecDeque,
     rc::Rc,
     sync::{Arc, Mutex},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -46,6 +47,12 @@ const AUTONOMOUS_LINES: &[&str] = &[
     "你忙你的，我会安静待着的。",
 ];
 
+// Higher numbers make an action more likely before cooldown rules are applied.
+// Stretch is intentionally the most common physical motion; quiet companionship
+// is the rarest so it stays meaningful instead of becoming background noise.
+const AUTONOMOUS_WEIGHTS: [u64; 4] = [4, 3, 2, 1];
+const AUTONOMOUS_HISTORY_LIMIT: usize = 2;
+
 pub fn install_interactions(
     window: &PetWindow,
     context: Arc<Mutex<DesktopContext>>,
@@ -58,6 +65,7 @@ pub fn install_interactions(
     let last_click_at = Rc::new(Cell::new(None::<Instant>));
     let last_pet_activity = Rc::new(Cell::new(Instant::now()));
     let random_state = Rc::new(Cell::new(initial_random_seed()));
+    let recent_autonomous_actions = Rc::new(RefCell::new(VecDeque::<usize>::new()));
     let schedule_generation = Rc::new(Cell::new(1u64));
     let weak_window = window.as_weak();
 
@@ -164,6 +172,7 @@ pub fn install_interactions(
         Rc::clone(&last_pet_activity),
         Rc::clone(&bubble_generation),
         Rc::clone(&random_state),
+        Rc::clone(&recent_autonomous_actions),
         Rc::clone(&schedule_generation),
         schedule_generation.get(),
         initial_delay,
@@ -176,6 +185,7 @@ pub fn install_interactions(
         let last_pet_activity = Rc::clone(&last_pet_activity);
         let bubble_generation = Rc::clone(&bubble_generation);
         let random_state = Rc::clone(&random_state);
+        let recent_autonomous_actions = Rc::clone(&recent_autonomous_actions);
         let schedule_generation = Rc::clone(&schedule_generation);
 
         *slot.borrow_mut() = Some(Box::new(move || {
@@ -213,6 +223,7 @@ pub fn install_interactions(
                 Rc::clone(&last_pet_activity),
                 Rc::clone(&bubble_generation),
                 Rc::clone(&random_state),
+                Rc::clone(&recent_autonomous_actions),
                 Rc::clone(&schedule_generation),
                 token,
                 delay,
@@ -236,6 +247,7 @@ fn schedule_autonomous_behavior(
     last_pet_activity: Rc<Cell<Instant>>,
     bubble_generation: Rc<Cell<u64>>,
     random_state: Rc<Cell<u64>>,
+    recent_autonomous_actions: Rc<RefCell<VecDeque<usize>>>,
     schedule_generation: Rc<Cell<u64>>,
     token: u64,
     delay: Duration,
@@ -268,7 +280,11 @@ fn schedule_autonomous_behavior(
             && !window.get_interaction_reaction_active()
             && !window.get_interaction_bubble_visible()
         {
-            let action = next_random_index(&random_state, AUTONOMOUS_LINES.len());
+            let action = {
+                let recent = recent_autonomous_actions.borrow();
+                select_autonomous_action(&random_state, &recent)
+            };
+            remember_autonomous_action(&recent_autonomous_actions, action);
             let animation_key = autonomous_animation_key(action);
             let _ = play_dedicated_interaction(&window, animation_key, Arc::clone(&context));
 
@@ -294,6 +310,7 @@ fn schedule_autonomous_behavior(
             last_pet_activity,
             bubble_generation,
             random_state,
+            recent_autonomous_actions,
             schedule_generation,
             token,
             next_delay,
@@ -379,11 +396,58 @@ fn advance_random(state: &Rc<Cell<u64>>) -> u64 {
     next
 }
 
-fn next_random_index(state: &Rc<Cell<u64>>, len: usize) -> usize {
-    if len == 0 {
+fn select_autonomous_action(state: &Rc<Cell<u64>>, recent: &VecDeque<usize>) -> usize {
+    let total_weight: u64 = (0..AUTONOMOUS_LINES.len())
+        .map(|action| autonomous_action_weight(action, recent))
+        .sum();
+
+    if total_weight == 0 {
+        return (advance_random(state) as usize) % AUTONOMOUS_LINES.len();
+    }
+
+    let mut roll = advance_random(state) % total_weight;
+    for action in 0..AUTONOMOUS_LINES.len() {
+        let weight = autonomous_action_weight(action, recent);
+        if roll < weight {
+            return action;
+        }
+        roll -= weight;
+    }
+
+    0
+}
+
+fn autonomous_action_weight(action: usize, recent: &VecDeque<usize>) -> u64 {
+    let Some(base_weight) = AUTONOMOUS_WEIGHTS.get(action).copied() else {
+        return 0;
+    };
+    let family = autonomous_animation_key(action);
+
+    if recent
+        .back()
+        .is_some_and(|last| autonomous_animation_key(*last) == family)
+    {
         return 0;
     }
-    (advance_random(state) as usize) % len
+
+    if recent
+        .iter()
+        .rev()
+        .nth(1)
+        .is_some_and(|previous| autonomous_animation_key(*previous) == family)
+    {
+        return (base_weight / 2).max(1);
+    }
+
+    base_weight
+}
+
+fn remember_autonomous_action(history: &Rc<RefCell<VecDeque<usize>>>, action: usize) {
+    let mut history = history.borrow_mut();
+    history.push_back(action);
+    while history.len() > AUTONOMOUS_HISTORY_LIMIT {
+        history.pop_front();
+    }
 }
 
 fn autonomous_delay_bounds(frequency: u8) -> (u64, u64) {
@@ -493,6 +557,64 @@ mod tests {
     fn autonomous_lines_are_non_empty() {
         assert!(AUTONOMOUS_LINES.iter().all(|line| !line.trim().is_empty()));
         assert_eq!(autonomous_line(AUTONOMOUS_LINES.len()), AUTONOMOUS_LINES[0]);
+    }
+
+    #[test]
+    fn autonomous_weights_prevent_immediate_family_repeats() {
+        let mut history = VecDeque::new();
+        history.push_back(2);
+
+        assert_eq!(autonomous_action_weight(2, &history), 0);
+        assert_eq!(autonomous_action_weight(3, &history), 0);
+        assert!(autonomous_action_weight(0, &history) > 0);
+        assert!(autonomous_action_weight(1, &history) > 0);
+    }
+
+    #[test]
+    fn autonomous_weights_reduce_family_seen_two_actions_ago() {
+        let mut history = VecDeque::new();
+        history.push_back(0);
+        history.push_back(1);
+
+        assert_eq!(autonomous_action_weight(0, &history), 2);
+        assert_eq!(autonomous_action_weight(1, &history), 0);
+        assert_eq!(autonomous_action_weight(2, &history), 2);
+        assert_eq!(autonomous_action_weight(3, &history), 1);
+    }
+
+    #[test]
+    fn weighted_selection_never_repeats_the_last_animation_family() {
+        let state = Rc::new(Cell::new(1234));
+        let history = Rc::new(RefCell::new(VecDeque::new()));
+
+        for _ in 0..128 {
+            let action = {
+                let recent = history.borrow();
+                select_autonomous_action(&state, &recent)
+            };
+
+            if let Some(previous) = history.borrow().back().copied() {
+                assert_ne!(
+                    autonomous_animation_key(action),
+                    autonomous_animation_key(previous)
+                );
+            }
+
+            remember_autonomous_action(&history, action);
+        }
+    }
+
+    #[test]
+    fn autonomous_history_keeps_only_two_recent_actions() {
+        let history = Rc::new(RefCell::new(VecDeque::new()));
+        remember_autonomous_action(&history, 0);
+        remember_autonomous_action(&history, 1);
+        remember_autonomous_action(&history, 2);
+
+        assert_eq!(
+            history.borrow().iter().copied().collect::<Vec<_>>(),
+            vec![1, 2]
+        );
     }
 
     #[test]
