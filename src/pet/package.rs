@@ -663,20 +663,24 @@ mod tests {
     fn official_interaction_slots_support_progressive_asset_rollout() {
         let package = PetPackage::load_default().expect("official Sena package should load");
 
-        assert!(package.has_renderable_interaction(InteractionAnimationKey::Petting));
-        assert_eq!(
-            package.interaction_frame_path(InteractionAnimationKey::Petting, 0),
-            Some(
-                package
-                    .root()
-                    .join("animations")
-                    .join("idle")
-                    .join("000.webp")
-            )
-        );
+        for key in [
+            InteractionAnimationKey::Petting,
+            InteractionAnimationKey::Stretch,
+        ] {
+            assert!(package.has_renderable_interaction(key));
+            assert_eq!(
+                package.interaction_frame_path(key, 0),
+                Some(
+                    package
+                        .root()
+                        .join("animations")
+                        .join("idle")
+                        .join("000.webp")
+                )
+            );
+        }
 
         for key in [
-            InteractionAnimationKey::Stretch,
             InteractionAnimationKey::LookAtCat,
             InteractionAnimationKey::Daydream,
         ] {

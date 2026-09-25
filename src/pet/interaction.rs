@@ -274,13 +274,9 @@ fn schedule_autonomous_behavior(
                 play_dedicated_interaction(&window, animation_key, Arc::clone(&context));
 
             window.set_autonomous_action(action as i32);
-            if used_dedicated_animation {
-                window.set_autonomous_reaction_active(false);
-                window.set_autonomous_reaction_phase(0);
-            } else {
-                window.set_autonomous_reaction_phase(0);
-                window.set_autonomous_reaction_active(true);
-            }
+            let layer_procedural_motion = !used_dedicated_animation || action == 0;
+            window.set_autonomous_reaction_phase(0);
+            window.set_autonomous_reaction_active(layer_procedural_motion);
             if preference_snapshot.speech_bubbles_enabled {
                 show_bubble(
                     &window,

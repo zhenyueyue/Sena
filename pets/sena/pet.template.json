@@ -118,8 +118,22 @@
       "looping": false
     },
     "stretch": {
-      "frames": [],
-      "interval_ms": 160,
+      "frames": [
+        "animations/stretch/000.webp",
+        "animations/stretch/001.webp",
+        "animations/stretch/002.webp",
+        "animations/stretch/003.webp",
+        "animations/stretch/004.webp",
+        "animations/stretch/005.webp"
+      ],
+      "frame_durations_ms": [
+        120,
+        160,
+        220,
+        220,
+        160,
+        120
+      ],
       "looping": false
     },
     "look_at_cat": {

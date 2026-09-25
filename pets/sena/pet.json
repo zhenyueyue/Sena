@@ -118,8 +118,26 @@
       "looping": false
     },
     "stretch": {
-      "frames": [],
-      "interval_ms": 160,
+      "frames": [
+        "animations/idle/000.webp",
+        "animations/idle/000.webp",
+        "animations/idle/002.webp",
+        "animations/idle/002.webp",
+        "animations/idle/002.webp",
+        "animations/idle/002.webp",
+        "animations/idle/000.webp",
+        "animations/idle/000.webp"
+      ],
+      "frame_durations_ms": [
+        140,
+        150,
+        170,
+        230,
+        230,
+        170,
+        150,
+        120
+      ],
       "looping": false
     },
     "look_at_cat": {
