@@ -41,6 +41,44 @@ Do not place flattened concept previews in `source/`. Concept previews belong
 in `pets/sena/spine/review/` and are only promoted after the still-art Gate A
 passes.
 
+## PSD source gate
+
+The source-art gate uses the existing machine-readable layer contract:
+
+```text
+pets/sena/spine/settings/layer_contract.json
+```
+
+Before a real PSD exists, validate the contract itself:
+
+```powershell
+cargo run --example sena_source_gate -- --contract-only
+```
+
+After `sena.psd` exists:
+
+1. Open `pets/sena/spine/source/sena.psd` in Photoshop.
+2. Choose **File -> Scripts -> Browse...**.
+3. Run `tools/spine/export_psd_layers.jsx`.
+4. Photoshop writes `pets/sena/spine/source/sena.layers.json`.
+5. Run:
+
+```powershell
+cargo run --example sena_source_gate
+```
+
+The gate checks all 79 required named art layers, duplicate names, lower
+`snake_case`, left/right eye independence, rear-hair segmentation, bow
+segmentation, skirt front/mid/back segmentation, forbidden base-pose props and
+non-empty pixel bounds.
+
+The Photoshop script is read-only: it traverses the open document and writes a
+JSON inventory next to the PSD; it does not rename, move, hide or modify layers.
+
+CI follows the same rule. If neither source file is committed, it validates the
+contract only. Once source art starts landing, `sena.psd` and
+`sena.layers.json` must be committed together.
+
 ## R3B import gate
 
 After exporting the first real Sena model from **Spine 3.8.75 Professional**,

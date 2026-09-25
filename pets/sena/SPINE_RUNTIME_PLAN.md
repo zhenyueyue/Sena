@@ -597,6 +597,10 @@ R2B 当前仍保留 per-batch immutable vertex/index buffer，目的是先锁定
 - `--contract-only` 可在没有任何 Sena 导出资产时验证制作合同。
 - GitHub Actions `Spine Asset Gate`：没有导出时跑 contract-only；发现完整导出后自动跑 full gate；只提交半套 skeleton/atlas 会直接失败。
 - 新增 `SPINE_FIRST_EXPORT_CHECKLIST.md`，把第一份 3.8.75 Professional 工程限制为 Setup Pose + base + idle + 独立左右 blink。
+- 新增 `tools/spine/export_psd_layers.jsx`：在 Photoshop 中只读遍历 `sena.psd` 并导出 `sena.layers.json`。
+- 新增 `examples/sena_source_gate.rs`：对照 `layer_contract.json` 自动检查 79 个必需图层、重名、snake_case、左右眼独立、长后发/蝴蝶结/裙摆拆层、禁止道具和空像素层。
+- Source Gate 已用 79 层完整模拟清单验证通过，并用故意缺少 `eye_white_r` / `hair_back_r2` 的清单验证能够明确拒绝。
+- GitHub Actions 现在同时管理 Source Gate：没有 PSD 时验证 layer contract；开始提交美术源文件后要求 `sena.psd + sena.layers.json` 成对出现。
 
 默认验收命令：
 
@@ -613,8 +617,11 @@ pets/sena/spine/export/sena.atlas
 
 若 binary skeleton 尚未导出，会尝试开发期 `sena.json`。
 
-现在真正剩下的 R3B 输入只有第一份 Sena 3.8.75 Professional 导出：
+现在真正剩下的 R3B 输入从美术源文件开始：
 
+- `pets/sena/spine/source/sena.psd`。
+- Photoshop 导出的 `sena.layers.json`。
+- Source Gate 通过后的 `sena.spine`。
 - `sena.skel` 或开发期 `sena.json`。
 - `sena.atlas`。
 - atlas PNG。
@@ -623,13 +630,15 @@ pets/sena/spine/export/sena.atlas
 - `blink_l` / `blink_r`。
 - setup pose。
 
-拿到真实资产后：
+真实资产到位后的顺序固定为：
 
-1. 运行 asset gate。
-2. 用真实 Sena weighted mesh / clipping / skin 做 runtime 回归。
-3. 做静态 setup pose 视觉 Gate。
-4. 把当前整窗 TouchArea 收窄为 attachment geometry + alpha hit testing。
-5. 全部通过后才把正式 `pet.json` 切到 `renderer: "spine"`。
+1. 对 `sena.psd` 运行 Source Gate。
+2. 只有 Source Gate 通过才进入 Spine 绑定。
+3. 导出后运行 Asset Gate。
+4. 用真实 Sena weighted mesh / clipping / skin 做 runtime 回归。
+5. 做静态 setup pose 和 idle 的人工视觉 Gate。
+6. 把当前整窗 TouchArea 收窄为 attachment geometry + alpha hit testing。
+7. 全部通过后才把正式 `pet.json` 切到 `renderer: "spine"`。
 
 ### R4 — Locomotion
 

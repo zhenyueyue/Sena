@@ -140,6 +140,45 @@ bow_glow
 
 关节附近必须画隐藏延伸，不允许只在可见边界处切图。
 
+## 2.5 PSD 自动验收
+
+保存：
+
+```text
+pets/sena/spine/source/sena.psd
+```
+
+然后在 Photoshop 中运行：
+
+```text
+tools/spine/export_psd_layers.jsx
+```
+
+会生成：
+
+```text
+pets/sena/spine/source/sena.layers.json
+```
+
+执行：
+
+```powershell
+cargo run --example sena_source_gate
+```
+
+只有 Source Gate 通过后才进入 Spine。它会检查：
+
+- 79 个正式命名层是否齐全。
+- 左右眼是否真的独立。
+- 长后发是否被拆成多块。
+- 蝴蝶结翼/尾带是否独立。
+- 裙摆 front/mid/back 是否独立。
+- 有没有重名或非 snake_case。
+- 有没有把猫、耳机、Laptop、枕头等错误混进 base setup pose。
+- 每个正式图层是否有实际像素边界。
+
+不要为了让 Gate 通过而创建空白层；空像素 bounds 会直接失败。
+
 ## 3. 创建 Spine 工程
 
 新建：

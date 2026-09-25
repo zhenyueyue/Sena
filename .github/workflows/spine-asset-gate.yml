@@ -6,6 +6,8 @@ on:
       - "native/spine_bridge/**"
       - "src/render/spine/**"
       - "examples/sena_spine_asset_gate.rs"
+      - "examples/sena_source_gate.rs"
+      - "tools/spine/**"
       - "pets/sena/spine/**"
       - "pets/sena/SPINE_*.md"
       - ".github/workflows/spine-asset-gate.yml"
@@ -16,6 +18,8 @@ on:
       - "native/spine_bridge/**"
       - "src/render/spine/**"
       - "examples/sena_spine_asset_gate.rs"
+      - "examples/sena_source_gate.rs"
+      - "tools/spine/**"
       - "pets/sena/spine/**"
       - "pets/sena/SPINE_*.md"
       - ".github/workflows/spine-asset-gate.yml"
@@ -34,6 +38,24 @@ jobs:
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Validate PSD source contract or inventory
+        shell: pwsh
+        run: |
+          $sourceDir = "pets/sena/spine/source"
+          $psd = Test-Path "$sourceDir/sena.psd"
+          $inventory = Test-Path "$sourceDir/sena.layers.json"
+
+          if ($psd -and $inventory) {
+            Write-Host "Sena PSD + layer inventory detected. Running full source gate."
+            cargo run --release --example sena_source_gate
+          } elseif ($psd -or $inventory) {
+            Write-Error "Partial Sena PSD source detected. Commit sena.psd and sena.layers.json together."
+            exit 1
+          } else {
+            Write-Host "No Sena PSD source committed yet. Validating layer contract only."
+            cargo run --release --example sena_source_gate -- --contract-only
+          }
 
       - name: Validate R3B contract or exported asset
         shell: pwsh
