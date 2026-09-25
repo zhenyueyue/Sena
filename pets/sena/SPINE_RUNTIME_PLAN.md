@@ -505,12 +505,40 @@ Settings / tray 始终可打开。
 
 无透明窗口要求，下一阶段进入 R2。
 
-### R2 — Transparent Pet Window
+### R2 — Renderer Core / Transparent Window
 
-- D3D11 + DirectComposition。
-- Normal + Additive。
-- premultiplied alpha。
-- topmost no-border。
+#### R2A — Render extraction + ordinary D3D11 preview ✅
+
+已完成：
+
+- 按 Spine slot draw order 提取 Region / Mesh / LinkedMesh。
+- 使用官方 `spSkeletonClipping` 处理 clipping attachments。
+- 提取 UV、triangle indices、light tint、dark tint、atlas page、slot / attachment name。
+- 映射 Normal / Additive / Multiply / Screen 四种 blend mode。
+- 使用官方 Spineboy 3.8 Pro 真实资产回归，覆盖 weighted mesh 与 clipping。
+- `examples/spine_d3d11_preview.rs` 创建原生 D3D11 swap chain，加载 PMA atlas PNG，并真正播放 `idle`。
+- D3D11 preview 已实现四种 Spine PMA blend state。
+- 自动 `--frames 5` smoke test 已在 Windows 上实际创建窗口、绘制并 Present。
+
+开发预览：
+
+```powershell
+cargo run --example spine_d3d11_preview -- --animation idle
+cargo run --example spine_d3d11_preview -- --animation walk --frames 300
+```
+
+当前 preview 为验证渲染链路的普通 HWND；它允许每个 attachment/frame 创建临时 immutable buffers。正式桌宠 renderer 会改为可复用 dynamic/ring buffers，避免把 smoke 实现直接带进生产。
+
+#### R2B — DirectComposition transparent pet window
+
+下一步：
+
+- `CreateSwapChainForComposition`。
+- flip-model composition swap chain。
+- `DXGI_ALPHA_MODE_PREMULTIPLIED`。
+- DirectComposition visual。
+- transparent topmost borderless pet HWND。
+- 将 R2A 的 texture / shader / Spine batches 迁入 production renderer。
 
 ### R3 — Sena Still / Idle
 
