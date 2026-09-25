@@ -27,7 +27,9 @@ Build and review V2 with:
 ./tools/blender/render_sena_previews.ps1 -Blend pets/sena/models/generated/sena_v2.blend -Output pets/sena/models/generated/previews_v2
 ```
 
-The next visual milestones after head approval are a continuous torso/limb mesh, layered skirt geometry and a rebuilt cat. Do not promote V2 to the production `sena.vrm` slot until the front, three-quarter and side reviews all pass.
+V2 now also replaces the bead-like body with one voxel-fused, watertight `BodyMeshV2`. A controllable torso/limb proxy is fused at 12 mm voxel resolution, smoothed, then receives deterministic spatial humanoid weights for the existing Hips/Spine/Chest/arm/leg bones. Compact crystal shoes remain separate so footwear can keep its own material silhouette. The V2 `Walk` clip is retuned for the continuous body with smaller leg/arm arcs, knee motion, body bob and preserved hair/bow lag; the wider V1 blockout walk is not reused blindly.
+
+The next visual milestones are layered skirt geometry and a rebuilt cat. Do not promote V2 to the production `sena.vrm` slot until the front, three-quarter, side and representative motion reviews all pass.
 
 ## Runtime budget
 
