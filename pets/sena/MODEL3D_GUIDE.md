@@ -127,6 +127,28 @@ pets/sena/
 
 `.vrm` is preferred for Sena because it gives us a humanoid/avatar convention; `.glb` remains supported for generic model/prop assets.
 
+## Windows runtime probe
+
+The repository includes a native Win32 + wgpu GLB probe. Generate the local model first, then run:
+
+```powershell
+./tools/blender/build_sena_v1.ps1
+cargo run --example sena_3d_preview
+```
+
+The preview loads `pets/sena/models/generated/sena_v1.glb`, creates a borderless top-most Win32 window, renders through wgpu and requests premultiplied surface alpha. Press `Esc` after clicking the preview window to close it. Automated smoke tests can use `--frames 120`.
+
+Backend override for compatibility checks:
+
+```powershell
+$env:SENA_WGPU_BACKEND = "dx12"
+cargo run --example sena_3d_preview -- --frames 120
+```
+
+`vulkan` is also accepted. On the current Windows test machine, Vulkan exposes `PreMultiplied` surface alpha and renders the transparent path successfully; the ordinary DX12 HWND surface exposes only `Opaque`. Production must therefore capability-check alpha and fall back to Sprite rather than showing an opaque 3D window. A DirectComposition/DXGI DX12 transparency path can be added separately for machines without a suitable Vulkan surface.
+
+The probe intentionally renders the current static GLB node transforms first; skeletal skinning, animation blending and spring simulation are the next runtime layer rather than being hidden inside this proof-of-rendering step.
+
 ## Migration rule
 
 Do not delete the current Sprite assets. They remain the safe fallback until the Model3d renderer passes transparency, hit-testing, locomotion and power-usage acceptance tests on Windows.
