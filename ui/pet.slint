@@ -276,20 +276,21 @@ component SenaButton inherits Rectangle {
     callback clicked();
 
     height: 36px;
-    border-radius: 9px;
-    background: root.selected ? #d8d9ff : #f0f1f7;
+    border-radius: 10px;
+    background: root.selected ? #7779d9 : (touch.has-hover ? #ecebfa : #f4f3f9);
     border-width: 1px;
-    border-color: root.selected ? #abaeff : #e0e2ea;
+    border-color: root.selected ? #7779d9 : (touch.has-hover ? #d9d6f2 : #e6e4ed);
 
     Text {
         text: root.label;
-        color: root.selected ? #5456a6 : #4c5060;
+        color: root.selected ? #ffffff : #56586b;
         font-size: 13px;
+        font-weight: root.selected ? 600 : 400;
         horizontal-alignment: center;
         vertical-alignment: center;
     }
 
-    TouchArea {
+    touch := TouchArea {
         mouse-cursor: MouseCursor.pointer;
         clicked => {
             root.clicked();
@@ -298,46 +299,65 @@ component SenaButton inherits Rectangle {
 }
 
 component ToggleRow inherits Rectangle {
+    in property <string> icon;
     in property <string> title;
     in property <string> description;
     in-out property <bool> checked: false;
     callback toggled(bool);
 
-    height: 64px;
-    border-radius: 11px;
-    background: #ffffff;
+    height: 66px;
+    border-radius: 14px;
+    background: touch.has-hover ? #fdfcff : #ffffff;
     border-width: 1px;
-    border-color: #e8e9ef;
+    border-color: touch.has-hover ? #dcd9f0 : #e9e7ef;
 
-    Text {
+    Rectangle {
         x: 14px;
-        y: 10px;
-        width: parent.width - 94px;
-        text: root.title;
-        color: #343746;
-        font-size: 14px;
+        y: 14px;
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        background: root.checked ? #ecebff : #f4f3f7;
+
+        Text {
+            text: root.icon;
+            color: root.checked ? #6b6ec7 : #858798;
+            font-size: 17px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
     }
 
     Text {
-        x: 14px;
-        y: 33px;
-        width: parent.width - 94px;
+        x: 64px;
+        y: 11px;
+        width: parent.width - 142px;
+        text: root.title;
+        color: #343646;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    Text {
+        x: 64px;
+        y: 35px;
+        width: parent.width - 142px;
         text: root.description;
-        color: #8d91a0;
+        color: #9395a3;
         font-size: 11px;
         overflow: elide;
     }
 
     Rectangle {
         x: parent.width - 64px;
-        y: 18px;
+        y: 19px;
         width: 46px;
         height: 28px;
         border-radius: 14px;
-        background: root.checked ? #7779d9 : #d9dbe3;
+        background: root.checked ? #7779d9 : #d9d9e2;
 
         Rectangle {
-            x: root.checked ? 20px : 3px;
+            x: root.checked ? 21px : 3px;
             y: 3px;
             width: 22px;
             height: 22px;
@@ -346,7 +366,7 @@ component ToggleRow inherits Rectangle {
         }
     }
 
-    TouchArea {
+    touch := TouchArea {
         mouse-cursor: MouseCursor.pointer;
         clicked => {
             root.checked = !root.checked;
@@ -482,9 +502,9 @@ export component WelcomeWindow inherits Window {
 
 export component SettingsWindow inherits Window {
     title: "Sena 设置";
-    width: 420px;
-    height: 430px;
-    background: #f7f8fb;
+    width: 460px;
+    height: 560px;
+    background: #f6f4fa;
 
     in-out property <int> scale-percent: 100;
     in-out property <bool> startup-enabled: false;
@@ -498,69 +518,146 @@ export component SettingsWindow inherits Window {
     callback set-visible(bool);
     callback close-settings();
 
-    Text {
-        x: 24px;
-        y: 22px;
-        text: "Sena 设置";
-        color: #2f3240;
-        font-size: 22px;
+    Rectangle {
+        x: 20px;
+        y: 18px;
+        width: parent.width - 40px;
+        height: 94px;
+        border-radius: 18px;
+        background: #ffffff;
+        border-width: 1px;
+        border-color: #e8e5ef;
+
+        Rectangle {
+            x: 16px;
+            y: 17px;
+            width: 60px;
+            height: 60px;
+            border-radius: 20px;
+            background: #eeecff;
+
+            Text {
+                text: "✦";
+                color: #7779d9;
+                font-size: 29px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        Text {
+            x: 92px;
+            y: 20px;
+            text: "Sena · 星奈";
+            color: #303241;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        Text {
+            x: 92px;
+            y: 51px;
+            width: parent.width - 112px;
+            text: "让她以你喜欢的方式陪在桌面上";
+            color: #9495a5;
+            font-size: 12px;
+        }
+
+        Text {
+            x: parent.width - 46px;
+            y: 15px;
+            text: "♡";
+            color: #d6a7c9;
+            font-size: 18px;
+        }
     }
 
     Text {
         x: 24px;
-        y: 54px;
-        width: parent.width - 48px;
-        text: "保持桌宠轻量运行，只调整你真正需要的选项。";
-        color: #8a8e9d;
+        y: 132px;
+        text: "外观";
+        color: #777989;
         font-size: 12px;
+        font-weight: 600;
+    }
+
+    Rectangle {
+        x: 20px;
+        y: 153px;
+        width: parent.width - 40px;
+        height: 100px;
+        border-radius: 16px;
+        background: #ffffff;
+        border-width: 1px;
+        border-color: #e9e7ef;
+
+        Text {
+            x: 16px;
+            y: 13px;
+            text: "角色大小";
+            color: #373948;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        Text {
+            x: 16px;
+            y: 36px;
+            text: "调整星奈在桌面上的显示尺寸";
+            color: #999aa8;
+            font-size: 11px;
+        }
+
+        HorizontalLayout {
+            x: 16px;
+            y: 58px;
+            width: parent.width - 32px;
+            height: 32px;
+            spacing: 8px;
+
+            SenaButton {
+                label: "80%";
+                selected: root.scale-percent == 80;
+                clicked => {
+                    root.scale-percent = 80;
+                    root.set-scale(80);
+                }
+            }
+
+            SenaButton {
+                label: "100%";
+                selected: root.scale-percent == 100;
+                clicked => {
+                    root.scale-percent = 100;
+                    root.set-scale(100);
+                }
+            }
+
+            SenaButton {
+                label: "120%";
+                selected: root.scale-percent == 120;
+                clicked => {
+                    root.scale-percent = 120;
+                    root.set-scale(120);
+                }
+            }
+        }
     }
 
     Text {
         x: 24px;
-        y: 92px;
-        text: "角色大小";
-        color: #464958;
-        font-size: 13px;
-    }
-
-    HorizontalLayout {
-        x: 24px;
-        y: 116px;
-        width: parent.width - 48px;
-        spacing: 10px;
-
-        SenaButton {
-            label: "80%";
-            selected: root.scale-percent == 80;
-            clicked => {
-                root.scale-percent = 80;
-                root.set-scale(80);
-            }
-        }
-
-        SenaButton {
-            label: "100%";
-            selected: root.scale-percent == 100;
-            clicked => {
-                root.scale-percent = 100;
-                root.set-scale(100);
-            }
-        }
-
-        SenaButton {
-            label: "120%";
-            selected: root.scale-percent == 120;
-            clicked => {
-                root.scale-percent = 120;
-                root.set-scale(120);
-            }
-        }
+        y: 273px;
+        text: "行为";
+        color: #777989;
+        font-size: 12px;
+        font-weight: 600;
     }
 
     ToggleRow {
-        x: 24px;
-        y: 174px;
-        width: parent.width - 48px;
+        x: 20px;
+        y: 294px;
+        width: parent.width - 40px;
+        icon: "↗";
         title: "开机自启";
         description: "登录 Windows 后自动启动 Sena";
         checked: root.startup-enabled;
@@ -571,9 +668,10 @@ export component SettingsWindow inherits Window {
     }
 
     ToggleRow {
-        x: 24px;
-        y: 248px;
-        width: parent.width - 48px;
+        x: 20px;
+        y: 370px;
+        width: parent.width - 40px;
+        icon: "⌃";
         title: "始终置顶";
         description: "让 Sena 保持在其他普通窗口上方";
         checked: root.keep-on-top;
@@ -584,9 +682,10 @@ export component SettingsWindow inherits Window {
     }
 
     ToggleRow {
-        x: 24px;
-        y: 322px;
-        width: parent.width - 48px;
+        x: 20px;
+        y: 446px;
+        width: parent.width - 40px;
+        icon: "◉";
         title: "显示桌宠";
         description: "隐藏后仍可从系统托盘重新显示";
         checked: root.pet-visible;
@@ -598,20 +697,21 @@ export component SettingsWindow inherits Window {
 
     Text {
         x: 24px;
-        y: 397px;
-        width: parent.width - 120px;
+        y: 530px;
+        width: parent.width - 140px;
         text: root.status-message;
-        color: #a15c62;
+        color: #b15f77;
         font-size: 11px;
         overflow: elide;
     }
 
     SenaButton {
-        x: parent.width - 88px;
-        y: 388px;
-        width: 64px;
-        height: 30px;
-        label: "关闭";
+        x: parent.width - 104px;
+        y: 518px;
+        width: 80px;
+        height: 32px;
+        label: "完成";
+        selected: true;
         clicked => {
             root.close-settings();
         }
