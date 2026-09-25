@@ -577,21 +577,55 @@ R2B 当前仍保留 per-batch immutable vertex/index buffer，目的是先锁定
 - 用临时官方 Spineboy 3.8 package 直接启动正式 `sena.exe` 做主程序集成烟测：桌宠交互窗口约 296×420，运行前后像素对比约 29.65% 为真实角色变化、约 69.5% 保持桌面原像素，确认“主程序行为系统 + Slint input overlay + 独立 DComp 角色窗口”完整链路成立。
 - 正式 `pets/sena/pet.json` **仍保持 Sprite**，在 Sena 自己的 Spine 导出资产到位前不切默认 renderer。
 
-#### R3B — Sena asset gate（待真实资产）
+#### R3B — Sena asset gate（基础设施 ✅ / 等待真实资产）
 
-下一步依赖第一份 Sena 3.8.75 Professional 导出：
+已完成自动验收基础设施：
+
+- 新增 `examples/sena_spine_asset_gate.rs`。
+- spine-c bridge 可读取 skeleton runtime version。
+- 可枚举 skin、animation 名称和 animation duration。
+- 可枚举 atlas texture pages。
+- gate 会验证所有 atlas page 文件真实存在。
+- gate 会验证 setup pose 可提取出有效 batches / vertices / triangle indices / bounds。
+- gate 会应用 `base` skin，并验证 `root/body_root/head/face_root/eye_l/eye_r`。
+- 当前 R3B 必需动画：`idle`、`blink_l`、`blink_r`。
+- 会实际播放 `idle` 并再次提取 render frame。
+- 顶点数超过 1500 给 warning，超过约 2500 给更强 warning。
+- 会列出后续 R4/R5 仍缺少的 animation 名称，但不阻塞第一份静态/idle 导入。
+- 已用官方 Spineboy 3.8.55 Pro export 实测 inventory：版本、skin、11 个 animations、animation durations 和 atlas page 均可正确读取。
+
+默认验收命令：
+
+```powershell
+cargo run --example sena_spine_asset_gate
+```
+
+默认查找：
+
+```text
+pets/sena/spine/export/sena.skel
+pets/sena/spine/export/sena.atlas
+```
+
+若 binary skeleton 尚未导出，会尝试开发期 `sena.json`。
+
+现在真正剩下的 R3B 输入只有第一份 Sena 3.8.75 Professional 导出：
 
 - `sena.skel` 或开发期 `sena.json`。
 - `sena.atlas`。
 - atlas PNG。
 - `base` skin。
-- 至少 `idle`。
+- `idle`。
+- `blink_l` / `blink_r`。
 - setup pose。
-- blink。
-- 用真实 Sena weighted mesh / clipping / skin 做回归。
-- 把当前整窗 TouchArea 收窄为 attachment geometry + alpha hit testing。
 
-R3B 通过后再把正式 `pet.json` 切到 `renderer: "spine"`。
+拿到真实资产后：
+
+1. 运行 asset gate。
+2. 用真实 Sena weighted mesh / clipping / skin 做 runtime 回归。
+3. 做静态 setup pose 视觉 Gate。
+4. 把当前整窗 TouchArea 收窄为 attachment geometry + alpha hit testing。
+5. 全部通过后才把正式 `pet.json` 切到 `renderer: "spine"`。
 
 ### R4 — Locomotion
 

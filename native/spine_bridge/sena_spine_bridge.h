@@ -70,6 +70,18 @@ int sena_spine_runtime_set_skin(
     const char* skin_name
 );
 
+const char* sena_spine_runtime_version(const SenaSpineRuntime* runtime);
+
+int sena_spine_runtime_skin_count(const SenaSpineRuntime* runtime);
+const char* sena_spine_runtime_skin_name(const SenaSpineRuntime* runtime, int index);
+
+int sena_spine_runtime_animation_count(const SenaSpineRuntime* runtime);
+const char* sena_spine_runtime_animation_name(const SenaSpineRuntime* runtime, int index);
+float sena_spine_runtime_animation_duration(const SenaSpineRuntime* runtime, int index);
+
+int sena_spine_runtime_atlas_page_count(const SenaSpineRuntime* runtime);
+const char* sena_spine_runtime_atlas_page_name(const SenaSpineRuntime* runtime, int index);
+
 void sena_spine_runtime_update(SenaSpineRuntime* runtime, float delta_seconds);
 
 int sena_spine_runtime_extract_frame(

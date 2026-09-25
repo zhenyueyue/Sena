@@ -1,5 +1,6 @@
 #include "sena_spine_bridge.h"
 
+#include <spine/Animation.h>
 #include <spine/AnimationState.h>
 #include <spine/AnimationStateData.h>
 #include <spine/Atlas.h>
@@ -12,6 +13,7 @@
 #include <spine/SkeletonClipping.h>
 #include <spine/SkeletonData.h>
 #include <spine/SkeletonJson.h>
+#include <spine/Skin.h>
 #include <spine/extension.h>
 
 #include <stdlib.h>
@@ -312,6 +314,75 @@ int sena_spine_runtime_set_skin(
     spSkeleton_setSlotsToSetupPose(runtime->skeleton);
     spSkeleton_updateWorldTransform(runtime->skeleton);
     return 1;
+}
+
+const char* sena_spine_runtime_version(const SenaSpineRuntime* runtime) {
+    if (!runtime || !runtime->skeleton_data) return 0;
+    return runtime->skeleton_data->version;
+}
+
+int sena_spine_runtime_skin_count(const SenaSpineRuntime* runtime) {
+    if (!runtime || !runtime->skeleton_data) return 0;
+    return runtime->skeleton_data->skinsCount;
+}
+
+const char* sena_spine_runtime_skin_name(const SenaSpineRuntime* runtime, int index) {
+    spSkin* skin;
+    if (!runtime || !runtime->skeleton_data) return 0;
+    if (index < 0 || index >= runtime->skeleton_data->skinsCount) return 0;
+
+    skin = runtime->skeleton_data->skins[index];
+    return skin ? skin->name : 0;
+}
+
+int sena_spine_runtime_animation_count(const SenaSpineRuntime* runtime) {
+    if (!runtime || !runtime->skeleton_data) return 0;
+    return runtime->skeleton_data->animationsCount;
+}
+
+const char* sena_spine_runtime_animation_name(const SenaSpineRuntime* runtime, int index) {
+    spAnimation* animation;
+    if (!runtime || !runtime->skeleton_data) return 0;
+    if (index < 0 || index >= runtime->skeleton_data->animationsCount) return 0;
+
+    animation = runtime->skeleton_data->animations[index];
+    return animation ? animation->name : 0;
+}
+
+float sena_spine_runtime_animation_duration(const SenaSpineRuntime* runtime, int index) {
+    spAnimation* animation;
+    if (!runtime || !runtime->skeleton_data) return -1.0f;
+    if (index < 0 || index >= runtime->skeleton_data->animationsCount) return -1.0f;
+
+    animation = runtime->skeleton_data->animations[index];
+    return animation ? animation->duration : -1.0f;
+}
+
+int sena_spine_runtime_atlas_page_count(const SenaSpineRuntime* runtime) {
+    int count = 0;
+    spAtlasPage* page;
+    if (!runtime || !runtime->atlas) return 0;
+
+    page = runtime->atlas->pages;
+    while (page) {
+        count += 1;
+        page = page->next;
+    }
+    return count;
+}
+
+const char* sena_spine_runtime_atlas_page_name(const SenaSpineRuntime* runtime, int index) {
+    int current = 0;
+    spAtlasPage* page;
+    if (!runtime || !runtime->atlas || index < 0) return 0;
+
+    page = runtime->atlas->pages;
+    while (page) {
+        if (current == index) return page->name;
+        current += 1;
+        page = page->next;
+    }
+    return 0;
 }
 
 void sena_spine_runtime_update(SenaSpineRuntime* runtime, float delta_seconds) {

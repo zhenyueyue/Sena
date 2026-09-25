@@ -59,6 +59,30 @@ unsafe extern "C" {
         skin_name: *const c_char,
     ) -> c_int;
 
+    pub fn sena_spine_runtime_version(runtime: *const SenaSpineRuntimeOpaque) -> *const c_char;
+
+    pub fn sena_spine_runtime_skin_count(runtime: *const SenaSpineRuntimeOpaque) -> c_int;
+    pub fn sena_spine_runtime_skin_name(
+        runtime: *const SenaSpineRuntimeOpaque,
+        index: c_int,
+    ) -> *const c_char;
+
+    pub fn sena_spine_runtime_animation_count(runtime: *const SenaSpineRuntimeOpaque) -> c_int;
+    pub fn sena_spine_runtime_animation_name(
+        runtime: *const SenaSpineRuntimeOpaque,
+        index: c_int,
+    ) -> *const c_char;
+    pub fn sena_spine_runtime_animation_duration(
+        runtime: *const SenaSpineRuntimeOpaque,
+        index: c_int,
+    ) -> c_float;
+
+    pub fn sena_spine_runtime_atlas_page_count(runtime: *const SenaSpineRuntimeOpaque) -> c_int;
+    pub fn sena_spine_runtime_atlas_page_name(
+        runtime: *const SenaSpineRuntimeOpaque,
+        index: c_int,
+    ) -> *const c_char;
+
     pub fn sena_spine_runtime_update(runtime: *mut SenaSpineRuntimeOpaque, delta_seconds: c_float);
 
     pub fn sena_spine_runtime_extract_frame(

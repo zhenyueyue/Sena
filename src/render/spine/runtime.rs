@@ -24,6 +24,12 @@ pub struct BoneWorldTransform {
     pub rotation_degrees: f32,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpineAnimationInfo {
+    pub name: String,
+    pub duration_seconds: f32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SpineBlendMode {
     Normal,
@@ -122,6 +128,56 @@ impl SpineRuntime {
         } else {
             Err(format!("Spine skin not found: {skin_name}"))
         }
+    }
+
+    pub fn runtime_version(&self) -> Option<String> {
+        let _guard = runtime_lock();
+        copy_c_string(unsafe { ffi::sena_spine_runtime_version(self.raw.as_ptr()) })
+    }
+
+    pub fn skins(&self) -> Vec<String> {
+        let _guard = runtime_lock();
+        let count = unsafe { ffi::sena_spine_runtime_skin_count(self.raw.as_ptr()) }.max(0);
+
+        (0..count)
+            .filter_map(|index| {
+                copy_c_string(unsafe {
+                    ffi::sena_spine_runtime_skin_name(self.raw.as_ptr(), index)
+                })
+            })
+            .collect()
+    }
+
+    pub fn animations(&self) -> Vec<SpineAnimationInfo> {
+        let _guard = runtime_lock();
+        let count = unsafe { ffi::sena_spine_runtime_animation_count(self.raw.as_ptr()) }.max(0);
+
+        (0..count)
+            .filter_map(|index| {
+                let name = copy_c_string(unsafe {
+                    ffi::sena_spine_runtime_animation_name(self.raw.as_ptr(), index)
+                })?;
+                let duration_seconds =
+                    unsafe { ffi::sena_spine_runtime_animation_duration(self.raw.as_ptr(), index) };
+                Some(SpineAnimationInfo {
+                    name,
+                    duration_seconds,
+                })
+            })
+            .collect()
+    }
+
+    pub fn atlas_pages(&self) -> Vec<String> {
+        let _guard = runtime_lock();
+        let count = unsafe { ffi::sena_spine_runtime_atlas_page_count(self.raw.as_ptr()) }.max(0);
+
+        (0..count)
+            .filter_map(|index| {
+                copy_c_string(unsafe {
+                    ffi::sena_spine_runtime_atlas_page_name(self.raw.as_ptr(), index)
+                })
+            })
+            .collect()
     }
 
     pub fn set_animation(
@@ -276,6 +332,18 @@ fn path_to_c_string(path: &Path, kind: &str) -> Result<CString, String> {
         .map_err(|_| format!("Spine {kind} path contains a NUL byte: {}", path.display()))
 }
 
+fn copy_c_string(value: *const c_char) -> Option<String> {
+    if value.is_null() {
+        return None;
+    }
+
+    Some(
+        unsafe { CStr::from_ptr(value) }
+            .to_string_lossy()
+            .into_owned(),
+    )
+}
+
 fn error_message(buffer: &[i8]) -> String {
     let bytes = buffer.iter().map(|value| *value as u8).collect::<Vec<_>>();
 
@@ -387,6 +455,20 @@ mod tests {
             1.0,
         )
         .expect("official Spineboy 3.8 assets should load");
+
+        assert!(
+            runtime
+                .runtime_version()
+                .is_some_and(|version| version.starts_with("3.8"))
+        );
+        assert!(runtime.skins().iter().any(|skin| skin == "default"));
+        assert!(
+            runtime
+                .animations()
+                .iter()
+                .any(|animation| animation.name == "idle" && animation.duration_seconds > 0.0)
+        );
+        assert!(!runtime.atlas_pages().is_empty());
 
         runtime
             .set_skin("default")
