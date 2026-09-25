@@ -108,6 +108,38 @@ Sleeping is even lower-duty-cycle than Drowsy. When Windows is still unlocked an
 
 One unlocked Sleeping burst is approximately **2.4 seconds**, then Sena freezes on `000` again. Keep the cat asleep and still; never introduce body-position drift or large floating effects.
 
+## One-shot interaction animation set
+
+Interaction animations live under the manifest's `interactions` object. They do **not** replace environment states. While an interaction is playing it temporarily overrides the current sprite; when it ends, runtime restores whichever Idle/Coding/Music/Drowsy/Sleeping state is currently appropriate.
+
+### Petting — recommended 5 frames
+
+Triggered by a double-click / head-petting interaction. Keep the body almost fixed so the response reads as a head-and-expression reaction instead of a jump.
+
+| Frame | Visual | Suggested hold |
+| --- | --- | ---: |
+| `000` | Current neutral pose, eyes open | 90 ms |
+| `001` | Head lowers 2–4 px, upper hair compresses subtly | 110 ms |
+| `002` | Eyes softly closed, small warm smile, bow/hair settle downward | 180 ms |
+| `003` | Eyes reopen halfway, hair rebounds slightly | 110 ms |
+| `004` | Return to the neutral silhouette | 120 ms |
+
+The companion cat should stay mostly still during petting so the response clearly belongs to Sena. Do not draw a giant floating hand into the sprite; the user's cursor is the implied petting gesture.
+
+### Stretch — recommended 5–6 frames
+
+A small desktop-safe stretch, not a full-body dramatic pose. Shoulders rise, arms/hair extend slightly, then settle. Keep feet/baseline stable and total duration around **0.8–1.2 seconds**.
+
+### Look at cat — recommended 4–5 frames
+
+Sena turns her gaze and head slightly toward the companion cat; the cat may return a tiny ear/head reaction. Avoid moving both characters so much that the silhouette jumps across the canvas.
+
+### Daydream — recommended 4 frames
+
+A subtle gaze-away / softened-eyes moment for both “发呆” and quiet-companion autonomous events. Small hair/breath motion is enough. Total duration should stay around **0.8–1.4 seconds**.
+
+All interactions must set `"looping": false`. If `frames` is empty, runtime automatically keeps the existing procedural fallback.
+
 ## Frame naming
 
 Always zero-pad frame names:

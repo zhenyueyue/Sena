@@ -1,50 +1,59 @@
 # Sena / 星奈
 
-This directory is the production workspace for Sena's first real character asset set.
-
-The current application still ships `pets/default` as the safe placeholder package. Do not rename this directory to `default` until every required animation is complete and validated.
+This directory is the production character package used by Sena at runtime. `pets/default` remains only as the safe placeholder/fallback package.
 
 ## Character direction
 
-Sena is an original adult Japanese-anime-style desktop companion with a calm, warm, slightly futuristic presence. She should feel like a character who quietly lives on the desktop rather than a mascot pasted on top of it.
+Sena is an original adult Japanese-anime-style desktop companion with a calm, warm, dreamy presence. Her current approved visual identity is **moonlight × starlight × crystal butterflies × companionship**.
 
 Core visual identity:
 
-- Young adult woman; clearly adult proportions and styling.
-- Semi-chibi anime proportion: roughly 4.5 heads tall. Cute enough for a desktop pet, but not super-deformed.
-- Long dark navy-black hair with a subtle violet gradient toward the ends.
-- Soft cyan-violet eyes with a small star-like highlight.
-- Small four-point star hair clip on the viewer's left side; this is the strongest silhouette/detail identifier.
-- Off-white cropped tech jacket over a deep navy inner top.
-- Dark navy pleated skirt/shorts silhouette with opaque black tights.
-- Small lavender/cyan luminous accents, used sparingly.
-- Neutral expression is gentle and attentive rather than permanently smiling.
-- Accessories are modular: over-ear headphones for music and a compact laptop for coding.
+- Elegant young-adult proportions, approximately **6.5–7 heads tall** with a relatively small refined head.
+- Very long moonlight silver-white hair with a faint blush-pink / lilac tint.
+- Violet-pink eyes with glassy highlights.
+- Large translucent lavender crystal-organza bow with butterfly/star ornaments.
+- White / lilac / ice-blue layered chiffon-and-lace crystal dress.
+- Delicate butterfly, moon and star jewelry rather than heavy accessories.
+- Pale stockings and slim crystal heels with a **thin sole**; never use thick platform shoes.
+- Calm, observant, warm, slightly sleepy and quietly playful expression language.
+- Companion cat remains part of the approved desktop-pet presentation; human and cat blinks must be staggered.
 
-Primary palette:
+The complete visual rules live in [CHARACTER.md](CHARACTER.md). Treat that file as the source of truth if any older prompt or asset note disagrees with this README.
 
-| Role | Color |
-| --- | --- |
-| Hair base | `#20263D` |
-| Hair highlight | `#45406B` |
-| Star violet | `#9B8CFF` |
-| Ice cyan | `#72D8F4` |
-| Jacket | `#F5F3FA` |
-| Deep navy | `#242A42` |
-| Warm skin accent | `#F3B8AC` |
+## Animation model
 
-Avoid:
+Environment-driven animations are stored under `animations` in `pet.json`:
 
-- Existing anime/game character likenesses.
-- School uniforms or child-coded styling.
-- Highly detailed jewelry that disappears at desktop scale.
-- Large loose particles baked into every frame.
-- Very thin isolated hair strands that produce noisy alpha hit regions.
-- Perspective or camera changes between animation states.
+- `idle`
+- `coding`
+- `listening_music`
+- `coding_with_music`
+- `drowsy`
+- `sleeping`
+
+One-shot character interactions are stored separately under `interactions`:
+
+- `petting`
+- `stretch`
+- `look_at_cat`
+- `daydream`
+
+Interaction slots are optional. When an interaction has no production frames yet, Sena automatically uses the procedural fallback animation instead.
 
 ## Production files
 
-- [CHARACTER.md](CHARACTER.md): detailed character bible.
+- [CHARACTER.md](CHARACTER.md): authoritative character bible.
 - [SPRITE_GUIDE.md](SPRITE_GUIDE.md): canvas, animation and export requirements.
-- [pet.template.json](pet.template.json): target package manifest once production frames exist.
+- [pet.json](pet.json): current runtime manifest.
+- [pet.template.json](pet.template.json): package template for asset production.
 - `animations/`: final transparent WebP/PNG frames.
+
+## Asset validation
+
+Before committing new frames, run:
+
+```powershell
+cargo run --example sena_asset_check -- pets/sena
+```
+
+The checker validates the 768×1024 production canvas, file existence, transparent corners, timing arrays and one-shot interaction rules. A warning about the recommended 32px transparent margin is reviewable; manifest errors, missing files, wrong canvas size and opaque corners fail validation.
