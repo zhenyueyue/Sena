@@ -65,6 +65,11 @@ int sena_spine_runtime_set_animation(
     int loop
 );
 
+int sena_spine_runtime_set_skin(
+    SenaSpineRuntime* runtime,
+    const char* skin_name
+);
+
 void sena_spine_runtime_update(SenaSpineRuntime* runtime, float delta_seconds);
 
 int sena_spine_runtime_extract_frame(

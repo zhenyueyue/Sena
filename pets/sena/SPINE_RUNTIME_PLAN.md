@@ -518,6 +518,7 @@ Settings / tray 始终可打开。
 - 使用官方 Spineboy 3.8 Pro 真实资产回归，覆盖 weighted mesh 与 clipping。
 - `examples/spine_d3d11_preview.rs` 创建原生 D3D11 swap chain，加载 PMA atlas PNG，并真正播放 `idle`。
 - D3D11 preview 已实现四种 Spine PMA blend state。
+- Rasterizer 明确使用 `D3D11_CULL_NONE`。Spine 三角形经过 Y 轴翻转后 winding 会改变，不能依赖 D3D11 默认 back-face culling。
 - 自动 `--frames 5` smoke test 已在 Windows 上实际创建窗口、绘制并 Present。
 
 开发预览：
@@ -544,7 +545,8 @@ cargo run --example spine_d3d11_preview -- --animation walk --frames 300
 - 新增 `examples/spine_dcomp_preview.rs`。
 - preview HWND 使用 `WS_POPUP | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_NOREDIRECTIONBITMAP`，不使用 `WS_EX_LAYERED`。
 - Windows 实机已完成 `--frames 5` Present smoke test。
-- 透明实测采用同一区域“窗口出现前 / 后”像素对比：约 86.48% 像素保持不变，约 6.25% 明显变化；变化集中在 Spine 角色区域，确认周围区域真实透出桌面。
+- Rasterizer 同样固定 `D3D11_CULL_NONE`。早期只验证 Present/透明清屏时曾掩盖三角形被默认 back-face culling 丢弃的问题；现已通过真实角色像素回归覆盖。
+- DirectComposition example 在角色真实可见后做同一区域窗口前/后像素对比，约 26% 区域出现角色变化，其余区域继续透出桌面。
 
 开发预览：
 
@@ -559,11 +561,37 @@ R2B 当前仍保留 per-batch immutable vertex/index buffer，目的是先锁定
 
 ### R3 — Sena Still / Idle
 
-- Sena atlas。
+#### R3A — Main presentation lifecycle ✅
+
+已完成：
+
+- `pet.json` Spine schema 增加 Behavior -> Spine animation 的语义映射和 interaction animation 名称合同。
+- Runtime 支持应用 `default_skin`，切 skin 后恢复 slot setup pose。
+- 主程序检测 `renderer: "spine"` 后，不再依赖 Sprite frame timer；由 16 ms presentation tick 驱动 Spine Runtime / D3D11。
+- Behavior 可直接切换 track 0 动画；请求动画不存在时回退 `idle`。
+- 用户缩放变化会销毁并重建 Spine presentation，使 composition surface 与桌宠尺寸同步。
+- Slint `PetWindow` 新增 `use-spine` 模式：角色视觉隐藏，只保留透明 TouchArea、拖拽、点击和右键等现有交互路径。
+- 不把 DirectComposition visual 直接挂到 Slint 自己的 HWND。正式方案使用独立 `SenaSpineCompositionHost` HWND，避免 Slint renderer 与 DComp 争用同一窗口 surface。
+- composition host 使用 no-activate / no-redirection popup，跟随 Slint 交互窗口的位置、尺寸和显隐；`WM_NCHITTEST -> HTTRANSPARENT`，鼠标继续交给 Slint 交互窗。
+- Spine/D3D11 presentation 初始化或运行期失败会销毁 presentation，并恢复 Slint placeholder，避免留下不可见交互窗口。
+- 用临时官方 Spineboy 3.8 package 直接启动正式 `sena.exe` 做主程序集成烟测：桌宠交互窗口约 296×420，运行前后像素对比约 29.65% 为真实角色变化、约 69.5% 保持桌面原像素，确认“主程序行为系统 + Slint input overlay + 独立 DComp 角色窗口”完整链路成立。
+- 正式 `pets/sena/pet.json` **仍保持 Sprite**，在 Sena 自己的 Spine 导出资产到位前不切默认 renderer。
+
+#### R3B — Sena asset gate（待真实资产）
+
+下一步依赖第一份 Sena 3.8.75 Professional 导出：
+
+- `sena.skel` 或开发期 `sena.json`。
+- `sena.atlas`。
+- atlas PNG。
+- `base` skin。
+- 至少 `idle`。
 - setup pose。
-- idle。
 - blink。
-- hit testing。
+- 用真实 Sena weighted mesh / clipping / skin 做回归。
+- 把当前整窗 TouchArea 收窄为 attachment geometry + alpha hit testing。
+
+R3B 通过后再把正式 `pet.json` 切到 `renderer: "spine"`。
 
 ### R4 — Locomotion
 

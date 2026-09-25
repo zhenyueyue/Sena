@@ -1,6 +1,8 @@
 mod animation;
 #[allow(dead_code)]
 mod spine;
+#[cfg(target_os = "windows")]
+mod spine_presentation;
 mod sprite;
 
 use std::{
@@ -38,6 +40,14 @@ struct AlphaRegionKey {
 thread_local! {
     static ALPHA_REGION_KEY: RefCell<Option<AlphaRegionKey>> = const { RefCell::new(None) };
     static INTERACTION_ANIMATION_GENERATION: Cell<u64> = const { Cell::new(0) };
+    #[cfg(target_os = "windows")]
+    static SPINE_PRESENTATION: RefCell<Option<spine_presentation::SpinePresentation>> = const { RefCell::new(None) };
+    #[cfg(target_os = "windows")]
+    static SPINE_FRAME_TIMER: RefCell<Option<Timer>> = const { RefCell::new(None) };
+    #[cfg(target_os = "windows")]
+    static SPINE_PENDING_BEHAVIOR: Cell<Behavior> = const { Cell::new(Behavior::Idle) };
+    #[cfg(target_os = "windows")]
+    static SPINE_INIT_FAILED: Cell<bool> = const { Cell::new(false) };
 }
 
 fn active_package() -> &'static PetPackage {
@@ -74,6 +84,14 @@ pub fn set_user_scale(scale: f32) {
     if previous != bits {
         sprite::clear_cache();
         ALPHA_REGION_KEY.with(|current| *current.borrow_mut() = None);
+
+        #[cfg(target_os = "windows")]
+        {
+            SPINE_PRESENTATION.with(|presentation| {
+                presentation.borrow_mut().take();
+            });
+            SPINE_INIT_FAILED.with(|failed| failed.set(false));
+        }
     }
 }
 
@@ -162,12 +180,31 @@ pub fn cancel_interaction_animation(window: &PetWindow) {
 
 pub fn has_dedicated_animation(behavior: Behavior) -> bool {
     let package = active_package();
+    if package.is_spine() {
+        return package.spine_animation_name(behavior).is_some();
+    }
+
     package
         .animation(behavior)
         .is_some_and(|definition| !package.is_sprite() || !definition.frames.is_empty())
 }
 
 pub fn install(window: &PetWindow) {
+    #[cfg(target_os = "windows")]
+    if active_package().is_spine() {
+        window.set_use_sprite(false);
+        window.set_use_spine(true);
+        ensure_spine_frame_timer(window);
+
+        let window_weak = window.as_weak();
+        Timer::single_shot(Duration::from_millis(150), move || {
+            let Some(window) = window_weak.upgrade() else {
+                return;
+            };
+            let _ = try_initialize_spine(&window);
+        });
+    }
+
     let window_weak = window.as_weak();
 
     window.on_animation_tick(move |clip, frame| {
@@ -181,7 +218,9 @@ pub fn install(window: &PetWindow) {
         let behavior = clip.behavior();
         let frame = frame.max(0) as usize;
 
-        apply_sprite_frame(&window, behavior, frame);
+        if active_package().is_sprite() {
+            apply_sprite_frame(&window, behavior, frame);
+        }
 
         if let Some(milliseconds) = active_package().animation_frame_duration_ms(behavior, frame) {
             window.set_animation_interval_ms(milliseconds.min(i32::MAX as u64) as i32);
@@ -200,12 +239,95 @@ pub fn install(window: &PetWindow) {
             return;
         };
 
+        if active_package().is_spine() {
+            #[cfg(target_os = "windows")]
+            {
+                let _ = try_initialize_spine(&window);
+            }
+            return;
+        }
+
         apply_sprite_frame(
             &window,
             clip.behavior(),
             window.get_animation_frame().max(0) as usize,
         );
     });
+}
+
+#[cfg(target_os = "windows")]
+fn ensure_spine_frame_timer(window: &PetWindow) {
+    SPINE_FRAME_TIMER.with(|slot| {
+        if slot.borrow().is_some() {
+            return;
+        }
+
+        let weak_window = window.as_weak();
+        let timer = Timer::default();
+        timer.start(
+            slint::TimerMode::Repeated,
+            Duration::from_millis(16),
+            move || {
+                let result = SPINE_PRESENTATION.with(|presentation| {
+                    let mut presentation = presentation.borrow_mut();
+                    presentation
+                        .as_mut()
+                        .map(spine_presentation::SpinePresentation::tick)
+                });
+
+                if let Some(Err(error)) = result {
+                    eprintln!("Sena Spine frame failed: {error}");
+                    SPINE_PRESENTATION.with(|presentation| {
+                        presentation.borrow_mut().take();
+                    });
+                    SPINE_INIT_FAILED.with(|failed| failed.set(true));
+
+                    if let Some(window) = weak_window.upgrade() {
+                        use_placeholder(&window);
+                    }
+                }
+            },
+        );
+
+        *slot.borrow_mut() = Some(timer);
+    });
+}
+
+#[cfg(target_os = "windows")]
+fn try_initialize_spine(window: &PetWindow) -> bool {
+    if !active_package().is_spine() {
+        return false;
+    }
+
+    if SPINE_PRESENTATION.with(|presentation| presentation.borrow().is_some()) {
+        return true;
+    }
+    if SPINE_INIT_FAILED.with(Cell::get) {
+        return false;
+    }
+
+    let behavior = SPINE_PENDING_BEHAVIOR.with(Cell::get);
+    match spine_presentation::SpinePresentation::new(
+        window,
+        active_package(),
+        behavior,
+        user_scale(),
+    ) {
+        Ok(presentation) => {
+            SPINE_PRESENTATION.with(|slot| {
+                *slot.borrow_mut() = Some(presentation);
+            });
+            ensure_spine_frame_timer(window);
+            true
+        }
+        Err(error) if error == "native pet HWND is not available yet" => false,
+        Err(error) => {
+            eprintln!("Sena Spine renderer unavailable; keeping fallback UI: {error}");
+            SPINE_INIT_FAILED.with(|failed| failed.set(true));
+            use_placeholder(window);
+            false
+        }
+    }
 }
 
 fn apply_sprite_frame(window: &PetWindow, behavior: Behavior, frame: usize) {
@@ -261,6 +383,7 @@ fn apply_sprite_path(window: &PetWindow, path: &Path) {
     }
 
     window.set_sprite_image(sprite.image.clone());
+    window.set_use_spine(false);
     window.set_use_sprite(true);
 
     #[cfg(target_os = "windows")]
@@ -308,6 +431,7 @@ fn apply_sprite_path(window: &PetWindow, path: &Path) {
 }
 
 fn use_placeholder(window: &PetWindow) {
+    window.set_use_spine(false);
     window.set_use_sprite(false);
     ALPHA_REGION_KEY.with(|current| *current.borrow_mut() = None);
 
@@ -362,6 +486,35 @@ pub fn apply_context(window: &PetWindow, context: &DesktopContext, behavior: Beh
     );
 
     if window.get_interaction_animation_active() {
+        return;
+    }
+
+    if active_package().is_spine() {
+        window.set_animation_running(false);
+        window.set_use_sprite(false);
+        window.set_use_spine(true);
+
+        #[cfg(target_os = "windows")]
+        {
+            SPINE_PENDING_BEHAVIOR.with(|pending| pending.set(behavior));
+
+            let updated = SPINE_PRESENTATION.with(|presentation| {
+                let mut presentation = presentation.borrow_mut();
+                let Some(presentation) = presentation.as_mut() else {
+                    return false;
+                };
+
+                if let Err(error) = presentation.set_behavior(active_package(), behavior) {
+                    eprintln!("failed to switch Sena Spine behavior: {error}");
+                }
+                true
+            });
+
+            if !updated {
+                let _ = try_initialize_spine(window);
+            }
+        }
+
         return;
     }
 

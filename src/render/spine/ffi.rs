@@ -54,6 +54,11 @@ unsafe extern "C" {
         loop_animation: c_int,
     ) -> c_int;
 
+    pub fn sena_spine_runtime_set_skin(
+        runtime: *mut SenaSpineRuntimeOpaque,
+        skin_name: *const c_char,
+    ) -> c_int;
+
     pub fn sena_spine_runtime_update(runtime: *mut SenaSpineRuntimeOpaque, delta_seconds: c_float);
 
     pub fn sena_spine_runtime_extract_frame(

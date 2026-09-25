@@ -26,6 +26,7 @@ export component PetWindow inherits Window {
 
     in property <image> sprite-image;
     in property <bool> use-sprite: false;
+    in property <bool> use-spine: false;
 
     in-out property <bool> interaction-bubble-visible: false;
     in-out property <string> interaction-bubble-text: "";
@@ -177,7 +178,7 @@ export component PetWindow inherits Window {
     }
 
     Text {
-        visible: root.typing-context-active && root.show-laptop;
+        visible: !root.use-spine && root.typing-context-active && root.show-laptop;
         x: 174px;
         y: 82px;
         text: "✦";
@@ -186,7 +187,7 @@ export component PetWindow inherits Window {
     }
 
     Text {
-        visible: root.music-context-active && root.show-headphones;
+        visible: !root.use-spine && root.music-context-active && root.show-headphones;
         x: 174px + (root.music-context-phase == 2 ? 2px : 0px);
         y: 70px - (root.music-context-phase * 2px);
         text: "♪";
@@ -220,8 +221,34 @@ export component PetWindow inherits Window {
         }
     }
 
+    TouchArea {
+        visible: root.use-spine;
+        width: parent.width;
+        height: parent.height;
+        mouse-cursor: MouseCursor.grab;
+
+        pointer-event(event) => {
+            if event.button == PointerEventButton.left && event.kind == PointerEventKind.down {
+                root.pet-activity();
+                root.drag-start();
+            } else if event.button == PointerEventButton.left && event.kind == PointerEventKind.up {
+                root.drag-end();
+            } else if event.kind == PointerEventKind.cancel {
+                root.drag-end();
+            }
+        }
+
+        moved => {
+            root.drag-move();
+        }
+
+        clicked => {
+            root.interact();
+        }
+    }
+
     Rectangle {
-        visible: !root.use-sprite;
+        visible: !root.use-sprite && !root.use-spine;
         x: 20px + root.reaction-x + root.autonomous-x + root.context-x;
         y: 28px + root.body-bob + root.reaction-y + root.autonomous-y + root.context-y;
         width: 180px;

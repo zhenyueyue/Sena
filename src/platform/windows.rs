@@ -2,6 +2,7 @@ mod keyboard;
 mod media;
 mod session;
 mod single_instance;
+mod spine_host;
 mod startup;
 mod tray;
 
@@ -9,6 +10,7 @@ pub use keyboard::KeyboardWatcher;
 pub use media::MediaWatcher;
 pub use session::SessionWatcher;
 pub use single_instance::{SingleInstance, SingleInstanceAcquire};
+pub(crate) use spine_host::SpineCompositionHost;
 pub use startup::{set_startup_enabled, startup_enabled};
 pub use tray::{
     PetContextMenuHook, TrayAction, TrayIcon, set_tray_menu_state, show_pet_context_menu,

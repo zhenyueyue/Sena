@@ -111,6 +111,19 @@ impl SpineRuntime {
             .ok_or_else(|| error_message(&error))
     }
 
+    pub fn set_skin(&mut self, skin_name: &str) -> Result<(), String> {
+        let name = CString::new(skin_name)
+            .map_err(|_| "Spine skin name contains a NUL byte".to_string())?;
+        let _guard = runtime_lock();
+        let found = unsafe { ffi::sena_spine_runtime_set_skin(self.raw.as_ptr(), name.as_ptr()) };
+
+        if found != 0 {
+            Ok(())
+        } else {
+            Err(format!("Spine skin not found: {skin_name}"))
+        }
+    }
+
     pub fn set_animation(
         &mut self,
         track_index: i32,
@@ -374,6 +387,11 @@ mod tests {
             1.0,
         )
         .expect("official Spineboy 3.8 assets should load");
+
+        runtime
+            .set_skin("default")
+            .expect("Spineboy default skin should exist");
+        assert!(runtime.set_skin("missing-skin").is_err());
 
         runtime
             .set_animation(0, "idle", true)

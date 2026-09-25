@@ -302,6 +302,18 @@ int sena_spine_runtime_set_animation(
     ) != 0;
 }
 
+int sena_spine_runtime_set_skin(
+    SenaSpineRuntime* runtime,
+    const char* skin_name
+) {
+    if (!runtime || !skin_name || !skin_name[0]) return 0;
+    if (!spSkeleton_setSkinByName(runtime->skeleton, skin_name)) return 0;
+
+    spSkeleton_setSlotsToSetupPose(runtime->skeleton);
+    spSkeleton_updateWorldTransform(runtime->skeleton);
+    return 1;
+}
+
 void sena_spine_runtime_update(SenaSpineRuntime* runtime, float delta_seconds) {
     if (!runtime || delta_seconds < 0.0f) return;
 

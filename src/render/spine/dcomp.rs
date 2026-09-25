@@ -19,13 +19,14 @@ use windows::{
                 D3D11_BIND_INDEX_BUFFER, D3D11_BIND_SHADER_RESOURCE, D3D11_BIND_VERTEX_BUFFER,
                 D3D11_BLEND_DESC, D3D11_BLEND_DEST_COLOR, D3D11_BLEND_INV_SRC_ALPHA,
                 D3D11_BLEND_INV_SRC_COLOR, D3D11_BLEND_ONE, D3D11_BLEND_OP_ADD, D3D11_BUFFER_DESC,
-                D3D11_COLOR_WRITE_ENABLE_ALL, D3D11_CREATE_DEVICE_BGRA_SUPPORT,
-                D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_INPUT_ELEMENT_DESC,
-                D3D11_INPUT_PER_VERTEX_DATA, D3D11_RENDER_TARGET_BLEND_DESC, D3D11_SAMPLER_DESC,
-                D3D11_SDK_VERSION, D3D11_SUBRESOURCE_DATA, D3D11_TEXTURE_ADDRESS_CLAMP,
-                D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT, D3D11_USAGE_IMMUTABLE, D3D11_VIEWPORT,
-                D3D11CreateDevice, ID3D11BlendState, ID3D11Buffer, ID3D11Device,
-                ID3D11DeviceContext, ID3D11InputLayout, ID3D11PixelShader, ID3D11RenderTargetView,
+                D3D11_COLOR_WRITE_ENABLE_ALL, D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_CULL_NONE,
+                D3D11_FILL_SOLID, D3D11_FILTER_MIN_MAG_MIP_LINEAR, D3D11_INPUT_ELEMENT_DESC,
+                D3D11_INPUT_PER_VERTEX_DATA, D3D11_RASTERIZER_DESC, D3D11_RENDER_TARGET_BLEND_DESC,
+                D3D11_SAMPLER_DESC, D3D11_SDK_VERSION, D3D11_SUBRESOURCE_DATA,
+                D3D11_TEXTURE_ADDRESS_CLAMP, D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT,
+                D3D11_USAGE_IMMUTABLE, D3D11_VIEWPORT, D3D11CreateDevice, ID3D11BlendState,
+                ID3D11Buffer, ID3D11Device, ID3D11DeviceContext, ID3D11InputLayout,
+                ID3D11PixelShader, ID3D11RasterizerState, ID3D11RenderTargetView,
                 ID3D11SamplerState, ID3D11ShaderResourceView, ID3D11Texture2D, ID3D11VertexShader,
             },
             DirectComposition::{
@@ -107,6 +108,7 @@ pub struct SpineDcompRenderer {
     pixel_shader: ID3D11PixelShader,
     input_layout: ID3D11InputLayout,
     sampler: ID3D11SamplerState,
+    rasterizer: ID3D11RasterizerState,
     normal_blend: ID3D11BlendState,
     additive_blend: ID3D11BlendState,
     multiply_blend: ID3D11BlendState,
@@ -254,6 +256,17 @@ impl SpineDcompRenderer {
             .map_err(|error| format!("CreateSamplerState failed: {error}"))?;
         let sampler = sampler.ok_or("D3D11 did not return a sampler")?;
 
+        let rasterizer_desc = D3D11_RASTERIZER_DESC {
+            FillMode: D3D11_FILL_SOLID,
+            CullMode: D3D11_CULL_NONE,
+            DepthClipEnable: BOOL(1),
+            ..Default::default()
+        };
+        let mut rasterizer = None;
+        unsafe { device.CreateRasterizerState(&rasterizer_desc, Some(&mut rasterizer)) }
+            .map_err(|error| format!("CreateRasterizerState failed: {error}"))?;
+        let rasterizer = rasterizer.ok_or("D3D11 did not return a rasterizer state")?;
+
         let normal_blend = create_pma_blend_state(&device, SpineBlendMode::Normal)?;
         let additive_blend = create_pma_blend_state(&device, SpineBlendMode::Additive)?;
         let multiply_blend = create_pma_blend_state(&device, SpineBlendMode::Multiply)?;
@@ -273,6 +286,7 @@ impl SpineDcompRenderer {
             pixel_shader,
             input_layout,
             sampler,
+            rasterizer,
             normal_blend,
             additive_blend,
             multiply_blend,
@@ -301,6 +315,7 @@ impl SpineDcompRenderer {
                 MinDepth: 0.0,
                 MaxDepth: 1.0,
             }]));
+            self.context.RSSetState(&self.rasterizer);
             self.context.IASetInputLayout(&self.input_layout);
             self.context
                 .IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

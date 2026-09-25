@@ -14,7 +14,21 @@
     "skeleton": "spine/export/sena.skel",
     "atlas": "spine/export/sena.atlas",
     "scale": 1.0,
-    "default_skin": "base"
+    "default_skin": "base",
+    "animations": {
+      "idle": "idle",
+      "coding": "coding_idle",
+      "listening_music": "listening_idle",
+      "coding_with_music": "coding_idle",
+      "drowsy": "drowsy_idle",
+      "sleeping": "sleep_idle"
+    },
+    "interactions": {
+      "petting": "petting",
+      "stretch": "stretch",
+      "look_at_cat": "look_at_cat",
+      "daydream": "daydream"
+    }
   },
   "model3d": {
     "source": "models/sena.vrm",

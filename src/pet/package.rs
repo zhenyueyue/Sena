@@ -132,7 +132,6 @@ const fn default_model_scale() -> f32 {
     1.0
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 pub struct SpineSettings {
     pub skeleton: String,
@@ -141,6 +140,10 @@ pub struct SpineSettings {
     pub scale: f32,
     #[serde(default = "default_spine_skin")]
     pub default_skin: String,
+    #[serde(default = "default_spine_animations")]
+    pub animations: BTreeMap<AnimationKey, String>,
+    #[serde(default = "default_spine_interactions")]
+    pub interactions: BTreeMap<InteractionAnimationKey, String>,
 }
 
 const fn default_spine_scale() -> f32 {
@@ -149,6 +152,32 @@ const fn default_spine_scale() -> f32 {
 
 fn default_spine_skin() -> String {
     "base".into()
+}
+
+fn default_spine_animations() -> BTreeMap<AnimationKey, String> {
+    [
+        (AnimationKey::Idle, "idle"),
+        (AnimationKey::Coding, "coding_idle"),
+        (AnimationKey::ListeningMusic, "listening_idle"),
+        (AnimationKey::CodingWithMusic, "coding_idle"),
+        (AnimationKey::Drowsy, "drowsy_idle"),
+        (AnimationKey::Sleeping, "sleep_idle"),
+    ]
+    .into_iter()
+    .map(|(key, name)| (key, name.to_string()))
+    .collect()
+}
+
+fn default_spine_interactions() -> BTreeMap<InteractionAnimationKey, String> {
+    [
+        (InteractionAnimationKey::Petting, "petting"),
+        (InteractionAnimationKey::Stretch, "stretch"),
+        (InteractionAnimationKey::LookAtCat, "look_at_cat"),
+        (InteractionAnimationKey::Daydream, "daydream"),
+    ]
+    .into_iter()
+    .map(|(key, name)| (key, name.to_string()))
+    .collect()
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -370,26 +399,48 @@ impl PetPackage {
         &self.manifest.sprite
     }
 
-    #[allow(dead_code)]
     pub fn is_spine(&self) -> bool {
         self.manifest.renderer == RendererKind::Spine
     }
 
-    #[allow(dead_code)]
     pub fn spine_settings(&self) -> Option<&SpineSettings> {
         self.manifest.spine.as_ref()
     }
 
-    #[allow(dead_code)]
     pub fn spine_skeleton_path(&self) -> Option<PathBuf> {
         let settings = self.spine_settings()?;
         Some(self.root.join(&settings.skeleton))
     }
 
-    #[allow(dead_code)]
     pub fn spine_atlas_path(&self) -> Option<PathBuf> {
         let settings = self.spine_settings()?;
         Some(self.root.join(&settings.atlas))
+    }
+
+    pub fn spine_animation_name(&self, behavior: Behavior) -> Option<&str> {
+        let settings = self.spine_settings()?;
+        let key = AnimationKey::from(behavior);
+        settings
+            .animations
+            .get(&key)
+            .map(String::as_str)
+            .filter(|name| !name.trim().is_empty())
+            .or_else(|| {
+                (behavior != Behavior::Idle)
+                    .then(|| settings.animations.get(&AnimationKey::Idle))
+                    .flatten()
+                    .map(String::as_str)
+                    .filter(|name| !name.trim().is_empty())
+            })
+    }
+
+    #[allow(dead_code)]
+    pub fn spine_interaction_name(&self, key: InteractionAnimationKey) -> Option<&str> {
+        self.spine_settings()?
+            .interactions
+            .get(&key)
+            .map(String::as_str)
+            .filter(|name| !name.trim().is_empty())
     }
 
     #[allow(dead_code)]
@@ -535,6 +586,25 @@ fn validate_manifest(root: &Path, manifest: &PetManifest) -> Result<(), PackageE
         if spine.default_skin.trim().is_empty() {
             return Err(PackageError::InvalidManifest(
                 "spine.default_skin must not be empty".into(),
+            ));
+        }
+        if spine
+            .animations
+            .get(&AnimationKey::Idle)
+            .is_none_or(|name| name.trim().is_empty())
+        {
+            return Err(PackageError::InvalidManifest(
+                "spine.animations.idle must not be empty".into(),
+            ));
+        }
+        if spine
+            .animations
+            .values()
+            .chain(spine.interactions.values())
+            .any(|name| name.trim().is_empty())
+        {
+            return Err(PackageError::InvalidManifest(
+                "spine animation names must not be empty".into(),
             ));
         }
 
@@ -844,6 +914,15 @@ mod tests {
                 .map(|settings| settings.default_skin.as_str()),
             Some("base")
         );
+        assert_eq!(package.spine_animation_name(Behavior::Idle), Some("idle"));
+        assert_eq!(
+            package.spine_animation_name(Behavior::Coding),
+            Some("coding_idle")
+        );
+        assert_eq!(
+            package.spine_interaction_name(InteractionAnimationKey::Petting),
+            Some("petting")
+        );
 
         fs::remove_dir_all(root).expect("clean Spine package fixture");
     }
@@ -873,6 +952,27 @@ mod tests {
         assert_eq!(spine.skeleton, "spine/export/sena.skel");
         assert_eq!(spine.atlas, "spine/export/sena.atlas");
         assert_eq!(spine.default_skin, "base");
+        assert_eq!(
+            spine
+                .animations
+                .get(&AnimationKey::Idle)
+                .map(String::as_str),
+            Some("idle")
+        );
+        assert_eq!(
+            spine
+                .animations
+                .get(&AnimationKey::Sleeping)
+                .map(String::as_str),
+            Some("sleep_idle")
+        );
+        assert_eq!(
+            spine
+                .interactions
+                .get(&InteractionAnimationKey::Stretch)
+                .map(String::as_str),
+            Some("stretch")
+        );
         let model = manifest
             .model3d
             .as_ref()
