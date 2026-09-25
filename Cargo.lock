@@ -3804,6 +3804,7 @@ name = "sena"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "cc",
  "glam",
  "gltf",
  "image",

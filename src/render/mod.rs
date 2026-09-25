@@ -1,4 +1,6 @@
 mod animation;
+#[allow(dead_code)]
+mod spine;
 mod sprite;
 
 use std::{

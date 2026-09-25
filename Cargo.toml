@@ -23,6 +23,7 @@ slint = { version = "1.18.1", default-features = false, features = [
 ] }
 
 [build-dependencies]
+cc = "1.2"
 slint-build = { version = "1.18.1", default-features = false, features = ["compat-1-18"] }
 winresource = "0.1.31"
 

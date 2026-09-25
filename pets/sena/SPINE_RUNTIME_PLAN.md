@@ -66,7 +66,7 @@ Spine Runtime line: 3.8
 仓库记录：
 
 ```text
-third_party/spine-runtimes -> exact commit
+third_party/spine-runtimes -> exact commit (initialize with `git submodule update --init --recursive`)
 pets/sena/spine/project/*.spine
 pets/sena/spine/settings/export.json
 pets/sena/spine/export/*
@@ -486,14 +486,23 @@ Settings / tray 始终可打开。
 ### R0 — License / Version Gate
 
 - 确认 Spine license。
-- 锁定官方 spine-c 3.8 runtime commit。
+- 锁定官方 spine-c 3.8 runtime commit：`c0699e23a0c8799710323bdf0e076e18f6ba41a2`（最后一个兼容 Spine Editor 3.8.75 导出格式的提交；后续 3.8 分支提交已明确拒绝 3.8.75 skeleton）。
 - third-party notice。
 
-### R1 — Skeleton Viewer Equivalent
+### R1 — Skeleton Runtime Core ✅
 
-- 加载官方示例 skeleton。
-- 播放 idle。
-- 无透明窗口要求。
+已完成：
+
+- 官方 spine-c 已作为 pinned Git submodule 接入。
+- 由于 Editor 固定为 3.8.75 Professional，Runtime 精确锁定在 `c0699e23a0c8799710323bdf0e076e18f6ba41a2`。
+- C bridge 隔离官方裸指针与 3.8 legacy API 边界。
+- Rust safe wrapper 可创建 skeleton、设置 track animation、update/apply 并读取 bone world transform。
+- 自动 smoke fixture 以 `spine: 3.8.75` 播放 `idle`，验证 root translation / rotation。
+- 缺失动画名在 bridge 中预检查，避免 3.8 `setAnimationByName` 的 null animation 崩溃。
+- spine-c 调用在 Rust 层串行化，避免未来跨线程直接触碰 C runtime 状态。
+- R1 不加载 atlas texture；纹理生命周期从 R2 D3D11 renderer 开始。
+
+无透明窗口要求，下一阶段进入 R2。
 
 ### R2 — Transparent Pet Window
 
