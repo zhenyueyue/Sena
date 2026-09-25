@@ -8,12 +8,12 @@
 **Personality:** calm, observant, warm, slightly sleepy, quietly playful  
 **Theme:** moonlight × starlight × crystal butterflies × companionship
 
-Sena should feel like a quiet dream living beside the user's desktop: delicate, luminous and immediately readable at small scale. The production direction is now **stylized chibi 3D**, built for a desktop companion that can walk, turn, sit, pick up her cat and carry props while preserving Sena's identity.
+Sena should feel like a quiet dream living beside the user's desktop: delicate, luminous and immediately readable at small scale. The production direction is now **Spine 2D chibi skeletal animation**, built for a desktop companion that can walk, turn, sit, pick up her cat and carry props while preserving Sena's identity.
 
 ## Face
 
 - Soft rounded chibi face with a clear young-adult character identity rather than a childlike redesign.
-- Target body ratio: roughly **3.0 heads tall** for the first 3D model, acceptable range 2.8–3.3.
+- Target body ratio: roughly **3.0 heads tall** for the Spine setup artwork, acceptable range 2.8–3.2.
 - Large violet-pink irises with a darker outer ring and glassy highlights; eye readability is more important than realistic anatomy.
 - Fine upper lashes and delicate lower-lash detail.
 - Small natural nose and softly defined lips.
@@ -43,7 +43,7 @@ The approved base outfit is a moonlight-lavender crystal dress rather than the e
 - Jewelry is fine and delicate: butterfly choker, tiny stars, small crystals.
 - The costume can sparkle, but the silhouette must stay readable at desktop scale.
 
-For the 3D model, keep hair groups, bow, face, upper/lower dress layers, ribbons, jewelry clusters, cat and optional props structurally separable so physics and attachments can be driven independently.
+For the Spine source artwork, keep hair groups, bow, face, upper/lower dress layers, ribbons, jewelry clusters, cat and optional props structurally separable so meshes, bones, skins and runtime secondary motion can be driven independently.
 
 ## Modular accessories
 
@@ -93,9 +93,9 @@ Every generated concept, model revision and animation must preserve:
 2. Large translucent lavender bow shape and placement.
 3. Violet-pink eye color and face structure.
 4. Crystal-lavender layered dress design.
-5. Chibi silhouette around 3 heads tall, while keeping the face clearly Sena rather than generic VRoid styling.
+5. Chibi silhouette around 3 heads tall, while keeping the face clearly Sena rather than a generic chibi template.
 6. Light crystal-shoe silhouette without bulky platform soles.
 7. Butterfly/star jewelry language.
 8. A model silhouette readable at roughly 300–600 px desktop height.
 
-The old elegant full-body Sprite design remains the source for color, hair, outfit motifs and personality, but **not** for body proportion. If a 3D revision loses Sena's hair/bow/eye/dress identity, revise the model before adding it to the package.
+The old elegant full-body Sprite design remains the source for color, hair, outfit motifs and personality, but **not** for body proportion. If a Spine art revision loses Sena's hair/bow/eye/dress identity, revise the artwork before rigging it.

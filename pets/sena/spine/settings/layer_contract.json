@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "character": "sena",
+  "spine_editor": "3.8.75 Professional",
+  "naming": "snake_case",
+  "required_groups": {
+    "head": [
+      "head_base",
+      "ear_l",
+      "ear_r"
+    ],
+    "face": [
+      "brow_l",
+      "brow_r",
+      "eye_white_l",
+      "eye_white_r",
+      "iris_l",
+      "iris_r",
+      "pupil_l",
+      "pupil_r",
+      "eye_highlight_l",
+      "eye_highlight_r",
+      "eyelid_upper_l",
+      "eyelid_upper_r",
+      "eyelid_lower_l",
+      "eyelid_lower_r",
+      "lash_l",
+      "lash_r",
+      "blush_l",
+      "blush_r",
+      "mouth_neutral",
+      "mouth_smile",
+      "mouth_open",
+      "mouth_sleep"
+    ],
+    "hair_back": [
+      "hair_back_c",
+      "hair_back_l1",
+      "hair_back_l2",
+      "hair_back_r1",
+      "hair_back_r2"
+    ],
+    "hair_side": [
+      "hair_side_l1",
+      "hair_side_l2",
+      "hair_side_r1",
+      "hair_side_r2"
+    ],
+    "hair_front": [
+      "bang_l2",
+      "bang_l1",
+      "bang_c",
+      "bang_r1",
+      "bang_r2",
+      "ahoge"
+    ],
+    "bow": [
+      "bow_knot",
+      "bow_upper_l",
+      "bow_upper_r",
+      "bow_lower_l",
+      "bow_lower_r",
+      "bow_tail_l",
+      "bow_tail_r",
+      "bow_crystal",
+      "bow_glow"
+    ],
+    "body": [
+      "torso",
+      "hips",
+      "upper_arm_l",
+      "forearm_l",
+      "hand_l",
+      "upper_arm_r",
+      "forearm_r",
+      "hand_r",
+      "thigh_l",
+      "calf_l",
+      "foot_l",
+      "thigh_r",
+      "calf_r",
+      "foot_r"
+    ],
+    "dress": [
+      "bodice",
+      "collar",
+      "sleeve_l",
+      "sleeve_r",
+      "skirt_back",
+      "skirt_mid_l",
+      "skirt_mid_r",
+      "skirt_front_l",
+      "skirt_front_c",
+      "skirt_front_r",
+      "chiffon_l",
+      "chiffon_r",
+      "crystal_hem",
+      "shoe_l",
+      "shoe_r",
+      "waist_crystal"
+    ]
+  },
+  "optional_props": [
+    "headphones",
+    "laptop",
+    "pillow",
+    "blanket"
+  ],
+  "forbidden_in_base_setup_pose": [
+    "cat",
+    "headphones",
+    "laptop",
+    "pillow",
+    "blanket",
+    "zzz_fx",
+    "music_fx",
+    "ground_shadow"
+  ]
+}
