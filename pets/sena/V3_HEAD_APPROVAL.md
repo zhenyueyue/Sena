@@ -1,4 +1,8 @@
-# Sena V3 — Head Approval Gate
+# Sena V3 — Head Approval Gate — Archived
+
+> **Archived / historical experiment.** V3 procedural/Blender head work is no longer active.
+> Production has moved to Spine 2D.
+
 
 V3 is the art-quality rebuild. V1/V2 remain technical references for rigging,
 animation names, attachments and runtime experiments.

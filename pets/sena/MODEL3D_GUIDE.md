@@ -1,4 +1,9 @@
-# Sena Q版 3D Model Guide
+# Sena Q版 3D Model Guide — Archived
+
+> **Archived / historical experiment.** Sena's production visual pipeline has moved to Spine 2D.
+> See `SPINE_PRODUCTION_GUIDE.md`, `SPINE_ANIMATION_CONTRACT.md`, and `SPINE_RUNTIME_PLAN.md`.
+> Keep this file only as a record of the previous 3D experiments and reusable behavior/anchor ideas.
+
 
 ## Goal
 

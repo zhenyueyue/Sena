@@ -1,0 +1,543 @@
+# Sena Spine Runtime 对接方案 v1
+
+## 1. 结论
+
+Sena 正式 Runtime：
+
+```text
+Rust behavior/context
+        ↓
+Spine Director
+        ↓
+official spine-c 4.3 runtime
+        ↓
+Sena render extraction
+        ↓
+Direct3D 11
+        ↓
+DXGI composition swap chain
+        ↓
+DirectComposition
+        ↓
+transparent topmost Win32 pet window
+```
+
+设置窗口继续使用 Slint。
+
+Sprite renderer 保留为 fallback。
+
+## 2. 为什么使用 spine-c
+
+不采用第三方 Rust Spine Runtime 作为正式依赖。
+
+使用官方 generic runtime：
+
+- spine-c。
+- 与 Spine Editor / 官方 Runtime 同版本线。
+- Rust 通过 C ABI 调用。
+- AnimationState、Skin、Mesh、Clipping、Physics 等逻辑由官方 Runtime 负责。
+- Sena 只实现 Windows 渲染适配和安全 Rust wrapper。
+
+不要自己解析 Spine JSON/binary 实现动画系统。
+
+## 3. License Gate
+
+在真正集成 Spine Runtime 之前必须满足：
+
+1. 项目持有有效的 Spine Editor license。
+2. Trial 只用于评估，不作为正式 Runtime 集成依据。
+3. 分发物中保留 Spine Runtimes license/copyright notice。
+4. Sena 自己仍可保持 Apache-2.0，但 Spine Runtime 代码和许可声明必须明确作为第三方组件处理。
+5. `THIRD_PARTY_NOTICES.md` 必须列出 Spine Runtime。
+
+生产规范默认使用 Professional 特性，因为正式方案需要 weighted meshes 和 physics constraints。
+
+## 4. Version Lock
+
+第一版锁定：
+
+```text
+Spine Editor line : 4.3
+Spine Runtime line: 4.3
+```
+
+仓库记录：
+
+```text
+third_party/spine-runtimes -> exact commit
+pets/sena/spine/project/*.spine
+pets/sena/spine/settings/export.json
+pets/sena/spine/export/*
+```
+
+规则：
+
+- Runtime major.minor 变化必须重新导出 skeleton data。
+- Patch 更新也必须跑完整视觉回归。
+- binary export 不视为源文件，`.spine` 才是源文件。
+
+## 5. Export Format
+
+### Dev
+
+允许：
+
+```text
+sena.json
+sena.atlas
+sena.png
+```
+
+用途：
+
+- diff / inspect。
+- 开发工具。
+- 验证 attachment / animation 名。
+
+### Release
+
+使用：
+
+```text
+sena.skel
+sena.atlas
+sena.png
+```
+
+理由：
+
+- binary 体积更小。
+- 加载更快。
+
+Cat 同样独立导出。
+
+## 6. Rust FFI 边界
+
+建议目录：
+
+```text
+native/
+  spine_bridge/
+    CMakeLists.txt
+    sena_spine_bridge.c
+    sena_spine_bridge.h
+
+src/render/spine/
+  mod.rs
+  ffi.rs
+  runtime.rs
+  skeleton.rs
+  animation.rs
+  skin.rs
+  renderer.rs
+  d3d11.rs
+  window.rs
+  hit_test.rs
+  error.rs
+```
+
+不要让大量 `unsafe extern "C"` 泄漏到业务代码。
+
+Rust 层只暴露安全对象：
+
+```text
+SpineRuntime
+SpineSkeleton
+SpineAnimationState
+SpineSkinSet
+SpineRenderFrame
+SpineEvent
+```
+
+生命周期：
+
+- Atlas / SkeletonData 由 Runtime owner 持有。
+- Skeleton 不得比 SkeletonData 活得更久。
+- Texture GPU 资源独立由 renderer 管理。
+- C 指针永远封装在私有类型中。
+
+## 7. RendererKind 迁移目标
+
+宠物包 schema 后续升级为：
+
+```text
+renderer: "spine"
+```
+
+新增设置概念：
+
+```json
+{
+  "spine": {
+    "skeleton": "spine/export/sena.skel",
+    "atlas": "spine/export/sena.atlas",
+    "scale": 1.0,
+    "default_skin": "base"
+  }
+}
+```
+
+在 Runtime 真正实现前，不提前删除 Sprite schema。
+
+## 8. Render Extraction
+
+每帧：
+
+1. `AnimationState.update(dt)`。
+2. `AnimationState.apply(skeleton)`。
+3. 更新 world transforms / physics。
+4. 按 slot draw order 遍历。
+5. Region attachment -> 4 顶点 / 6 indices。
+6. Mesh attachment -> world vertices + UV + triangles。
+7. Clipping attachment -> 官方 runtime clipping。
+8. 按 texture + blend mode 合批。
+9. 提交 D3D11 dynamic vertex/index buffers。
+10. Present composition swap chain。
+
+GPU Vertex：
+
+```text
+position : float2
+uv       : float2
+light    : rgba8 or float4
+dark     : rgba8 or float4
+```
+
+预留 two-color tint，即使第一批美术暂时不用。
+
+## 9. Blend / Alpha
+
+生产统一：
+
+- Atlas：premultiplied alpha。
+- Composition swap chain：premultiplied alpha。
+- Window 背景清零为透明黑。
+- Shader / blend state 按 Spine slot blend mode 选择。
+
+必须支持：
+
+- Normal
+- Additive
+- Multiply
+- Screen
+
+首个 smoke test 至少先验证 Normal + Additive。
+
+## 10. Windows 透明窗口
+
+正式宠物窗口不继续依赖普通 HWND wgpu surface 的 alpha 能力。
+
+使用：
+
+- D3D11 Device。
+- `CreateSwapChainForComposition`。
+- flip-model swap chain。
+- `DXGI_ALPHA_MODE_PREMULTIPLIED`。
+- DirectComposition Visual。
+- borderless / topmost Win32 host window。
+
+这样透明能力由 Windows Composition 路径明确提供，而不是依赖某个 wgpu backend 恰好暴露 alpha mode。
+
+## 11. Window 与坐标
+
+Spine skeleton world：
+
+- root = 脚底中心。
+- +X 右。
+- +Y 上。
+
+Windows：
+
+- top-left origin。
+
+Renderer 做一次坐标变换：
+
+```text
+screen_x = anchor_x + spine_x * scale
+screen_y = baseline_y - spine_y * scale
+```
+
+桌面移动逻辑只移动 window/root，不修改 Spine animation root motion。
+
+动画中禁止用 root translation 让角色“真的走过桌面距离”；walk 只表现步态，真实位移由现有 pet motion controller 管理。
+
+## 12. Surface 尺寸
+
+不要每帧按 skeleton AABB 重建 swap chain。
+
+第一版使用稳定透明画布：
+
+- 默认逻辑区域约 640 × 640。
+- 角色正常高度约 320–420 px。
+- 坐 / 睡等宽姿态预留透明边距。
+- Hit Test 只使用实际可见 attachment，不用整个窗口矩形。
+
+如果未来确实需要更宽的 sleeping pose，再升级成“状态级固定 surface profile”，而不是逐帧 resize。
+
+## 13. Hit Testing
+
+Sprite 当前的 alpha hit test 不能直接照搬。
+
+Spine hit test 分两级：
+
+### Level 1 — Geometry
+
+- 当前可见 attachment world triangles。
+- point-in-triangle。
+- clipping 后的 triangle 才算。
+
+### Level 2 — Texture Alpha
+
+只有 Level 1 命中后：
+
+- 由 barycentric UV 得到 atlas texel。
+- 读取 CPU-side alpha mask。
+- alpha >= threshold 才命中。
+
+缓存每张 atlas 的 alpha mask。
+
+这样头发透明边缘不会变成大矩形点击区。
+
+## 14. Animation Director
+
+新增一个业务层，不让 Behavior 直接操作 Spine track：
+
+```text
+DesktopContext / Behavior
+        ↓
+PetPresentationState
+        ↓
+SpineDirector
+        ↓
+AnimationState tracks / skins / events
+```
+
+`PetPresentationState` 示例：
+
+```text
+posture: Standing | Sitting | Sleeping | CarryingCat
+activity: Idle | Coding | Listening
+facing: Left | Right
+typing: bool
+headphones: bool
+laptop: bool
+expression: Neutral | Happy | Curious | Sleepy | Focused
+```
+
+Director 负责决定：
+
+- transition。
+- track。
+- skin composition。
+- props。
+- mix duration。
+- interrupt policy。
+
+## 15. Event Pipeline
+
+Spine event -> Rust enum：
+
+```text
+FacingLeft
+FacingRight
+FootLeft
+FootRight
+HeadphonesOn
+HeadphonesOff
+LaptopOn
+LaptopOff
+CatAttach
+CatDetach
+SleepCommitted
+WakeCommitted
+```
+
+未知事件：
+
+- Debug：日志 warning。
+- Release：忽略但计数，不 panic。
+
+## 16. Cat Runtime
+
+Cat 作为独立 `SpineSkeleton`。
+
+普通状态：
+
+- 自己的 AnimationState。
+- 自己的 root world position。
+
+Carry：
+
+- Sena animation 发出 `cat_attach`。
+- Runtime 每帧读取 Sena `cat_carry` bone world transform。
+- 把 Cat root 对齐到该 transform。
+- Cat 播放 `cat_carry_idle`。
+- 放下时 `cat_detach` 后做短 world-space interpolation。
+
+Sena / Cat blink RNG 使用不同 seed + 不同 phase。
+
+## 17. Physics
+
+Physics 更新与角色位移要区分。
+
+当 pet window 在桌面上移动时：
+
+- character world/root movement 应传给 Spine Physics，形成头发/裙摆自然滞后。
+- 瞬移（例如显示器切换、安全纠正）要 reset physics，避免发丝爆飞。
+- 拖拽时可加强 inertia，但限制最大偏移。
+- Sleeping 静止后 Physics 可降低 update rate。
+
+## 18. Update / Render Rate
+
+建议：
+
+### Active locomotion / interaction
+
+- render: 60 FPS。
+- Spine update: 60 Hz。
+
+### Ordinary idle
+
+- render/update: 30 Hz。
+- 没有 physics / micro motion 时允许更低。
+
+### Sleeping
+
+- 10–20 Hz 足够。
+- 没有可见变化时可暂停 present，等下一个定时事件。
+
+### Hidden / locked
+
+- 停止 render。
+- 停止 physics。
+- 仅保留必要的 context timer。
+
+## 19. Texture / Batch Budget
+
+单 Sena：
+
+- 1 atlas page 优先，最多 2。
+- 2048² preferred。
+- 运行时 vertices 目标 < 1500。
+- draw calls 目标：
+  - Normal-only frame：尽量 < 10。
+  - 多 blend/多 page：< 20。
+
+只有一个桌宠角色，不需要为几百个 skeleton 的极端场景过度优化。
+
+## 20. Error / Fallback
+
+任意情况：
+
+- Spine DLL/static runtime 初始化失败。
+- skeleton 版本不匹配。
+- atlas 缺失。
+- texture 解码失败。
+- animation contract 缺失关键项。
+- D3D11/DirectComposition 初始化失败。
+
+都不得导致应用无法启动。
+
+顺序：
+
+```text
+Spine renderer
+  -> Sprite official package
+  -> Placeholder
+```
+
+Settings / tray 始终可打开。
+
+## 21. 里程碑
+
+### R0 — License / Version Gate
+
+- 确认 Spine license。
+- 锁定 4.3 runtime commit。
+- third-party notice。
+
+### R1 — Skeleton Viewer Equivalent
+
+- 加载官方示例 skeleton。
+- 播放 idle。
+- 无透明窗口要求。
+
+### R2 — Transparent Pet Window
+
+- D3D11 + DirectComposition。
+- Normal + Additive。
+- premultiplied alpha。
+- topmost no-border。
+
+### R3 — Sena Still / Idle
+
+- Sena atlas。
+- setup pose。
+- idle。
+- blink。
+- hit testing。
+
+### R4 — Locomotion
+
+- walk_l / walk_r。
+- turn。
+- desktop motion controller 驱动位置。
+- physics secondary motion。
+
+### R5 — Context State
+
+- coding。
+- listening。
+- drowsy。
+- sleep。
+- interaction tracks。
+
+### R6 — Cat
+
+- separate skeleton。
+- pickup / carry / putdown。
+- independent blink。
+
+### R7 — Production
+
+- power usage。
+- DPI。
+- multi-monitor。
+- crash fallback。
+- release packaging。
+- license notices。
+
+## 22. 测试
+
+### Unit
+
+- manifest path validation。
+- animation contract lookup。
+- event mapping。
+- state transition planning。
+- mix duration。
+- fallback selection。
+
+### Native smoke
+
+- create D3D11 device。
+- create composition swap chain。
+- render 120 frames。
+- alpha surface verification。
+- resize/DPI。
+- device-lost handling。
+
+### Visual regression
+
+固定输出：
+
+- idle。
+- walk L/R。
+- turn L->R / R->L。
+- sit。
+- coding。
+- listening。
+- sleep。
+- cat carry。
+
+每个录制短视频或关键帧图用于人工审核。

@@ -1,4 +1,8 @@
-# Sena Base Mesh Pipeline
+# Sena Base Mesh Pipeline — Archived
+
+> **Archived / historical experiment.** The VRoid/3D route is no longer the production art path.
+> Sena now targets Spine 2D. See `SPINE_PRODUCTION_GUIDE.md`.
+
 
 The procedural V1/V2/V3 models proved the rig/runtime architecture, but they are
 not the final art model.  The production visual model now starts from an
