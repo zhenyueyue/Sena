@@ -1,0 +1,124 @@
+# Sena Q版 3D Model Guide
+
+## Goal
+
+The primary long-term renderer is a lightweight chibi 3D character that can move along the bottom of the desktop like a game companion. Sprite remains the fallback renderer until the 3D path is production-ready.
+
+## V1 visual target
+
+- Approx. 3.0 heads tall (2.8–3.3 acceptable).
+- Large head and eyes, compact torso, short limbs, readable hands/feet.
+- Moonlight silver-white hair with faint pink/lilac tint.
+- Large translucent lavender butterfly/crystal bow remains the strongest silhouette landmark.
+- Simplified white/lilac/ice-blue crystal dress; preserve layered ribbon language without reproducing every illustration detail.
+- Cream/orange-and-white chibi cat, rounded enough to be comfortably carried by Sena.
+- Toon/anime shading. Avoid realistic skin, heavy PBR, complex environment lighting and expensive post-processing.
+
+## Runtime budget
+
+V1 target, not a hard file-format restriction:
+
+- Sena: about 30k–60k triangles.
+- Cat: about 5k–15k triangles.
+- Total visible character/props target: below ~100k triangles.
+- Body/outfit texture: 2K maximum for V1.
+- Face/hair: 1K–2K where needed.
+- Cat/props: 512–1K.
+- Prefer opaque/cutout materials. Reserve alpha blending for a small number of crystal/chiffon accents.
+
+Runtime policy:
+
+- Static/quiet: event-driven or low refresh; do not hold 60 FPS just because the model exists.
+- Breathing/blink: low-cost bone/blendshape updates.
+- Active locomotion/actions: up to 60 FPS rendering, animation may run at 30 Hz with interpolation.
+- Spring bone/secondary motion: target ~30 Hz first; reduce for power-saving mode.
+- Hidden/locked: stop 3D rendering.
+
+## Required humanoid structure
+
+Use a standard humanoid skeleton compatible with VRM/glTF animation retargeting. At minimum:
+
+- Hips / Spine / Chest / Neck / Head
+- Left/Right UpperArm / LowerArm / Hand
+- Left/Right UpperLeg / LowerLeg / Foot
+
+Hair, bow, skirt/ribbons and cat secondary bones may be custom.
+
+## Required V1 motion names
+
+The package contract in `pet.template.json` maps semantic names to embedded animation clips. The first production model should provide:
+
+- `Idle`
+- `Walk`
+- `TurnLeft`
+- `TurnRight`
+- `SitDown`
+- `SitIdle`
+- `StandUp`
+- `Stretch`
+- `Petting`
+- `LookAtCat`
+- `Daydream`
+- `CarryCatPickup`
+- `CarryCatIdle`
+- `CarryCatWalk`
+- `CarryCatPutdown`
+
+Transitions should be blendable; avoid animation clips that begin several frames away from the shared neutral pose unless the action explicitly requires it.
+
+## Expressions
+
+Minimum expression/blendshape contract:
+
+- `BlinkLeft`
+- `BlinkRight`
+- `Happy`
+- `Curious`
+- `Sleepy`
+- `Focused`
+
+Blink left/right must be independently controllable so Sena and the cat do not look mechanically synchronized.
+
+## Attachment anchors
+
+Create named bones/nodes even if the props are not shipped in V1:
+
+- `CatCarry` — cat root while being held.
+- `RightHandProp`
+- `LeftHandProp`
+- `Headphones`
+- `Laptop`
+
+The cat remains an independently animated entity when on the ground. During pickup, blend into a carry pose and attach its root to `CatCarry`; do not teleport it visibly between ground and arms.
+
+## Desktop locomotion rules
+
+The 3D model should support game-like transitions:
+
+`Idle -> Turn -> Walk -> Decelerate -> Idle`
+
+and:
+
+`Idle -> WalkToCat -> CarryCatPickup -> CarryCatIdle/Walk -> CarryCatPutdown -> Idle`
+
+Do not implement left movement by simply mirroring the rendered image. The character should rotate/turn in 3D and then walk in the new facing direction.
+
+## Asset layout
+
+Planned layout:
+
+```text
+pets/sena/
+  models/
+    sena.vrm
+    cat.glb            # optional if cat is not embedded
+    props/
+      headphones.glb
+      laptop.glb
+```
+
+`.vrm` is preferred for Sena because it gives us a humanoid/avatar convention; `.glb` remains supported for generic model/prop assets.
+
+## Migration rule
+
+Do not delete the current Sprite assets. They remain the safe fallback until the Model3d renderer passes transparency, hit-testing, locomotion and power-usage acceptance tests on Windows.

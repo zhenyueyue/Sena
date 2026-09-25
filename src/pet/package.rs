@@ -16,6 +16,7 @@ pub enum RendererKind {
     Placeholder,
     Sprite,
     Live2d,
+    Model3d,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
@@ -112,6 +113,24 @@ const fn default_alpha_threshold() -> u8 {
     8
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Clone, Deserialize)]
+pub struct Model3dSettings {
+    pub source: String,
+    #[serde(default = "default_model_scale")]
+    pub scale: f32,
+    #[serde(default)]
+    pub motions: BTreeMap<String, String>,
+    #[serde(default)]
+    pub expressions: BTreeMap<String, String>,
+    #[serde(default)]
+    pub anchors: BTreeMap<String, String>,
+}
+
+const fn default_model_scale() -> f32 {
+    1.0
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct PetManifest {
     pub schema_version: u32,
@@ -124,6 +143,8 @@ pub struct PetManifest {
     pub renderer: RendererKind,
     #[serde(default)]
     pub sprite: SpriteSettings,
+    #[serde(default)]
+    pub model3d: Option<Model3dSettings>,
     #[serde(default)]
     pub license: Option<String>,
     #[serde(default)]
@@ -216,6 +237,7 @@ impl PetPackage {
                 author: "Sena Project".into(),
                 renderer: RendererKind::Placeholder,
                 sprite: SpriteSettings::default(),
+                model3d: None,
                 license: Some("Apache-2.0".into()),
                 animations,
                 interactions: BTreeMap::new(),
@@ -325,6 +347,17 @@ impl PetPackage {
         &self.manifest.sprite
     }
 
+    #[allow(dead_code)]
+    pub fn model3d_settings(&self) -> Option<&Model3dSettings> {
+        self.manifest.model3d.as_ref()
+    }
+
+    #[allow(dead_code)]
+    pub fn model3d_path(&self) -> Option<PathBuf> {
+        let settings = self.model3d_settings()?;
+        Some(self.root.join(&settings.source))
+    }
+
     pub fn sprite_frame_path(&self, behavior: Behavior, frame: usize) -> Option<PathBuf> {
         if !self.is_sprite() {
             return None;
@@ -428,6 +461,27 @@ fn validate_manifest(root: &Path, manifest: &PetManifest) -> Result<(), PackageE
         ));
     }
 
+    if manifest.renderer == RendererKind::Model3d {
+        let model = manifest.model3d.as_ref().ok_or_else(|| {
+            PackageError::InvalidManifest("model3d renderer requires model3d settings".into())
+        })?;
+        let relative = Path::new(&model.source);
+        if !is_safe_relative_path(relative) {
+            return Err(PackageError::UnsafeAssetPath(model.source.clone()));
+        }
+        if !is_supported_model3d_asset(relative) {
+            return Err(PackageError::UnsupportedAssetFormat(model.source.clone()));
+        }
+        if !model.scale.is_finite() || !(0.05..=10.0).contains(&model.scale) {
+            return Err(PackageError::InvalidManifest(
+                "model3d.scale must be between 0.05 and 10.0".into(),
+            ));
+        }
+        if !root.join(relative).is_file() {
+            return Err(PackageError::MissingAsset(root.join(relative)));
+        }
+    }
+
     for (animation, definition) in manifest
         .animations
         .iter()
@@ -512,6 +566,14 @@ fn is_supported_sprite_asset(path: &Path) -> bool {
         })
 }
 
+fn is_supported_model3d_asset(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            extension.eq_ignore_ascii_case("vrm") || extension.eq_ignore_ascii_case("glb")
+        })
+}
+
 #[derive(Debug)]
 pub enum PackageError {
     NotFound(Vec<PathBuf>),
@@ -559,12 +621,10 @@ impl fmt::Display for PackageError {
             Self::UnsafeAssetPath(path) => {
                 write!(f, "pet package contains unsafe asset path: {path}")
             }
-            Self::UnsupportedAssetFormat(path) => {
-                write!(
-                    f,
-                    "unsupported sprite asset format: {path}; expected PNG or WebP"
-                )
-            }
+            Self::UnsupportedAssetFormat(path) => write!(
+                f,
+                "unsupported pet asset format: {path}; expected PNG/WebP for Sprite or VRM/GLB for Model3d"
+            ),
             Self::MissingAsset(path) => {
                 write!(f, "pet package asset does not exist: {}", path.display())
             }
@@ -634,6 +694,14 @@ mod tests {
     }
 
     #[test]
+    fn model3d_assets_are_limited_to_vrm_and_glb() {
+        assert!(is_supported_model3d_asset(Path::new("models/sena.vrm")));
+        assert!(is_supported_model3d_asset(Path::new("models/sena.GLB")));
+        assert!(!is_supported_model3d_asset(Path::new("models/sena.blend")));
+        assert!(!is_supported_model3d_asset(Path::new("models/sena.fbx")));
+    }
+
+    #[test]
     fn official_sena_package_template_matches_current_schema() {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("pets")
@@ -646,6 +714,13 @@ mod tests {
         assert_eq!(manifest.id, "sena.official");
         assert_eq!(manifest.renderer, RendererKind::Sprite);
         assert_eq!(manifest.sprite.scale, 0.36);
+        let model = manifest.model3d.as_ref().expect("3D migration contract");
+        assert_eq!(model.source, "models/sena.vrm");
+        assert_eq!(model.motions.get("walk").map(String::as_str), Some("Walk"));
+        assert_eq!(
+            model.anchors.get("cat_carry").map(String::as_str),
+            Some("CatCarry")
+        );
         assert_eq!(manifest.animations.len(), 6);
         assert_eq!(manifest.interactions.len(), 4);
         assert_eq!(

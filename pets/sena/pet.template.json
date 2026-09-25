@@ -10,6 +10,42 @@
     "scale": 0.36,
     "alpha_threshold": 8
   },
+  "model3d": {
+    "source": "models/sena.vrm",
+    "scale": 1.0,
+    "motions": {
+      "idle": "Idle",
+      "walk": "Walk",
+      "turn_left": "TurnLeft",
+      "turn_right": "TurnRight",
+      "sit_down": "SitDown",
+      "sit_idle": "SitIdle",
+      "stand_up": "StandUp",
+      "stretch": "Stretch",
+      "petting": "Petting",
+      "look_at_cat": "LookAtCat",
+      "daydream": "Daydream",
+      "carry_cat_pickup": "CarryCatPickup",
+      "carry_cat_idle": "CarryCatIdle",
+      "carry_cat_walk": "CarryCatWalk",
+      "carry_cat_putdown": "CarryCatPutdown"
+    },
+    "expressions": {
+      "blink_left": "BlinkLeft",
+      "blink_right": "BlinkRight",
+      "happy": "Happy",
+      "curious": "Curious",
+      "sleepy": "Sleepy",
+      "focused": "Focused"
+    },
+    "anchors": {
+      "cat_carry": "CatCarry",
+      "right_hand_prop": "RightHandProp",
+      "left_hand_prop": "LeftHandProp",
+      "headphones": "Headphones",
+      "laptop": "Laptop"
+    }
+  },
   "license": "SEE-ASSET-LICENSE",
   "animations": {
     "idle": {

@@ -8,13 +8,13 @@
 **Personality:** calm, observant, warm, slightly sleepy, quietly playful  
 **Theme:** moonlight × starlight × crystal butterflies × companionship
 
-Sena should feel like a quiet dream living beside the user's desktop: delicate and luminous, but calm enough to remain on screen for hours. Her production Sprite must preserve the approved elegant body proportions and avoid the oversized-head or heavy-platform-shoe look that appeared in early drafts.
+Sena should feel like a quiet dream living beside the user's desktop: delicate, luminous and immediately readable at small scale. The production direction is now **stylized chibi 3D**, built for a desktop companion that can walk, turn, sit, pick up her cat and carry props while preserving Sena's identity.
 
 ## Face
 
-- Refined soft oval face with an elegant young-adult appearance.
-- Head must remain proportionate to the body; do not enlarge it into chibi proportions.
-- Large but not exaggerated violet-pink irises with a darker outer ring and glassy highlights.
+- Soft rounded chibi face with a clear young-adult character identity rather than a childlike redesign.
+- Target body ratio: roughly **3.0 heads tall** for the first 3D model, acceptable range 2.8–3.3.
+- Large violet-pink irises with a darker outer ring and glassy highlights; eye readability is more important than realistic anatomy.
 - Fine upper lashes and delicate lower-lash detail.
 - Small natural nose and softly defined lips.
 - Default expression: gentle, dreamy, attentive and slightly wistful.
@@ -38,12 +38,12 @@ The approved base outfit is a moonlight-lavender crystal dress rather than the e
 - Crystal-butterfly motifs at the waist, sleeves and selected ribbon ends.
 - Delicate star/moon charms may hang from a few controlled attachment points.
 - Sheer pale stockings/tights with restrained crystal-ribbon details.
-- Shoes are elegant slim-heeled crystal shoes with a **thin sole**. No thick platform sole.
-- Heel and sole mass must remain visually light; footwear must not dominate the lower silhouette.
+- Shoes become simplified crystal shoes suitable for chibi locomotion, with a light silhouette and no oversized platform sole.
+- Feet must remain large enough for stable readable walk and sit poses, but should not dominate the silhouette.
 - Jewelry is fine and delicate: butterfly choker, tiny stars, small crystals.
 - The costume can sparkle, but the silhouette must stay readable at desktop scale.
 
-For future Live2D, keep front/back hair, bow, face, eyes, mouth, upper/lower dress layers, ribbons, arms, jewelry clusters and optional accessories visually separable.
+For the 3D model, keep hair groups, bow, face, upper/lower dress layers, ribbons, jewelry clusters, cat and optional props structurally separable so physics and attachments can be driven independently.
 
 ## Modular accessories
 
@@ -87,15 +87,15 @@ Not required for the first Sprite package, but preserve compatibility with:
 
 ## Design invariants
 
-Every generated or hand-drawn frame must preserve:
+Every generated concept, model revision and animation must preserve:
 
 1. Moonlight silver-pink hair color.
 2. Large translucent lavender bow shape and placement.
 3. Violet-pink eye color and face structure.
 4. Crystal-lavender layered dress design.
-5. Elegant adult body proportions with a relatively small head.
-6. Thin-soled slim-heel shoe silhouette.
+5. Chibi silhouette around 3 heads tall, while keeping the face clearly Sena rather than generic VRoid styling.
+6. Light crystal-shoe silhouette without bulky platform soles.
 7. Butterfly/star jewelry language.
-8. Camera angle and scale unless the animation specification explicitly says otherwise.
+8. A model silhouette readable at roughly 300–600 px desktop height.
 
-If any of these drift between frames, regenerate/redraw before adding the frame to the package.
+The old elegant full-body Sprite design remains the source for color, hair, outfit motifs and personality, but **not** for body proportion. If a 3D revision loses Sena's hair/bow/eye/dress identity, revise the model before adding it to the package.
