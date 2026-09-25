@@ -54,11 +54,14 @@ def material(name: str, rgba: tuple[float, float, float, float], roughness: floa
     mat = bpy.data.materials.new(name)
     mat.diffuse_color = rgba
     mat.use_nodes = True
-    bsdf = mat.node_tree.nodes.get("Principled BSDF")
+    # Blender localizes node display names (for example Chinese builds rename
+    # "Principled BSDF"), so locate the shader by stable node type instead.
+    bsdf = next((node for node in mat.node_tree.nodes if node.type == "BSDF_PRINCIPLED"), None)
     if bsdf:
         bsdf.inputs["Base Color"].default_value = rgba
         bsdf.inputs["Roughness"].default_value = roughness
         bsdf.inputs["Metallic"].default_value = 0.0
+        bsdf.inputs["Alpha"].default_value = rgba[3]
     return mat
 
 
@@ -186,35 +189,42 @@ def create_sena(armature: bpy.types.Object) -> None:
     torso = uv_sphere("Body", (0, 0.01, 0.72), (0.25, 0.16, 0.24), white)
     parent_keep_world(torso, armature, "Chest")
 
-    head = uv_sphere("HeadMesh", (0, -0.015, 1.105), (0.30, 0.255, 0.27), skin, 40, 28)
+    head = uv_sphere("HeadMesh", (0, -0.02, 1.105), (0.275, 0.235, 0.255), skin, 40, 28)
     parent_keep_world(head, armature, "Head")
 
     # Back hair mass + chunky strands are intentional for desktop readability.
-    back_hair = uv_sphere("BackHair", (0, 0.10, 1.04), (0.29, 0.18, 0.40), hair)
+    back_hair = uv_sphere("BackHair", (0, 0.075, 1.04), (0.30, 0.19, 0.42), hair)
     parent_keep_world(back_hair, armature, "Head")
     for x in (-0.23, 0.23):
         lock = uv_sphere("HairSide", (x, 0.015, 0.89), (0.075, 0.07, 0.34), hair_shadow)
         parent_keep_world(lock, armature, "Head")
-    for x, z, angle in ((-0.12, 1.27, -0.20), (0.0, 1.30, 0.0), (0.12, 1.27, 0.20)):
-        bang = uv_sphere("Bang", (x, -0.205, z), (0.09, 0.045, 0.15), hair)
+    for x, z, angle, sx in (
+        (-0.14, 1.285, -0.34, 0.085),
+        (-0.045, 1.305, -0.16, 0.075),
+        (0.050, 1.305, 0.14, 0.072),
+        (0.135, 1.275, 0.32, 0.080),
+    ):
+        bang = uv_sphere("Bang", (x, -0.222, z), (sx, 0.032, 0.135), hair)
         bang.rotation_euler[1] = angle
         parent_keep_world(bang, armature, "Head")
 
     # Eyes are separate so future blendshape replacement is straightforward.
-    for x in (-0.105, 0.105):
-        eye = uv_sphere("EyeWhite", (x, -0.252, 1.14), (0.075, 0.025, 0.105), eye_white, 24, 16)
-        iris_mesh = uv_sphere("Iris", (x, -0.274, 1.14), (0.043, 0.015, 0.066), iris, 24, 16)
-        pupil = uv_sphere("Pupil", (x, -0.286, 1.142), (0.018, 0.008, 0.035), dark, 20, 12)
+    for x in (-0.092, 0.092):
+        eye = uv_sphere("EyeWhite", (x, -0.242, 1.135), (0.064, 0.020, 0.092), eye_white, 24, 16)
+        iris_mesh = uv_sphere("Iris", (x, -0.260, 1.135), (0.036, 0.012, 0.058), iris, 24, 16)
+        pupil = uv_sphere("Pupil", (x, -0.270, 1.137), (0.014, 0.006, 0.030), dark, 20, 12)
         for obj in (eye, iris_mesh, pupil):
             parent_keep_world(obj, armature, "Head")
 
-    mouth = uv_sphere("Mouth", (0, -0.275, 1.045), (0.055, 0.012, 0.018), blush, 20, 12)
+    mouth = uv_sphere("Mouth", (0, -0.260, 1.045), (0.044, 0.010, 0.014), blush, 20, 12)
     parent_keep_world(mouth, armature, "Head")
 
     # Simplified crystal dress.
-    dress = cone("Dress", (0, 0.005, 0.53), 0.34, 0.22, 0.47, pale_lilac, 40)
+    dress = cone("Dress", (0, 0.005, 0.50), 0.31, 0.19, 0.40, pale_lilac, 40)
     parent_keep_world(dress, armature, "Hips")
-    waist = uv_sphere("WaistCrystal", (0, -0.15, 0.69), (0.075, 0.035, 0.065), lilac, 24, 16)
+    underskirt = cone("DressUnderLayer", (0, 0.025, 0.43), 0.285, 0.18, 0.27, white, 40)
+    parent_keep_world(underskirt, armature, "Hips")
+    waist = uv_sphere("WaistCrystal", (0, -0.15, 0.68), (0.070, 0.030, 0.055), lilac, 24, 16)
     parent_keep_world(waist, armature, "Spine")
 
     # Limbs remain separate blocks for V1 rig debugging.
@@ -236,9 +246,11 @@ def create_sena(armature: bpy.types.Object) -> None:
             parent_keep_world(obj, armature, bone)
 
     # Signature translucent-looking bow, approximated with opaque pastel in blockout.
-    bow_center = uv_sphere("BowCenter", (0.22, 0.08, 1.28), (0.055, 0.035, 0.055), lilac)
-    bow_l = uv_sphere("BowLeft", (0.13, 0.08, 1.29), (0.11, 0.035, 0.075), pale_lilac)
-    bow_r = uv_sphere("BowRight", (0.31, 0.08, 1.29), (0.11, 0.035, 0.075), pale_lilac)
+    bow_center = uv_sphere("BowCenter", (0.205, 0.075, 1.285), (0.050, 0.030, 0.050), lilac)
+    bow_l = uv_sphere("BowLeft", (0.115, 0.075, 1.30), (0.115, 0.028, 0.068), pale_lilac)
+    bow_r = uv_sphere("BowRight", (0.300, 0.075, 1.30), (0.115, 0.028, 0.068), pale_lilac)
+    bow_l.rotation_euler[1] = math.radians(-18)
+    bow_r.rotation_euler[1] = math.radians(18)
     for obj in (bow_center, bow_l, bow_r):
         parent_keep_world(obj, armature, "Head")
 
@@ -251,28 +263,28 @@ def create_cat() -> bpy.types.Object:
     pink = material("CatPink", (1.0, 0.48, 0.57, 1.0), 0.74)
 
     root = bpy.data.objects.new("CatRoot", None)
-    root.location = (0.48, -0.02, 0)
+    root.location = (0.43, -0.01, 0)
     bpy.context.collection.objects.link(root)
 
-    body = uv_sphere("CatBody", (0.48, 0.0, 0.20), (0.19, 0.14, 0.17), cream)
-    head = uv_sphere("CatHead", (0.48, -0.08, 0.38), (0.16, 0.14, 0.15), white)
-    patch = uv_sphere("CatOrangePatch", (0.55, -0.205, 0.42), (0.075, 0.025, 0.07), orange, 20, 12)
-    muzzle = uv_sphere("CatMuzzle", (0.48, -0.215, 0.35), (0.08, 0.035, 0.055), white, 20, 12)
-    nose = uv_sphere("CatNose", (0.48, -0.252, 0.37), (0.025, 0.012, 0.018), pink, 16, 10)
+    body = uv_sphere("CatBody", (0.0, 0.0, 0.18), (0.16, 0.125, 0.15), cream)
+    head = uv_sphere("CatHead", (0.0, -0.07, 0.34), (0.145, 0.125, 0.135), white)
+    patch = uv_sphere("CatOrangePatch", (0.060, -0.183, 0.375), (0.065, 0.020, 0.060), orange, 20, 12)
+    muzzle = uv_sphere("CatMuzzle", (0.0, -0.190, 0.315), (0.070, 0.028, 0.048), white, 20, 12)
+    nose = uv_sphere("CatNose", (0.0, -0.220, 0.332), (0.020, 0.010, 0.015), pink, 16, 10)
     for obj in (body, head, patch, muzzle, nose):
         obj.parent = root
 
-    for x in (0.42, 0.54):
-        eye = uv_sphere("CatEye", (x, -0.218, 0.42), (0.022, 0.012, 0.032), dark, 16, 10)
+    for x in (-0.052, 0.052):
+        eye = uv_sphere("CatEye", (x, -0.190, 0.375), (0.019, 0.010, 0.028), dark, 16, 10)
         eye.parent = root
 
-    for x in (0.39, 0.57):
-        ear = cone("CatEar", (x, -0.06, 0.53), 0.07, 0.005, 0.16, cream, 16)
+    for x in (-0.080, 0.080):
+        ear = cone("CatEar", (x, -0.050, 0.475), 0.060, 0.005, 0.135, cream, 16)
         ear.parent = root
 
     # Tail built from a few chunky beads for a controllable V1 silhouette.
-    for i, (dx, dz) in enumerate(((0.14, 0.17), (0.22, 0.24), (0.25, 0.34))):
-        tail = uv_sphere(f"CatTail{i}", (0.48 + dx, 0.07, dz), (0.07, 0.06, 0.10), orange, 18, 12)
+    for i, (dx, dz) in enumerate(((0.13, 0.15), (0.20, 0.22), (0.22, 0.31))):
+        tail = uv_sphere(f"CatTail{i}", (dx, 0.065, dz), (0.060, 0.052, 0.090), orange, 18, 12)
         tail.rotation_euler[1] = -0.45 + i * 0.18
         tail.parent = root
 
@@ -296,10 +308,9 @@ def ensure_action(armature: bpy.types.Object, name: str, end_frame: int, keys) -
             pose.keyframe_insert("rotation_euler", frame=frame, group=bone_name)
             pose.keyframe_insert("location", frame=frame, group=bone_name)
 
-    for fcurve in action.fcurves:
-        for point in fcurve.keyframe_points:
-            point.interpolation = "BEZIER"
-
+    # Blender 5.x uses layered/slotted Actions and no longer exposes
+    # Action.fcurves directly. keyframe_insert already creates smooth Bezier
+    # interpolation by default, so there is no need to mutate F-curves here.
     action.frame_start = 1
     action.frame_end = end_frame
     armature.animation_data.action = None
@@ -438,21 +449,25 @@ def create_preview_camera_and_light() -> None:
     key.data.size = 3.0
     key.rotation_euler = (math.radians(28), 0, math.radians(34))
 
-    bpy.ops.object.camera_add(location=(0, -4.4, 1.0))
+    bpy.ops.object.camera_add(location=(0.08, -4.4, 1.0))
     camera = bpy.context.object
     camera.name = "PreviewCamera"
     camera.data.type = "ORTHO"
-    camera.data.ortho_scale = 1.65
+    camera.data.ortho_scale = 1.72
     camera.rotation_euler = (math.radians(90), 0, 0)
     # Track towards the character instead of relying on hand-tuned Euler values.
-    direction = Vector((0, 0, 0.72)) - camera.location
+    direction = Vector((0.06, 0, 0.70)) - camera.location
     camera.rotation_euler = direction.to_track_quat("-Z", "Y").to_euler()
     bpy.context.scene.camera = camera
 
 
 def configure_scene() -> None:
     scene = bpy.context.scene
-    scene.render.engine = "BLENDER_EEVEE_NEXT"
+    # Blender 5.2 exposes Eevee as BLENDER_EEVEE; Blender 4.x used
+    # BLENDER_EEVEE_NEXT. Probe the enum so the generator works across both.
+    engine_items = scene.bl_rna.properties["render"].fixed_type.properties["engine"].enum_items
+    engine_ids = {item.identifier for item in engine_items}
+    scene.render.engine = "BLENDER_EEVEE" if "BLENDER_EEVEE" in engine_ids else "BLENDER_EEVEE_NEXT"
     scene.render.film_transparent = True
     scene.render.resolution_x = 720
     scene.render.resolution_y = 720

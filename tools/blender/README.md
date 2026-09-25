@@ -21,7 +21,7 @@ This is a **procedural blockout**, not the final art model. Its job is to lock p
 
 ## Build
 
-Blender 4.x is required for generation.
+Blender 4.x or 5.x is supported for generation. The pipeline is currently verified with Blender 5.2.2 LTS.
 
 ```powershell
 ./tools/blender/build_sena_v1.ps1
