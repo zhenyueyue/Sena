@@ -141,8 +141,22 @@
       "looping": false
     },
     "look_at_cat": {
-      "frames": [],
-      "interval_ms": 180,
+      "frames": [
+        "animations/idle/000.webp",
+        "animations/idle/000.webp",
+        "animations/idle/001.webp",
+        "animations/idle/001.webp",
+        "animations/idle/000.webp",
+        "animations/idle/000.webp"
+      ],
+      "frame_durations_ms": [
+        140,
+        150,
+        150,
+        220,
+        160,
+        130
+      ],
       "looping": false
     },
     "daydream": {

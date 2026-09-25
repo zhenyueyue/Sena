@@ -666,6 +666,7 @@ mod tests {
         for key in [
             InteractionAnimationKey::Petting,
             InteractionAnimationKey::Stretch,
+            InteractionAnimationKey::LookAtCat,
         ] {
             assert!(package.has_renderable_interaction(key));
             assert_eq!(
@@ -680,10 +681,7 @@ mod tests {
             );
         }
 
-        for key in [
-            InteractionAnimationKey::LookAtCat,
-            InteractionAnimationKey::Daydream,
-        ] {
+        for key in [InteractionAnimationKey::Daydream] {
             assert!(package.interaction_animation(key).is_some());
             assert!(!package.has_renderable_interaction(key));
             assert_eq!(package.interaction_frame_path(key, 0), None);

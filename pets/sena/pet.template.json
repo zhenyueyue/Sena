@@ -137,8 +137,20 @@
       "looping": false
     },
     "look_at_cat": {
-      "frames": [],
-      "interval_ms": 180,
+      "frames": [
+        "animations/look_at_cat/000.webp",
+        "animations/look_at_cat/001.webp",
+        "animations/look_at_cat/002.webp",
+        "animations/look_at_cat/003.webp",
+        "animations/look_at_cat/004.webp"
+      ],
+      "frame_durations_ms": [
+        130,
+        170,
+        220,
+        170,
+        130
+      ],
       "looping": false
     },
     "daydream": {
