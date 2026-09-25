@@ -41,6 +41,29 @@ Do not place flattened concept previews in `source/`. Concept previews belong
 in `pets/sena/spine/review/` and are only promoted after the still-art Gate A
 passes.
 
+## Create the first PSD scaffold
+
+Do not manually create and rename 79 layers.
+
+In Photoshop choose **File -> Scripts -> Browse...** and run:
+
+```text
+tools/spine/create_sena_psd_template.jsx
+```
+
+The script reads the current `layer_contract.json` directly and creates:
+
+```text
+pets/sena/spine/source/sena.psd
+```
+
+with a 2400 x 3000 transparent RGB/8 canvas, 8 production LayerSets and exactly
+the 79 required production art layers. It refuses to overwrite
+an existing `sena.psd`.
+
+The generated layers are intentionally empty. This is only a painting scaffold;
+the final Source Gate rejects empty pixel bounds.
+
 ## PSD source gate
 
 The source-art gate uses the existing machine-readable layer contract:

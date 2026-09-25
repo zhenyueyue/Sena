@@ -26,6 +26,46 @@ cargo run --example sena_spine_asset_gate -- --contract-only
 [PASS] R3B contract is valid.
 ```
 
+## 0.5 一键创建 PSD 分层模板
+
+不要手工新建 79 个图层。
+
+在 Photoshop 选择：
+
+```text
+File -> Scripts -> Browse...
+```
+
+运行：
+
+```text
+tools/spine/create_sena_psd_template.jsx
+```
+
+它会直接读取：
+
+```text
+pets/sena/spine/settings/layer_contract.json
+```
+
+并创建：
+
+```text
+pets/sena/spine/source/sena.psd
+```
+
+模板规格：
+
+- 2400 × 3000 px。
+- RGB / 8 bit。
+- 透明背景。
+- 8 个正式分组。
+- 79 个正式命名绘画层。
+- 不创建猫、耳机、Laptop 等 base setup pose 禁止元素。
+- 如果已经存在 `sena.psd`，脚本拒绝覆盖。
+
+模板中的绘画层一开始全部为空，这是正常的。Source Gate 会拒绝空层，因此不能拿空模板冒充完成资产。
+
 ## 1. 美术 Gate A
 
 第一份正式原画只包含 Sena 本人。

@@ -597,6 +597,7 @@ R2B 当前仍保留 per-batch immutable vertex/index buffer，目的是先锁定
 - `--contract-only` 可在没有任何 Sena 导出资产时验证制作合同。
 - GitHub Actions `Spine Asset Gate`：没有导出时跑 contract-only；发现完整导出后自动跑 full gate；只提交半套 skeleton/atlas 会直接失败。
 - 新增 `SPINE_FIRST_EXPORT_CHECKLIST.md`，把第一份 3.8.75 Professional 工程限制为 Setup Pose + base + idle + 独立左右 blink。
+- 新增 `tools/spine/create_sena_psd_template.jsx`：从 `layer_contract.json` 动态生成 2400×3000 RGB/8 透明 `sena.psd`，自动创建 8 个分组和 79 个正式命名层，并拒绝覆盖已有生产 PSD。
 - 新增 `tools/spine/export_psd_layers.jsx`：在 Photoshop 中只读遍历 `sena.psd` 并导出 `sena.layers.json`。
 - 新增 `examples/sena_source_gate.rs`：对照 `layer_contract.json` 自动检查 79 个必需图层、重名、snake_case、左右眼独立、长后发/蝴蝶结/裙摆拆层、禁止道具和空像素层。
 - Source Gate 已用 79 层完整模拟清单验证通过，并用故意缺少 `eye_white_r` / `hair_back_r2` 的清单验证能够明确拒绝。
