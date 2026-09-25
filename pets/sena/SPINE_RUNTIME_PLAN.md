@@ -529,16 +529,33 @@ cargo run --example spine_d3d11_preview -- --animation walk --frames 300
 
 当前 preview 为验证渲染链路的普通 HWND；它允许每个 attachment/frame 创建临时 immutable buffers。正式桌宠 renderer 会改为可复用 dynamic/ring buffers，避免把 smoke 实现直接带进生产。
 
-#### R2B — DirectComposition transparent pet window
+#### R2B — DirectComposition transparent pet window ✅
 
-下一步：
+已完成：
 
-- `CreateSwapChainForComposition`。
-- flip-model composition swap chain。
-- `DXGI_ALPHA_MODE_PREMULTIPLIED`。
-- DirectComposition visual。
-- transparent topmost borderless pet HWND。
-- 将 R2A 的 texture / shader / Spine batches 迁入 production renderer。
+- 新增 production-facing `src/render/spine/dcomp.rs`，不再把透明链路只放在 example 中。
+- D3D11 device 使用 `D3D11_CREATE_DEVICE_BGRA_SUPPORT`。
+- 通过 `IDXGIFactory2::CreateSwapChainForComposition` 创建 windowless composition swap chain。
+- swap chain 使用 `DXGI_FORMAT_B8G8R8A8_UNORM`、双缓冲、`DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL`。
+- alpha mode 固定为 `DXGI_ALPHA_MODE_PREMULTIPLIED`。
+- `IDCompositionVisual::SetContent` -> `IDCompositionTarget::SetRoot` -> `Commit` 已跑通。
+- 每帧 render target 使用 `[0, 0, 0, 0]` 清屏，角色像素走 PMA blend。
+- Normal / Additive / Multiply / Screen 四种 Spine PMA blend 均保留。
+- 新增 `examples/spine_dcomp_preview.rs`。
+- preview HWND 使用 `WS_POPUP | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_NOREDIRECTIONBITMAP`，不使用 `WS_EX_LAYERED`。
+- Windows 实机已完成 `--frames 5` Present smoke test。
+- 透明实测采用同一区域“窗口出现前 / 后”像素对比：约 86.48% 像素保持不变，约 6.25% 明显变化；变化集中在 Spine 角色区域，确认周围区域真实透出桌面。
+
+开发预览：
+
+```powershell
+cargo run --example spine_dcomp_preview -- --animation idle
+cargo run --example spine_dcomp_preview -- --animation walk --frames 300
+```
+
+R2B 当前仍保留 per-batch immutable vertex/index buffer，目的是先锁定透明 composition 路径。正式持续运行前应改为可复用 dynamic/ring buffers。
+
+下一阶段进入 R3：用 Sena 自己的 Spine atlas/setup pose/idle 替换验证用 Spineboy，并把 production renderer 接入桌宠 presentation lifecycle。
 
 ### R3 — Sena Still / Idle
 
