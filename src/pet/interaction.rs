@@ -9,8 +9,11 @@ use slint::{ComponentHandle, Timer};
 
 use crate::{
     PetWindow,
+    behavior::BehaviorEngine,
     context::{DesktopContext, MediaState, UserActivity},
+    pet::InteractionAnimationKey,
     preferences::PreferencesStore,
+    render,
 };
 
 const BUBBLE_DURATION: Duration = Duration::from_millis(2600);
@@ -61,11 +64,14 @@ pub fn install_interactions(
     window.on_pet_activity({
         let last_pet_activity = Rc::clone(&last_pet_activity);
         let weak_window = window.as_weak();
+        let context = Arc::clone(&context);
         move || {
             last_pet_activity.set(Instant::now());
             if let Some(window) = weak_window.upgrade() {
+                render::cancel_interaction_animation(&window);
                 window.set_autonomous_reaction_active(false);
                 window.set_autonomous_reaction_phase(0);
+                restore_context(&window, &context);
             }
         }
     });
@@ -78,6 +84,7 @@ pub fn install_interactions(
         let last_click_at = Rc::clone(&last_click_at);
         let last_pet_activity = Rc::clone(&last_pet_activity);
         let preferences = Arc::clone(&preferences);
+        let context = Arc::clone(&context);
 
         move || {
             let Some(window) = weak_window.upgrade() else {
@@ -99,8 +106,14 @@ pub fn install_interactions(
                 if speech_bubbles_enabled(&preferences) {
                     show_bubble(&window, petting_line(index), Rc::clone(&bubble_generation));
                 }
-                window.set_interaction_reaction_phase(0);
-                window.set_interaction_reaction_active(true);
+                if !play_dedicated_interaction(
+                    &window,
+                    InteractionAnimationKey::Petting,
+                    Arc::clone(&context),
+                ) {
+                    window.set_interaction_reaction_phase(0);
+                    window.set_interaction_reaction_active(true);
+                }
                 return;
             }
 
@@ -185,8 +198,10 @@ pub fn install_interactions(
             }
 
             if !snapshot.autonomous_behavior_enabled {
+                render::cancel_interaction_animation(&window);
                 window.set_autonomous_reaction_active(false);
                 window.set_autonomous_reaction_phase(0);
+                restore_context(&window, &context);
                 return;
             }
 
@@ -250,13 +265,23 @@ fn schedule_autonomous_behavior(
         if preference_snapshot.autonomous_behavior_enabled
             && elapsed >= minimum_idle
             && autonomous_behavior_allowed(&context_snapshot)
+            && !window.get_interaction_animation_active()
             && !window.get_interaction_reaction_active()
             && !window.get_interaction_bubble_visible()
         {
             let action = next_random_index(&random_state, AUTONOMOUS_LINES.len());
+            let animation_key = autonomous_animation_key(action);
+            let used_dedicated_animation =
+                play_dedicated_interaction(&window, animation_key, Arc::clone(&context));
+
             window.set_autonomous_action(action as i32);
-            window.set_autonomous_reaction_phase(0);
-            window.set_autonomous_reaction_active(true);
+            if used_dedicated_animation {
+                window.set_autonomous_reaction_active(false);
+                window.set_autonomous_reaction_phase(0);
+            } else {
+                window.set_autonomous_reaction_phase(0);
+                window.set_autonomous_reaction_active(true);
+            }
             if preference_snapshot.speech_bubbles_enabled {
                 show_bubble(
                     &window,
@@ -300,6 +325,40 @@ fn show_bubble(window: &PetWindow, text: &str, bubble_generation: Rc<Cell<u64>>)
             window.set_interaction_bubble_visible(false);
         }
     });
+}
+
+fn play_dedicated_interaction(
+    window: &PetWindow,
+    key: InteractionAnimationKey,
+    context: Arc<Mutex<DesktopContext>>,
+) -> bool {
+    if !render::has_interaction_animation(key) {
+        return false;
+    }
+
+    let weak_window = window.as_weak();
+    render::play_interaction_animation(window, key, move || {
+        if let Some(window) = weak_window.upgrade() {
+            restore_context(&window, &context);
+        }
+    })
+}
+
+fn restore_context(window: &PetWindow, context: &Arc<Mutex<DesktopContext>>) {
+    let snapshot = context
+        .lock()
+        .expect("desktop context lock poisoned")
+        .clone();
+    let behavior = BehaviorEngine.resolve(&snapshot);
+    render::apply_context(window, &snapshot, behavior);
+}
+
+fn autonomous_animation_key(action: usize) -> InteractionAnimationKey {
+    match action % AUTONOMOUS_LINES.len() {
+        0 => InteractionAnimationKey::Stretch,
+        1 => InteractionAnimationKey::LookAtCat,
+        _ => InteractionAnimationKey::Daydream,
+    }
 }
 
 fn autonomous_behavior_allowed(context: &DesktopContext) -> bool {
@@ -441,5 +500,25 @@ mod tests {
     fn autonomous_lines_are_non_empty() {
         assert!(AUTONOMOUS_LINES.iter().all(|line| !line.trim().is_empty()));
         assert_eq!(autonomous_line(AUTONOMOUS_LINES.len()), AUTONOMOUS_LINES[0]);
+    }
+
+    #[test]
+    fn autonomous_actions_map_to_expected_animation_slots() {
+        assert_eq!(
+            autonomous_animation_key(0),
+            InteractionAnimationKey::Stretch
+        );
+        assert_eq!(
+            autonomous_animation_key(1),
+            InteractionAnimationKey::LookAtCat
+        );
+        assert_eq!(
+            autonomous_animation_key(2),
+            InteractionAnimationKey::Daydream
+        );
+        assert_eq!(
+            autonomous_animation_key(3),
+            InteractionAnimationKey::Daydream
+        );
     }
 }

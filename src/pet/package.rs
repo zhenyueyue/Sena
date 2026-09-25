@@ -29,6 +29,15 @@ pub enum AnimationKey {
     Sleeping,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InteractionAnimationKey {
+    Petting,
+    Stretch,
+    LookAtCat,
+    Daydream,
+}
+
 impl From<Behavior> for AnimationKey {
     fn from(value: Behavior) -> Self {
         match value {
@@ -119,6 +128,8 @@ pub struct PetManifest {
     pub license: Option<String>,
     #[serde(default)]
     pub animations: BTreeMap<AnimationKey, AnimationDefinition>,
+    #[serde(default)]
+    pub interactions: BTreeMap<InteractionAnimationKey, AnimationDefinition>,
 }
 
 #[derive(Debug, Clone)]
@@ -207,6 +218,7 @@ impl PetPackage {
                 sprite: SpriteSettings::default(),
                 license: Some("Apache-2.0".into()),
                 animations,
+                interactions: BTreeMap::new(),
             },
         }
     }
@@ -267,6 +279,18 @@ impl PetPackage {
         self.manifest.animations.get(&AnimationKey::from(behavior))
     }
 
+    pub fn interaction_animation(
+        &self,
+        key: InteractionAnimationKey,
+    ) -> Option<&AnimationDefinition> {
+        self.manifest.interactions.get(&key)
+    }
+
+    pub fn has_renderable_interaction(&self, key: InteractionAnimationKey) -> bool {
+        self.interaction_animation(key)
+            .is_some_and(|definition| self.animation_is_renderable(definition))
+    }
+
     pub fn animation_with_idle_fallback(
         &self,
         behavior: Behavior,
@@ -312,6 +336,34 @@ impl PetPackage {
             .get(frame)
             .or_else(|| definition.frames.first())?;
         Some(self.root.join(relative))
+    }
+
+    pub fn interaction_frame_path(
+        &self,
+        key: InteractionAnimationKey,
+        frame: usize,
+    ) -> Option<PathBuf> {
+        if !self.is_sprite() {
+            return None;
+        }
+
+        let definition = self.interaction_animation(key)?;
+        if !self.animation_is_renderable(definition) {
+            return None;
+        }
+        let relative = definition
+            .frames
+            .get(frame)
+            .or_else(|| definition.frames.first())?;
+        Some(self.root.join(relative))
+    }
+
+    pub fn interaction_frame_duration_ms(
+        &self,
+        key: InteractionAnimationKey,
+        frame: usize,
+    ) -> Option<u64> {
+        self.interaction_animation(key)?.frame_duration_ms(frame)
     }
 
     pub fn animation_frame_duration_ms(&self, behavior: Behavior, frame: usize) -> Option<u64> {
@@ -376,18 +428,28 @@ fn validate_manifest(root: &Path, manifest: &PetManifest) -> Result<(), PackageE
         ));
     }
 
-    for (animation, definition) in &manifest.animations {
+    for (animation, definition) in manifest
+        .animations
+        .iter()
+        .map(|(key, definition)| (format!("{key:?}"), definition))
+        .chain(
+            manifest
+                .interactions
+                .iter()
+                .map(|(key, definition)| (format!("interaction {key:?}"), definition)),
+        )
+    {
         let frame_count = definition.effective_frame_count();
         if frame_count == 0 {
             return Err(PackageError::InvalidManifest(format!(
-                "{animation:?} must contain at least one frame"
+                "{animation} must contain at least one frame"
             )));
         }
 
         if !definition.frame_durations_ms.is_empty() {
             if definition.frame_durations_ms.len() != frame_count {
                 return Err(PackageError::InvalidManifest(format!(
-                    "{animation:?} frame_durations_ms must have exactly {frame_count} entries"
+                    "{animation} frame_durations_ms must have exactly {frame_count} entries"
                 )));
             }
 
@@ -397,7 +459,7 @@ fn validate_manifest(root: &Path, manifest: &PetManifest) -> Result<(), PackageE
                 .any(|milliseconds| *milliseconds == 0)
             {
                 return Err(PackageError::InvalidManifest(format!(
-                    "{animation:?} frame durations must be greater than zero"
+                    "{animation} frame durations must be greater than zero"
                 )));
             }
         }
@@ -585,6 +647,7 @@ mod tests {
         assert_eq!(manifest.renderer, RendererKind::Sprite);
         assert_eq!(manifest.sprite.scale, 0.36);
         assert_eq!(manifest.animations.len(), 6);
+        assert_eq!(manifest.interactions.len(), 4);
         assert_eq!(
             manifest
                 .animations
@@ -594,6 +657,22 @@ mod tests {
                 .len(),
             4
         );
+    }
+
+    #[test]
+    fn official_interaction_slots_are_optional_until_frames_exist() {
+        let package = PetPackage::load_default().expect("official Sena package should load");
+
+        for key in [
+            InteractionAnimationKey::Petting,
+            InteractionAnimationKey::Stretch,
+            InteractionAnimationKey::LookAtCat,
+            InteractionAnimationKey::Daydream,
+        ] {
+            assert!(package.interaction_animation(key).is_some());
+            assert!(!package.has_renderable_interaction(key));
+            assert_eq!(package.interaction_frame_path(key, 0), None);
+        }
     }
 
     #[test]

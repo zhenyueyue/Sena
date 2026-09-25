@@ -2,24 +2,31 @@ mod animation;
 mod sprite;
 
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
+    path::{Path, PathBuf},
     sync::{
         OnceLock,
         atomic::{AtomicU32, Ordering},
     },
+    time::Duration,
 };
 
 use animation::{AnimationClip, AnimationSpec};
 use slint::{ComponentHandle, LogicalSize, Timer};
 
-use crate::{PetWindow, behavior::Behavior, context::DesktopContext, pet::PetPackage};
+use crate::{
+    PetWindow,
+    behavior::Behavior,
+    context::DesktopContext,
+    pet::{InteractionAnimationKey, PetPackage},
+};
 
 static PET_PACKAGE: OnceLock<PetPackage> = OnceLock::new();
 static USER_SCALE_BITS: AtomicU32 = AtomicU32::new(1.0f32.to_bits());
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct AlphaRegionKey {
-    behavior: Behavior,
+    path: PathBuf,
     source_width: u32,
     source_height: u32,
     target_width: u32,
@@ -28,6 +35,7 @@ struct AlphaRegionKey {
 
 thread_local! {
     static ALPHA_REGION_KEY: RefCell<Option<AlphaRegionKey>> = const { RefCell::new(None) };
+    static INTERACTION_ANIMATION_GENERATION: Cell<u64> = const { Cell::new(0) };
 }
 
 fn active_package() -> &'static PetPackage {
@@ -69,6 +77,85 @@ pub fn set_user_scale(scale: f32) {
 
 pub fn user_scale() -> f32 {
     f32::from_bits(USER_SCALE_BITS.load(Ordering::Acquire))
+}
+
+pub fn has_interaction_animation(key: InteractionAnimationKey) -> bool {
+    active_package().has_renderable_interaction(key)
+}
+
+pub fn play_interaction_animation(
+    window: &PetWindow,
+    key: InteractionAnimationKey,
+    on_complete: impl FnOnce() + 'static,
+) -> bool {
+    let package = active_package();
+    let Some(definition) = package.interaction_animation(key) else {
+        return false;
+    };
+    if !package.has_renderable_interaction(key) || definition.frames.is_empty() {
+        return false;
+    }
+
+    let token = INTERACTION_ANIMATION_GENERATION.with(|generation| {
+        let token = generation.get().wrapping_add(1);
+        generation.set(token);
+        token
+    });
+
+    window.set_interaction_animation_active(true);
+    window.set_animation_running(false);
+    if !apply_interaction_sprite_frame(window, key, 0) {
+        window.set_interaction_animation_active(false);
+        return false;
+    }
+
+    let mut elapsed = Duration::ZERO;
+    for frame in 1..definition.frames.len() {
+        elapsed += Duration::from_millis(
+            package
+                .interaction_frame_duration_ms(key, frame - 1)
+                .unwrap_or(160),
+        );
+
+        let weak_window = window.as_weak();
+        Timer::single_shot(elapsed, move || {
+            let current = INTERACTION_ANIMATION_GENERATION.with(Cell::get);
+            if current != token {
+                return;
+            }
+            if let Some(window) = weak_window.upgrade() {
+                let _ = apply_interaction_sprite_frame(&window, key, frame);
+            }
+        });
+    }
+
+    elapsed += Duration::from_millis(
+        package
+            .interaction_frame_duration_ms(key, definition.frames.len() - 1)
+            .unwrap_or(160),
+    );
+
+    let weak_window = window.as_weak();
+    Timer::single_shot(elapsed, move || {
+        let current = INTERACTION_ANIMATION_GENERATION.with(Cell::get);
+        if current != token {
+            return;
+        }
+
+        if let Some(window) = weak_window.upgrade() {
+            window.set_interaction_animation_active(false);
+        }
+        on_complete();
+    });
+
+    true
+}
+
+pub fn cancel_interaction_animation(window: &PetWindow) {
+    INTERACTION_ANIMATION_GENERATION.with(|generation| {
+        generation.set(generation.get().wrapping_add(1));
+    });
+    window.set_interaction_animation_active(false);
 }
 
 pub fn has_dedicated_animation(behavior: Behavior) -> bool {
@@ -127,11 +214,30 @@ fn apply_sprite_frame(window: &PetWindow, behavior: Behavior, frame: usize) {
         return;
     };
 
+    apply_sprite_path(window, &path);
+}
+
+fn apply_interaction_sprite_frame(
+    window: &PetWindow,
+    key: InteractionAnimationKey,
+    frame: usize,
+) -> bool {
+    let package = active_package();
+    let Some(path) = package.interaction_frame_path(key, frame) else {
+        return false;
+    };
+
+    apply_sprite_path(window, &path);
+    true
+}
+
+fn apply_sprite_path(window: &PetWindow, path: &Path) {
+    let package = active_package();
     let settings = package.sprite_settings();
     let scale_factor = window.window().scale_factor();
     let effective_scale = settings.scale * user_scale();
     let Some(sprite) = sprite::load_cached(
-        &path,
+        path,
         settings.alpha_threshold,
         effective_scale,
         scale_factor,
@@ -160,7 +266,7 @@ fn apply_sprite_frame(window: &PetWindow, behavior: Behavior, frame: usize) {
         use crate::platform::windows::{self, AlphaRegionRect};
 
         let region_key = AlphaRegionKey {
-            behavior,
+            path: path.to_path_buf(),
             source_width: sprite.width,
             source_height: sprite.height,
             target_width,
@@ -230,6 +336,29 @@ pub fn apply_context(window: &PetWindow, context: &DesktopContext, behavior: Beh
         Behavior::Sleeping => "Sleeping",
     };
 
+    window.set_activity_label(label.into());
+    window.set_is_drowsy(matches!(behavior, Behavior::Drowsy));
+    window.set_is_sleeping(matches!(behavior, Behavior::Sleeping));
+    window.set_show_laptop(matches!(
+        behavior,
+        Behavior::Coding | Behavior::CodingWithMusic
+    ));
+    window.set_show_headphones(matches!(
+        behavior,
+        Behavior::ListeningMusic | Behavior::CodingWithMusic
+    ));
+    window.set_foreground_label(
+        context
+            .foreground_process
+            .as_deref()
+            .unwrap_or("Desktop")
+            .into(),
+    );
+
+    if window.get_interaction_animation_active() {
+        return;
+    }
+
     let animation = AnimationSpec::for_runtime(
         behavior,
         active_package(),
@@ -261,23 +390,4 @@ pub fn apply_context(window: &PetWindow, context: &DesktopContext, behavior: Beh
     window.set_animation_looping(animation.looping);
 
     apply_sprite_frame(window, behavior, current_frame);
-
-    window.set_activity_label(label.into());
-    window.set_is_drowsy(matches!(behavior, Behavior::Drowsy));
-    window.set_is_sleeping(matches!(behavior, Behavior::Sleeping));
-    window.set_show_laptop(matches!(
-        behavior,
-        Behavior::Coding | Behavior::CodingWithMusic
-    ));
-    window.set_show_headphones(matches!(
-        behavior,
-        Behavior::ListeningMusic | Behavior::CodingWithMusic
-    ));
-    window.set_foreground_label(
-        context
-            .foreground_process
-            .as_deref()
-            .unwrap_or("Desktop")
-            .into(),
-    );
 }

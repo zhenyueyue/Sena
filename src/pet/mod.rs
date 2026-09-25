@@ -3,7 +3,7 @@ mod motion;
 mod package;
 
 pub use interaction::{install_interactions, refresh_interaction_settings};
-pub use package::PetPackage;
+pub use package::{InteractionAnimationKey, PetPackage};
 
 #[cfg(target_os = "windows")]
 pub use motion::{

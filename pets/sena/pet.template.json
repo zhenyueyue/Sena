@@ -98,5 +98,27 @@
       ],
       "looping": true
     }
+  },
+  "interactions": {
+    "petting": {
+      "frames": [],
+      "interval_ms": 120,
+      "looping": false
+    },
+    "stretch": {
+      "frames": [],
+      "interval_ms": 160,
+      "looping": false
+    },
+    "look_at_cat": {
+      "frames": [],
+      "interval_ms": 180,
+      "looping": false
+    },
+    "daydream": {
+      "frames": [],
+      "interval_ms": 220,
+      "looping": false
+    }
   }
 }
