@@ -106,14 +106,13 @@ pub fn install_interactions(
                 if speech_bubbles_enabled(&preferences) {
                     show_bubble(&window, petting_line(index), Rc::clone(&bubble_generation));
                 }
-                if !play_dedicated_interaction(
+                let _ = play_dedicated_interaction(
                     &window,
                     InteractionAnimationKey::Petting,
                     Arc::clone(&context),
-                ) {
-                    window.set_interaction_reaction_phase(0);
-                    window.set_interaction_reaction_active(true);
-                }
+                );
+                window.set_interaction_reaction_phase(0);
+                window.set_interaction_reaction_active(true);
                 return;
             }
 

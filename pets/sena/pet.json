@@ -101,8 +101,20 @@
   },
   "interactions": {
     "petting": {
-      "frames": [],
-      "interval_ms": 120,
+      "frames": [
+        "animations/idle/000.webp",
+        "animations/idle/003.webp",
+        "animations/idle/003.webp",
+        "animations/idle/002.webp",
+        "animations/idle/000.webp"
+      ],
+      "frame_durations_ms": [
+        90,
+        110,
+        180,
+        110,
+        120
+      ],
       "looping": false
     },
     "stretch": {
