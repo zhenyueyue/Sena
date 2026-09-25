@@ -97,7 +97,7 @@ fn main() -> Result<(), slint::PlatformError> {
     let sleeping_generation = Arc::new(AtomicU64::new(0));
 
     render::install(&window);
-    pet::install_interactions(&window, Arc::clone(&context));
+    pet::install_interactions(&window, Arc::clone(&context), Arc::clone(&preferences));
 
     #[cfg(target_os = "windows")]
     {
@@ -805,6 +805,99 @@ fn show_settings_window(
             }
 
             {
+                let window = window.clone();
+                let preferences = Arc::clone(&preferences);
+                let settings_weak = settings.as_weak();
+
+                settings.on_set_autonomous_behavior(move |enabled| {
+                    if let Some(window) = window.upgrade()
+                        && !enabled
+                    {
+                        window.set_autonomous_reaction_active(false);
+                        window.set_autonomous_reaction_phase(0);
+                    }
+
+                    let result = {
+                        let mut store = preferences.lock().expect("preferences lock poisoned");
+                        store.set_autonomous_behavior_enabled(enabled);
+                        store.save()
+                    };
+
+                    if result.is_ok() {
+                        pet::refresh_interaction_settings();
+                    }
+
+                    if let Some(settings) = settings_weak.upgrade() {
+                        match result {
+                            Ok(()) => settings.set_status_message("".into()),
+                            Err(error) => {
+                                settings.set_status_message(format!("保存设置失败：{error}").into())
+                            }
+                        }
+                    }
+                });
+            }
+
+            {
+                let window = window.clone();
+                let preferences = Arc::clone(&preferences);
+                let settings_weak = settings.as_weak();
+
+                settings.on_set_speech_bubbles(move |enabled| {
+                    if let Some(window) = window.upgrade()
+                        && !enabled
+                    {
+                        window.set_interaction_bubble_visible(false);
+                    }
+
+                    let result = {
+                        let mut store = preferences.lock().expect("preferences lock poisoned");
+                        store.set_speech_bubbles_enabled(enabled);
+                        store.save()
+                    };
+
+                    if result.is_ok() {
+                        pet::refresh_interaction_settings();
+                    }
+
+                    if let Some(settings) = settings_weak.upgrade() {
+                        match result {
+                            Ok(()) => settings.set_status_message("".into()),
+                            Err(error) => {
+                                settings.set_status_message(format!("保存设置失败：{error}").into())
+                            }
+                        }
+                    }
+                });
+            }
+
+            {
+                let preferences = Arc::clone(&preferences);
+                let settings_weak = settings.as_weak();
+
+                settings.on_set_autonomous_frequency(move |frequency| {
+                    let result = {
+                        let mut store = preferences.lock().expect("preferences lock poisoned");
+                        store.set_autonomous_frequency(frequency.clamp(0, 2) as u8);
+                        store.save()
+                    };
+
+                    if result.is_ok() {
+                        pet::refresh_interaction_settings();
+                    }
+
+                    if let Some(settings) = settings_weak.upgrade() {
+                        match result {
+                            Ok(()) => settings.set_status_message("".into()),
+                            Err(error) => {
+                                settings.set_status_message(format!("保存设置失败：{error}").into())
+                            }
+                        }
+                    }
+                });
+            }
+
+            {
                 let settings_weak = settings.as_weak();
                 settings.on_close_settings(move || {
                     if let Some(settings) = settings_weak.upgrade() {
@@ -827,6 +920,9 @@ fn show_settings_window(
             settings.set_keep_on_top(snapshot.always_on_top);
             settings.set_pet_visible(pet_visible.load(Ordering::Acquire));
             settings.set_startup_enabled(platform::windows::startup_enabled());
+            settings.set_autonomous_behavior_enabled(snapshot.autonomous_behavior_enabled);
+            settings.set_speech_bubbles_enabled(snapshot.speech_bubbles_enabled);
+            settings.set_autonomous_frequency(snapshot.autonomous_frequency as i32);
             settings.set_status_message("".into());
             let _ = settings.show();
         }

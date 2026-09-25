@@ -1,5 +1,5 @@
 use std::{
-    cell::Cell,
+    cell::{Cell, RefCell},
     rc::Rc,
     sync::{Arc, Mutex},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
@@ -10,13 +10,11 @@ use slint::{ComponentHandle, Timer};
 use crate::{
     PetWindow,
     context::{DesktopContext, MediaState, UserActivity},
+    preferences::PreferencesStore,
 };
 
 const BUBBLE_DURATION: Duration = Duration::from_millis(2600);
 const DOUBLE_CLICK_WINDOW: Duration = Duration::from_millis(280);
-const AUTONOMOUS_MIN_IDLE: Duration = Duration::from_secs(75);
-const AUTONOMOUS_MIN_DELAY_SECS: u64 = 75;
-const AUTONOMOUS_DELAY_SPAN_SECS: u64 = 61;
 
 const INTERACTION_LINES: &[&str] = &[
     "嗯？我在这里呀 ✦",
@@ -34,6 +32,10 @@ const PETTING_LINES: &[&str] = &[
     "嗯……这个力度刚刚好。",
 ];
 
+thread_local! {
+    static SETTINGS_REFRESH: RefCell<Option<Box<dyn Fn()>>> = const { RefCell::new(None) };
+}
+
 const AUTONOMOUS_LINES: &[&str] = &[
     "唔——稍微伸个懒腰……",
     "猫猫现在在想什么呢？",
@@ -41,7 +43,11 @@ const AUTONOMOUS_LINES: &[&str] = &[
     "你忙你的，我会安静待着的。",
 ];
 
-pub fn install_interactions(window: &PetWindow, context: Arc<Mutex<DesktopContext>>) {
+pub fn install_interactions(
+    window: &PetWindow,
+    context: Arc<Mutex<DesktopContext>>,
+    preferences: Arc<Mutex<PreferencesStore>>,
+) {
     let next_line = Rc::new(Cell::new(0usize));
     let next_petting_line = Rc::new(Cell::new(0usize));
     let bubble_generation = Rc::new(Cell::new(0u64));
@@ -49,6 +55,7 @@ pub fn install_interactions(window: &PetWindow, context: Arc<Mutex<DesktopContex
     let last_click_at = Rc::new(Cell::new(None::<Instant>));
     let last_pet_activity = Rc::new(Cell::new(Instant::now()));
     let random_state = Rc::new(Cell::new(initial_random_seed()));
+    let schedule_generation = Rc::new(Cell::new(1u64));
     let weak_window = window.as_weak();
 
     window.on_pet_activity({
@@ -70,6 +77,7 @@ pub fn install_interactions(window: &PetWindow, context: Arc<Mutex<DesktopContex
         let click_generation = Rc::clone(&click_generation);
         let last_click_at = Rc::clone(&last_click_at);
         let last_pet_activity = Rc::clone(&last_pet_activity);
+        let preferences = Arc::clone(&preferences);
 
         move || {
             let Some(window) = weak_window.upgrade() else {
@@ -88,7 +96,9 @@ pub fn install_interactions(window: &PetWindow, context: Arc<Mutex<DesktopContex
 
                 let index = next_petting_line.get();
                 next_petting_line.set(index.wrapping_add(1));
-                show_bubble(&window, petting_line(index), Rc::clone(&bubble_generation));
+                if speech_bubbles_enabled(&preferences) {
+                    show_bubble(&window, petting_line(index), Rc::clone(&bubble_generation));
+                }
                 window.set_interaction_reaction_phase(0);
                 window.set_interaction_reaction_active(true);
                 return;
@@ -104,6 +114,7 @@ pub fn install_interactions(window: &PetWindow, context: Arc<Mutex<DesktopContex
             let bubble_generation = Rc::clone(&bubble_generation);
             let click_generation = Rc::clone(&click_generation);
             let last_click_at = Rc::clone(&last_click_at);
+            let preferences = Arc::clone(&preferences);
             Timer::single_shot(DOUBLE_CLICK_WINDOW, move || {
                 if click_generation.get() != token {
                     return;
@@ -116,34 +127,110 @@ pub fn install_interactions(window: &PetWindow, context: Arc<Mutex<DesktopContex
 
                 let index = next_line.get();
                 next_line.set(index.wrapping_add(1));
-                show_bubble(
-                    &window,
-                    interaction_line(index),
-                    Rc::clone(&bubble_generation),
-                );
+                if speech_bubbles_enabled(&preferences) {
+                    show_bubble(
+                        &window,
+                        interaction_line(index),
+                        Rc::clone(&bubble_generation),
+                    );
+                }
             });
         }
     });
 
+    let initial_frequency = preferences
+        .lock()
+        .expect("preferences lock poisoned")
+        .value()
+        .autonomous_frequency;
+    let initial_delay = next_autonomous_delay(&random_state, initial_frequency);
+
     schedule_autonomous_behavior(
         window.as_weak(),
-        context,
-        last_pet_activity,
-        bubble_generation,
-        random_state,
-        AUTONOMOUS_MIN_IDLE,
+        Arc::clone(&context),
+        Arc::clone(&preferences),
+        Rc::clone(&last_pet_activity),
+        Rc::clone(&bubble_generation),
+        Rc::clone(&random_state),
+        Rc::clone(&schedule_generation),
+        schedule_generation.get(),
+        initial_delay,
     );
+
+    SETTINGS_REFRESH.with(|slot| {
+        let weak_window = window.as_weak();
+        let context = Arc::clone(&context);
+        let preferences = Arc::clone(&preferences);
+        let last_pet_activity = Rc::clone(&last_pet_activity);
+        let bubble_generation = Rc::clone(&bubble_generation);
+        let random_state = Rc::clone(&random_state);
+        let schedule_generation = Rc::clone(&schedule_generation);
+
+        *slot.borrow_mut() = Some(Box::new(move || {
+            let token = schedule_generation.get().wrapping_add(1);
+            schedule_generation.set(token);
+
+            let Some(window) = weak_window.upgrade() else {
+                return;
+            };
+            let snapshot = preferences
+                .lock()
+                .expect("preferences lock poisoned")
+                .value()
+                .clone();
+
+            if !snapshot.speech_bubbles_enabled {
+                window.set_interaction_bubble_visible(false);
+                bubble_generation.set(bubble_generation.get().wrapping_add(1));
+            }
+
+            if !snapshot.autonomous_behavior_enabled {
+                window.set_autonomous_reaction_active(false);
+                window.set_autonomous_reaction_phase(0);
+                return;
+            }
+
+            last_pet_activity.set(Instant::now());
+            let delay = next_autonomous_delay(&random_state, snapshot.autonomous_frequency);
+            schedule_autonomous_behavior(
+                window.as_weak(),
+                Arc::clone(&context),
+                Arc::clone(&preferences),
+                Rc::clone(&last_pet_activity),
+                Rc::clone(&bubble_generation),
+                Rc::clone(&random_state),
+                Rc::clone(&schedule_generation),
+                token,
+                delay,
+            );
+        }));
+    });
+}
+
+pub fn refresh_interaction_settings() {
+    SETTINGS_REFRESH.with(|slot| {
+        if let Some(refresh) = slot.borrow().as_ref() {
+            refresh();
+        }
+    });
 }
 
 fn schedule_autonomous_behavior(
     weak_window: slint::Weak<PetWindow>,
     context: Arc<Mutex<DesktopContext>>,
+    preferences: Arc<Mutex<PreferencesStore>>,
     last_pet_activity: Rc<Cell<Instant>>,
     bubble_generation: Rc<Cell<u64>>,
     random_state: Rc<Cell<u64>>,
+    schedule_generation: Rc<Cell<u64>>,
+    token: u64,
     delay: Duration,
 ) {
     Timer::single_shot(delay, move || {
+        if schedule_generation.get() != token {
+            return;
+        }
+
         let Some(window) = weak_window.upgrade() else {
             return;
         };
@@ -153,8 +240,15 @@ fn schedule_autonomous_behavior(
             .lock()
             .expect("desktop context lock poisoned")
             .clone();
+        let preference_snapshot = preferences
+            .lock()
+            .expect("preferences lock poisoned")
+            .value()
+            .clone();
+        let minimum_idle = autonomous_min_idle(preference_snapshot.autonomous_frequency);
 
-        if elapsed >= AUTONOMOUS_MIN_IDLE
+        if preference_snapshot.autonomous_behavior_enabled
+            && elapsed >= minimum_idle
             && autonomous_behavior_allowed(&context_snapshot)
             && !window.get_interaction_reaction_active()
             && !window.get_interaction_bubble_visible()
@@ -163,21 +257,27 @@ fn schedule_autonomous_behavior(
             window.set_autonomous_action(action as i32);
             window.set_autonomous_reaction_phase(0);
             window.set_autonomous_reaction_active(true);
-            show_bubble(
-                &window,
-                autonomous_line(action),
-                Rc::clone(&bubble_generation),
-            );
+            if preference_snapshot.speech_bubbles_enabled {
+                show_bubble(
+                    &window,
+                    autonomous_line(action),
+                    Rc::clone(&bubble_generation),
+                );
+            }
             last_pet_activity.set(Instant::now());
         }
 
-        let next_delay = next_autonomous_delay(&random_state);
+        let next_delay =
+            next_autonomous_delay(&random_state, preference_snapshot.autonomous_frequency);
         schedule_autonomous_behavior(
             window.as_weak(),
             context,
+            preferences,
             last_pet_activity,
             bubble_generation,
             random_state,
+            schedule_generation,
+            token,
             next_delay,
         );
     });
@@ -234,9 +334,30 @@ fn next_random_index(state: &Rc<Cell<u64>>, len: usize) -> usize {
     (advance_random(state) as usize) % len
 }
 
-fn next_autonomous_delay(state: &Rc<Cell<u64>>) -> Duration {
-    let extra = advance_random(state) % AUTONOMOUS_DELAY_SPAN_SECS;
-    Duration::from_secs(AUTONOMOUS_MIN_DELAY_SECS + extra)
+fn autonomous_delay_bounds(frequency: u8) -> (u64, u64) {
+    match frequency.min(2) {
+        0 => (180, 300),
+        2 => (40, 75),
+        _ => (75, 135),
+    }
+}
+
+fn autonomous_min_idle(frequency: u8) -> Duration {
+    Duration::from_secs(autonomous_delay_bounds(frequency).0)
+}
+
+fn next_autonomous_delay(state: &Rc<Cell<u64>>, frequency: u8) -> Duration {
+    let (minimum, maximum) = autonomous_delay_bounds(frequency);
+    let span = maximum - minimum + 1;
+    Duration::from_secs(minimum + advance_random(state) % span)
+}
+
+fn speech_bubbles_enabled(preferences: &Arc<Mutex<PreferencesStore>>) -> bool {
+    preferences
+        .lock()
+        .expect("preferences lock poisoned")
+        .value()
+        .speech_bubbles_enabled
 }
 
 fn is_double_click_interval(elapsed: Duration) -> bool {
@@ -305,12 +426,14 @@ mod tests {
     }
 
     #[test]
-    fn autonomous_delay_stays_in_low_frequency_range() {
-        let state = Rc::new(Cell::new(1234));
-        for _ in 0..32 {
-            let delay = next_autonomous_delay(&state);
-            assert!(delay >= Duration::from_secs(75));
-            assert!(delay <= Duration::from_secs(135));
+    fn autonomous_delay_matches_frequency_ranges() {
+        for (frequency, minimum, maximum) in [(0, 180, 300), (1, 75, 135), (2, 40, 75)] {
+            let state = Rc::new(Cell::new(1234));
+            for _ in 0..32 {
+                let delay = next_autonomous_delay(&state, frequency);
+                assert!(delay >= Duration::from_secs(minimum));
+                assert!(delay <= Duration::from_secs(maximum));
+            }
         }
     }
 

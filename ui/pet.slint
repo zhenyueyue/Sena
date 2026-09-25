@@ -658,20 +658,26 @@ export component WelcomeWindow inherits Window {
 
 export component SettingsWindow inherits Window {
     title: "Sena 设置";
-    width: 460px;
-    height: 560px;
+    width: 680px;
+    height: 600px;
     background: #f6f4fa;
 
     in-out property <int> scale-percent: 100;
     in-out property <bool> startup-enabled: false;
     in-out property <bool> keep-on-top: true;
     in-out property <bool> pet-visible: true;
+    in-out property <bool> autonomous-behavior-enabled: true;
+    in-out property <bool> speech-bubbles-enabled: true;
+    in-out property <int> autonomous-frequency: 1;
     in-out property <string> status-message: "";
 
     callback set-scale(int);
     callback set-startup(bool);
     callback set-keep-on-top(bool);
     callback set-visible(bool);
+    callback set-autonomous-behavior(bool);
+    callback set-speech-bubbles(bool);
+    callback set-autonomous-frequency(int);
     callback close-settings();
 
     Rectangle {
@@ -731,7 +737,7 @@ export component SettingsWindow inherits Window {
     Text {
         x: 24px;
         y: 132px;
-        text: "外观";
+        text: "外观与互动";
         color: #777989;
         font-size: 12px;
         font-weight: 600;
@@ -740,7 +746,7 @@ export component SettingsWindow inherits Window {
     Rectangle {
         x: 20px;
         y: 153px;
-        width: parent.width - 40px;
+        width: 310px;
         height: 100px;
         border-radius: 16px;
         background: #ffffff;
@@ -800,19 +806,111 @@ export component SettingsWindow inherits Window {
         }
     }
 
-    Text {
-        x: 24px;
+    ToggleRow {
+        x: 20px;
         y: 273px;
-        text: "行为";
+        width: 310px;
+        icon: "✦";
+        title: "自主行为";
+        description: "偶尔伸懒腰、发呆或看看猫";
+        checked: root.autonomous-behavior-enabled;
+        toggled(value) => {
+            root.autonomous-behavior-enabled = value;
+            root.set-autonomous-behavior(value);
+        }
+    }
+
+    ToggleRow {
+        x: 20px;
+        y: 349px;
+        width: 310px;
+        icon: "…";
+        title: "气泡台词";
+        description: "点击和自主行为时显示短句";
+        checked: root.speech-bubbles-enabled;
+        toggled(value) => {
+            root.speech-bubbles-enabled = value;
+            root.set-speech-bubbles(value);
+        }
+    }
+
+    Rectangle {
+        x: 20px;
+        y: 425px;
+        width: 310px;
+        height: 110px;
+        border-radius: 16px;
+        background: #ffffff;
+        border-width: 1px;
+        border-color: #e9e7ef;
+
+        Text {
+            x: 16px;
+            y: 13px;
+            text: "自主频率";
+            color: #373948;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        Text {
+            x: 16px;
+            y: 36px;
+            text: root.autonomous-frequency == 0 ? "安静 · 约 3–5 分钟" :
+                root.autonomous-frequency == 2 ? "活跃 · 约 40–75 秒" : "标准 · 约 75–135 秒";
+            color: #999aa8;
+            font-size: 11px;
+        }
+
+        HorizontalLayout {
+            x: 16px;
+            y: 66px;
+            width: parent.width - 32px;
+            height: 32px;
+            spacing: 8px;
+
+            SenaButton {
+                label: "安静";
+                selected: root.autonomous-frequency == 0;
+                clicked => {
+                    root.autonomous-frequency = 0;
+                    root.set-autonomous-frequency(0);
+                }
+            }
+
+            SenaButton {
+                label: "标准";
+                selected: root.autonomous-frequency == 1;
+                clicked => {
+                    root.autonomous-frequency = 1;
+                    root.set-autonomous-frequency(1);
+                }
+            }
+
+            SenaButton {
+                label: "活跃";
+                selected: root.autonomous-frequency == 2;
+                clicked => {
+                    root.autonomous-frequency = 2;
+                    root.set-autonomous-frequency(2);
+                }
+            }
+        }
+    }
+
+    Text {
+        x: 354px;
+        y: 132px;
+        text: "系统行为";
         color: #777989;
         font-size: 12px;
         font-weight: 600;
     }
 
     ToggleRow {
-        x: 20px;
-        y: 294px;
-        width: parent.width - 40px;
+        x: 350px;
+        y: 153px;
+        width: 310px;
         icon: "↗";
         title: "开机自启";
         description: "登录 Windows 后自动启动 Sena";
@@ -824,9 +922,9 @@ export component SettingsWindow inherits Window {
     }
 
     ToggleRow {
-        x: 20px;
-        y: 370px;
-        width: parent.width - 40px;
+        x: 350px;
+        y: 229px;
+        width: 310px;
         icon: "⌃";
         title: "始终置顶";
         description: "让 Sena 保持在其他普通窗口上方";
@@ -838,9 +936,9 @@ export component SettingsWindow inherits Window {
     }
 
     ToggleRow {
-        x: 20px;
-        y: 446px;
-        width: parent.width - 40px;
+        x: 350px;
+        y: 305px;
+        width: 310px;
         icon: "◉";
         title: "显示桌宠";
         description: "隐藏后仍可从系统托盘重新显示";
@@ -851,9 +949,39 @@ export component SettingsWindow inherits Window {
         }
     }
 
+    Rectangle {
+        x: 350px;
+        y: 391px;
+        width: 310px;
+        height: 90px;
+        border-radius: 16px;
+        background: #eeecff;
+        border-width: 1px;
+        border-color: #dfdcf5;
+
+        Text {
+            x: 16px;
+            y: 14px;
+            text: "小提示";
+            color: #6265a8;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        Text {
+            x: 16px;
+            y: 38px;
+            width: parent.width - 32px;
+            text: "右键星奈或托盘图标，也可以快速调整常用选项。";
+            color: #7e7f99;
+            font-size: 11px;
+            wrap: word-wrap;
+        }
+    }
+
     Text {
         x: 24px;
-        y: 530px;
+        y: 566px;
         width: parent.width - 140px;
         text: root.status-message;
         color: #b15f77;
@@ -863,7 +991,7 @@ export component SettingsWindow inherits Window {
 
     SenaButton {
         x: parent.width - 104px;
-        y: 518px;
+        y: 552px;
         width: 80px;
         height: 32px;
         label: "完成";

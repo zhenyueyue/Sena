@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 const DEFAULT_SCALE: f32 = 1.0;
 const MIN_SCALE: f32 = 0.6;
 const MAX_SCALE: f32 = 1.4;
+const DEFAULT_AUTONOMOUS_FREQUENCY: u8 = 1;
+const MAX_AUTONOMOUS_FREQUENCY: u8 = 2;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(default)]
@@ -14,6 +16,9 @@ pub struct Preferences {
     pub scale: f32,
     pub always_on_top: bool,
     pub onboarding_completed: bool,
+    pub autonomous_behavior_enabled: bool,
+    pub speech_bubbles_enabled: bool,
+    pub autonomous_frequency: u8,
 }
 
 impl Default for Preferences {
@@ -24,6 +29,9 @@ impl Default for Preferences {
             scale: DEFAULT_SCALE,
             always_on_top: true,
             onboarding_completed: false,
+            autonomous_behavior_enabled: true,
+            speech_bubbles_enabled: true,
+            autonomous_frequency: DEFAULT_AUTONOMOUS_FREQUENCY,
         }
     }
 }
@@ -34,6 +42,7 @@ impl Preferences {
             self.scale = DEFAULT_SCALE;
         }
         self.scale = self.scale.clamp(MIN_SCALE, MAX_SCALE);
+        self.autonomous_frequency = self.autonomous_frequency.min(MAX_AUTONOMOUS_FREQUENCY);
         self
     }
 
@@ -88,6 +97,18 @@ impl PreferencesStore {
         self.value.onboarding_completed = completed;
     }
 
+    pub fn set_autonomous_behavior_enabled(&mut self, enabled: bool) {
+        self.value.autonomous_behavior_enabled = enabled;
+    }
+
+    pub fn set_speech_bubbles_enabled(&mut self, enabled: bool) {
+        self.value.speech_bubbles_enabled = enabled;
+    }
+
+    pub fn set_autonomous_frequency(&mut self, frequency: u8) {
+        self.value.autonomous_frequency = frequency.min(MAX_AUTONOMOUS_FREQUENCY);
+    }
+
     pub fn save(&self) -> std::io::Result<()> {
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent)?;
@@ -138,6 +159,9 @@ mod tests {
         store.set_scale(1.2);
         store.set_always_on_top(false);
         store.set_onboarding_completed(true);
+        store.set_autonomous_behavior_enabled(false);
+        store.set_speech_bubbles_enabled(false);
+        store.set_autonomous_frequency(2);
         store.save().expect("preferences should save");
 
         let loaded = PreferencesStore::load_from_path(path.clone());
@@ -147,6 +171,9 @@ mod tests {
         assert_eq!(loaded.value().scale, 1.2);
         assert!(!loaded.value().always_on_top);
         assert!(loaded.value().onboarding_completed);
+        assert!(!loaded.value().autonomous_behavior_enabled);
+        assert!(!loaded.value().speech_bubbles_enabled);
+        assert_eq!(loaded.value().autonomous_frequency, 2);
     }
 
     #[test]
@@ -161,5 +188,25 @@ mod tests {
         assert_eq!(loaded.value().scale, MAX_SCALE);
         assert!(loaded.value().always_on_top);
         assert!(!loaded.value().onboarding_completed);
+        assert!(loaded.value().autonomous_behavior_enabled);
+        assert!(loaded.value().speech_bubbles_enabled);
+        assert_eq!(
+            loaded.value().autonomous_frequency,
+            DEFAULT_AUTONOMOUS_FREQUENCY
+        );
+    }
+
+    #[test]
+    fn invalid_autonomous_frequency_is_clamped() {
+        let path = temp_path("frequency-clamp");
+        fs::write(&path, r#"{"autonomous_frequency":99}"#).expect("fixture should write");
+
+        let loaded = PreferencesStore::load_from_path(path.clone());
+        let _ = fs::remove_file(path);
+
+        assert_eq!(
+            loaded.value().autonomous_frequency,
+            MAX_AUTONOMOUS_FREQUENCY
+        );
     }
 }
