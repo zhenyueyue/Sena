@@ -14,6 +14,21 @@ The primary long-term renderer is a lightweight chibi 3D character that can move
 - Cream/orange-and-white chibi cat, rounded enough to be comfortably carried by Sena.
 - Toon/anime shading. Avoid realistic skin, heavy PBR, complex environment lighting and expensive post-processing.
 
+## V2 art rebuild
+
+`generate_sena_v1.py` remains the technical blockout used to validate rigging, animation names, attachments and runtime rendering. It is not the final visual model.
+
+`tools/blender/generate_sena_v2.py` is the visual rebuild path. V2 currently replaces the head system with a custom tapered anime head mesh, nearly-flat layered eyes, tapered ribbon-based hair locks and a four-wing butterfly bow while reusing the proven V1 body/rig/action contract. This lets visual quality improve without destabilizing animation/runtime work.
+
+Build and review V2 with:
+
+```powershell
+./tools/blender/build_sena_v2.ps1
+./tools/blender/render_sena_previews.ps1 -Blend pets/sena/models/generated/sena_v2.blend -Output pets/sena/models/generated/previews_v2
+```
+
+The next visual milestones after head approval are a continuous torso/limb mesh, layered skirt geometry and a rebuilt cat. Do not promote V2 to the production `sena.vrm` slot until the front, three-quarter and side reviews all pass.
+
 ## Runtime budget
 
 V1 target, not a hard file-format restriction:
