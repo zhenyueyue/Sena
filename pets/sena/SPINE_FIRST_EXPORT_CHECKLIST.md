@@ -221,7 +221,50 @@ cargo run --example sena_source_gate
 
 ## 3. 创建 Spine 工程
 
-新建：
+不要手工创建 13 根 R3B 骨骼和 60 个核心 Slot。
+
+仓库已经跟踪一份由机器合同生成的 Spine 3.8.75 Bootstrap：
+
+```text
+pets/sena/spine/project/sena.bootstrap.json
+```
+
+需要重新生成时：
+
+```powershell
+cargo run --example sena_spine_bootstrap -- --force
+```
+
+在 Spine Editor 3.8.75 Professional 中创建空工程，然后使用 **Import Data**
+导入：
+
+```text
+pets/sena/spine/project/sena.bootstrap.json
+```
+
+它已经包含：
+
+- 13 根 R3B 骨骼与父子层级。
+- 60 个核心 Slot。
+- Slot -> Bone。
+- Setup attachment 名。
+- 初始 Draw Order。
+- Blend。
+- 空的 `base` skin。
+- 空的 `idle / blink_l / blink_r` 动画名。
+
+Bootstrap **故意没有**：
+
+- 图片 attachment 实体。
+- mesh 顶点。
+- weight。
+- deform。
+- 正式动画关键帧。
+
+因此它不会通过 Full Asset Gate，也不能当成完成资产。
+
+导入后将骨骼对齐正式 Setup Pose 原画，完成真实附件/mesh/权重/动画，
+最后保存可编辑工程为：
 
 ```text
 pets/sena/spine/project/sena.spine

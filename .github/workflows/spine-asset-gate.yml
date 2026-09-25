@@ -6,6 +6,7 @@ on:
       - "native/spine_bridge/**"
       - "src/render/spine/**"
       - "examples/sena_spine_asset_gate.rs"
+      - "examples/sena_spine_bootstrap.rs"
       - "examples/sena_source_gate.rs"
       - "tools/spine/**"
       - "pets/sena/spine/**"
@@ -18,6 +19,7 @@ on:
       - "native/spine_bridge/**"
       - "src/render/spine/**"
       - "examples/sena_spine_asset_gate.rs"
+      - "examples/sena_spine_bootstrap.rs"
       - "examples/sena_source_gate.rs"
       - "tools/spine/**"
       - "pets/sena/spine/**"
@@ -38,6 +40,10 @@ jobs:
 
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Validate tracked Spine bootstrap
+        shell: pwsh
+        run: cargo run --release --example sena_spine_bootstrap -- --check
 
       - name: Validate PSD source contract or inventory
         shell: pwsh

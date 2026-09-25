@@ -598,6 +598,9 @@ R2B 当前仍保留 per-batch immutable vertex/index buffer，目的是先锁定
 - spine-c bridge / Rust runtime 现在可枚举 animation 的每条 timeline：timeline type、target kind（bone/slot/constraint/global）和 target name。
 - R3B animation scope 合同：`idle` 4–6 秒并禁止内嵌 blink；`blink_l/r` 0.08–0.35 秒且左右 target 集合完全隔离。
 - 已加入合成 Spine 3.8 正反回归：标准左右 blink 通过；`blink_l` key 到 `eye_r` 会失败；`idle` 对 `eye_l` 使用 scale 模拟眨眼会失败。
+- 新增 `examples/sena_spine_bootstrap.rs`：直接从 `r3b_contract.json` 生成可被 spine-c 3.8 解析的 `project/sena.bootstrap.json`。
+- Bootstrap 固定 Spine Editor 3.8.75、13 根 R3B 骨骼、60 个 slot、初始 draw order、setup attachment 名、blend、空 `base` skin 和空的三份 R3B 动画；故意不伪造 attachment/mesh/weight/keyframe。
+- `sena_spine_bootstrap --check` 验证仓库跟踪的 Bootstrap 与合同完全同步，GitHub Actions 会自动执行。
 - 当前 R3B 必需动画：`idle`、`blink_l`、`blink_r`。
 - 会实际播放 `idle` 并再次提取 render frame。
 - 顶点数超过 1500 给 warning，超过约 2500 给更强 warning。

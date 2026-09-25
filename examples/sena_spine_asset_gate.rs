@@ -65,6 +65,7 @@ struct AssetContract {
     schema_version: u32,
     character: String,
     spine_editor_major_minor: String,
+    spine_editor_version: String,
     default_skin: String,
     required_animations: Vec<String>,
     require_required_attachments_in_default_skin: bool,
@@ -114,7 +115,11 @@ fn run() -> Result<(), String> {
     println!("Sena Spine Asset Contract");
     println!("  contract : {}", args.contract.display());
     println!("  character: {}", contract.character);
-    println!("  target   : Spine {}.x", contract.spine_editor_major_minor);
+    println!(
+        "  editor   : Spine {} Professional",
+        contract.spine_editor_version
+    );
+    println!("  runtime  : Spine {}.x", contract.spine_editor_major_minor);
     println!("  skin     : {}", contract.default_skin);
     println!(
         "  required animations: {}",
@@ -420,9 +425,19 @@ fn validate_contract(contract: &AssetContract) -> Result<(), String> {
     }
     if contract.character.trim().is_empty()
         || contract.spine_editor_major_minor.trim().is_empty()
+        || contract.spine_editor_version.trim().is_empty()
         || contract.default_skin.trim().is_empty()
     {
         return Err("contract character/version/default_skin must not be empty".into());
+    }
+    if !contract
+        .spine_editor_version
+        .starts_with(&contract.spine_editor_major_minor)
+    {
+        return Err(format!(
+            "contract Spine Editor version {} does not match runtime major/minor {}",
+            contract.spine_editor_version, contract.spine_editor_major_minor
+        ));
     }
     if contract.required_animations.is_empty() || contract.required_bones.is_empty() {
         return Err("contract must define required animations and bones".into());

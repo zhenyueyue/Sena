@@ -64,6 +64,59 @@ an existing `sena.psd`.
 The generated layers are intentionally empty. This is only a painting scaffold;
 the final Source Gate rejects empty pixel bounds.
 
+## Create the Spine 3.8 project scaffold
+
+The first Spine project structure is generated from the same R3B contract:
+
+```powershell
+cargo run --example sena_spine_bootstrap -- --force
+```
+
+This writes:
+
+```text
+pets/sena/spine/project/sena.bootstrap.json
+```
+
+The bootstrap is valid Spine 3.8.75 JSON and already contains:
+
+- 13 R3B bones in parent-first hierarchy.
+- 60 core slots in the initial draw order.
+- slot -> bone mappings.
+- setup attachment names.
+- slot blend modes, including additive `bow_glow`.
+- an empty `base` skin scaffold.
+- empty `idle`, `blink_l`, and `blink_r` animation scaffolds.
+
+It deliberately contains **no fake attachments, mesh geometry, weights, or
+animation keys**.
+
+In Spine Editor 3.8.75 Professional:
+
+1. Start an empty project.
+2. Use **Import Data** and select `sena.bootstrap.json`.
+3. Keep the imported skeleton structure and position the bones against the
+   approved Sena setup-pose artwork.
+4. Import/create the real image attachments and weighted meshes.
+5. Fill the `base` skin.
+6. Animate `idle`, `blink_l`, and `blink_r`.
+7. Save the editable project as:
+
+```text
+pets/sena/spine/project/sena.spine
+```
+
+The bootstrap JSON is a generated scaffold, not the final editable source
+project and not a Runtime export.
+
+Check that the tracked scaffold still matches the versioned contract:
+
+```powershell
+cargo run --example sena_spine_bootstrap -- --check
+```
+
+CI runs this check automatically.
+
 ## PSD source gate
 
 The source-art gate uses the existing machine-readable layer contract:
