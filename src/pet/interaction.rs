@@ -270,13 +270,11 @@ fn schedule_autonomous_behavior(
         {
             let action = next_random_index(&random_state, AUTONOMOUS_LINES.len());
             let animation_key = autonomous_animation_key(action);
-            let used_dedicated_animation =
-                play_dedicated_interaction(&window, animation_key, Arc::clone(&context));
+            let _ = play_dedicated_interaction(&window, animation_key, Arc::clone(&context));
 
             window.set_autonomous_action(action as i32);
-            let layer_procedural_motion = !used_dedicated_animation || action <= 1;
             window.set_autonomous_reaction_phase(0);
-            window.set_autonomous_reaction_active(layer_procedural_motion);
+            window.set_autonomous_reaction_active(true);
             if preference_snapshot.speech_bubbles_enabled {
                 show_bubble(
                     &window,

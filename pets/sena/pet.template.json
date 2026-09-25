@@ -154,8 +154,18 @@
       "looping": false
     },
     "daydream": {
-      "frames": [],
-      "interval_ms": 220,
+      "frames": [
+        "animations/daydream/000.webp",
+        "animations/daydream/001.webp",
+        "animations/daydream/002.webp",
+        "animations/daydream/003.webp"
+      ],
+      "frame_durations_ms": [
+        180,
+        320,
+        480,
+        220
+      ],
       "looping": false
     }
   }

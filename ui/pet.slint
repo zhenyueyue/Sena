@@ -53,8 +53,16 @@ export component PetWindow inherits Window {
             autonomous-reaction-phase == 4 ? -3px :
             autonomous-reaction-phase == 5 ? -2px :
             autonomous-reaction-phase == 6 ? -1px : 0px :
-        autonomous-action == 2 ? (autonomous-reaction-phase == 2 || autonomous-reaction-phase == 6 ? 1px : 0px) :
-        autonomous-action == 3 ? (autonomous-reaction-phase == 3 ? -1px : autonomous-reaction-phase == 5 ? 1px : 0px) : 0px;
+        autonomous-action == 2 ?
+            autonomous-reaction-phase == 2 ? 1px :
+            autonomous-reaction-phase == 3 ? 2px :
+            autonomous-reaction-phase == 4 ? 2px :
+            autonomous-reaction-phase == 5 ? 1px : 0px :
+        autonomous-action == 3 ?
+            autonomous-reaction-phase == 2 ? -1px :
+            autonomous-reaction-phase == 3 ? -2px :
+            autonomous-reaction-phase == 4 ? -2px :
+            autonomous-reaction-phase == 5 ? -1px : 0px : 0px;
     property <length> autonomous-y: !autonomous-reaction-active ? 0px :
         autonomous-action == 0 ?
             autonomous-reaction-phase == 1 ? -2px :
@@ -63,7 +71,10 @@ export component PetWindow inherits Window {
             autonomous-reaction-phase == 4 ? -8px :
             autonomous-reaction-phase == 5 ? -5px :
             autonomous-reaction-phase == 6 ? -2px : 0px :
-        autonomous-action == 2 ? (autonomous-reaction-phase == 3 || autonomous-reaction-phase == 4 ? 2px : 0px) : 0px;
+        autonomous-action == 2 || autonomous-action == 3 ?
+            autonomous-reaction-phase == 3 ? 1px :
+            autonomous-reaction-phase == 4 ? 2px :
+            autonomous-reaction-phase == 5 ? 1px : 0px : 0px;
 
     property <length> body-bob: (
         animation-clip == 2 || animation-clip == 3

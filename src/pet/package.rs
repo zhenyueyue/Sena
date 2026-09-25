@@ -667,6 +667,7 @@ mod tests {
             InteractionAnimationKey::Petting,
             InteractionAnimationKey::Stretch,
             InteractionAnimationKey::LookAtCat,
+            InteractionAnimationKey::Daydream,
         ] {
             assert!(package.has_renderable_interaction(key));
             assert_eq!(
@@ -679,12 +680,6 @@ mod tests {
                         .join("000.webp")
                 )
             );
-        }
-
-        for key in [InteractionAnimationKey::Daydream] {
-            assert!(package.interaction_animation(key).is_some());
-            assert!(!package.has_renderable_interaction(key));
-            assert_eq!(package.interaction_frame_path(key, 0), None);
         }
     }
 
