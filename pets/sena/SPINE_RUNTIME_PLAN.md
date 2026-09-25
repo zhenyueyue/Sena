@@ -158,15 +158,15 @@ SpineEvent
 - Texture GPU 资源独立由 renderer 管理。
 - C 指针永远封装在私有类型中。
 
-## 7. RendererKind 迁移目标
+## 7. RendererKind / Package Schema
 
-宠物包 schema 后续升级为：
+宠物包 schema 已支持：
 
 ```text
 renderer: "spine"
 ```
 
-新增设置概念：
+以及：
 
 ```json
 {
@@ -179,7 +179,7 @@ renderer: "spine"
 }
 ```
 
-在 Runtime 真正实现前，不提前删除 Sprite schema。
+当前正式 `pet.json` 仍保持 Sprite，以保证应用一直可运行；`pet.template.json` 已携带 Spine 迁移配置。等 R3 有可加载的 Sena skeleton/atlas 后，再切默认 renderer。Sprite schema 和资源继续作为 fallback。
 
 ## 8. Render Extraction
 

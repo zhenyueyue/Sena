@@ -10,6 +10,12 @@
     "scale": 0.36,
     "alpha_threshold": 8
   },
+  "spine": {
+    "skeleton": "spine/export/sena.skel",
+    "atlas": "spine/export/sena.atlas",
+    "scale": 1.0,
+    "default_skin": "base"
+  },
   "model3d": {
     "source": "models/sena.vrm",
     "scale": 1.0,

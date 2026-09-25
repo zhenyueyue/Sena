@@ -16,6 +16,7 @@ pub enum RendererKind {
     Placeholder,
     Sprite,
     Live2d,
+    Spine,
     Model3d,
 }
 
@@ -131,6 +132,25 @@ const fn default_model_scale() -> f32 {
     1.0
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Clone, Deserialize)]
+pub struct SpineSettings {
+    pub skeleton: String,
+    pub atlas: String,
+    #[serde(default = "default_spine_scale")]
+    pub scale: f32,
+    #[serde(default = "default_spine_skin")]
+    pub default_skin: String,
+}
+
+const fn default_spine_scale() -> f32 {
+    1.0
+}
+
+fn default_spine_skin() -> String {
+    "base".into()
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct PetManifest {
     pub schema_version: u32,
@@ -145,6 +165,8 @@ pub struct PetManifest {
     pub sprite: SpriteSettings,
     #[serde(default)]
     pub model3d: Option<Model3dSettings>,
+    #[serde(default)]
+    pub spine: Option<SpineSettings>,
     #[serde(default)]
     pub license: Option<String>,
     #[serde(default)]
@@ -238,6 +260,7 @@ impl PetPackage {
                 renderer: RendererKind::Placeholder,
                 sprite: SpriteSettings::default(),
                 model3d: None,
+                spine: None,
                 license: Some("Apache-2.0".into()),
                 animations,
                 interactions: BTreeMap::new(),
@@ -345,6 +368,28 @@ impl PetPackage {
 
     pub fn sprite_settings(&self) -> &SpriteSettings {
         &self.manifest.sprite
+    }
+
+    #[allow(dead_code)]
+    pub fn is_spine(&self) -> bool {
+        self.manifest.renderer == RendererKind::Spine
+    }
+
+    #[allow(dead_code)]
+    pub fn spine_settings(&self) -> Option<&SpineSettings> {
+        self.manifest.spine.as_ref()
+    }
+
+    #[allow(dead_code)]
+    pub fn spine_skeleton_path(&self) -> Option<PathBuf> {
+        let settings = self.spine_settings()?;
+        Some(self.root.join(&settings.skeleton))
+    }
+
+    #[allow(dead_code)]
+    pub fn spine_atlas_path(&self) -> Option<PathBuf> {
+        let settings = self.spine_settings()?;
+        Some(self.root.join(&settings.atlas))
     }
 
     #[allow(dead_code)]
@@ -461,6 +506,45 @@ fn validate_manifest(root: &Path, manifest: &PetManifest) -> Result<(), PackageE
         ));
     }
 
+    if manifest.renderer == RendererKind::Spine {
+        let spine = manifest.spine.as_ref().ok_or_else(|| {
+            PackageError::InvalidManifest("spine renderer requires spine settings".into())
+        })?;
+
+        let skeleton = Path::new(&spine.skeleton);
+        if !is_safe_relative_path(skeleton) {
+            return Err(PackageError::UnsafeAssetPath(spine.skeleton.clone()));
+        }
+        if !is_supported_spine_skeleton(skeleton) {
+            return Err(PackageError::UnsupportedAssetFormat(spine.skeleton.clone()));
+        }
+
+        let atlas = Path::new(&spine.atlas);
+        if !is_safe_relative_path(atlas) {
+            return Err(PackageError::UnsafeAssetPath(spine.atlas.clone()));
+        }
+        if !is_supported_spine_atlas(atlas) {
+            return Err(PackageError::UnsupportedAssetFormat(spine.atlas.clone()));
+        }
+
+        if !spine.scale.is_finite() || !(0.05..=10.0).contains(&spine.scale) {
+            return Err(PackageError::InvalidManifest(
+                "spine.scale must be between 0.05 and 10.0".into(),
+            ));
+        }
+        if spine.default_skin.trim().is_empty() {
+            return Err(PackageError::InvalidManifest(
+                "spine.default_skin must not be empty".into(),
+            ));
+        }
+
+        for relative in [skeleton, atlas] {
+            if !root.join(relative).is_file() {
+                return Err(PackageError::MissingAsset(root.join(relative)));
+            }
+        }
+    }
+
     if manifest.renderer == RendererKind::Model3d {
         let model = manifest.model3d.as_ref().ok_or_else(|| {
             PackageError::InvalidManifest("model3d renderer requires model3d settings".into())
@@ -566,6 +650,20 @@ fn is_supported_sprite_asset(path: &Path) -> bool {
         })
 }
 
+fn is_supported_spine_skeleton(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            extension.eq_ignore_ascii_case("skel") || extension.eq_ignore_ascii_case("json")
+        })
+}
+
+fn is_supported_spine_atlas(path: &Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("atlas"))
+}
+
 fn is_supported_model3d_asset(path: &Path) -> bool {
     path.extension()
         .and_then(|extension| extension.to_str())
@@ -623,7 +721,7 @@ impl fmt::Display for PackageError {
             }
             Self::UnsupportedAssetFormat(path) => write!(
                 f,
-                "unsupported pet asset format: {path}; expected PNG/WebP for Sprite or VRM/GLB for Model3d"
+                "unsupported pet asset format: {path}; expected PNG/WebP for Sprite, SKEL/JSON + ATLAS for Spine, or VRM/GLB for Model3d"
             ),
             Self::MissingAsset(path) => {
                 write!(f, "pet package asset does not exist: {}", path.display())
@@ -694,6 +792,63 @@ mod tests {
     }
 
     #[test]
+    fn spine_assets_are_limited_to_skeleton_and_atlas_formats() {
+        assert!(is_supported_spine_skeleton(Path::new("spine/sena.skel")));
+        assert!(is_supported_spine_skeleton(Path::new("spine/sena.JSON")));
+        assert!(!is_supported_spine_skeleton(Path::new("spine/sena.spine")));
+        assert!(!is_supported_spine_skeleton(Path::new("spine/sena.png")));
+
+        assert!(is_supported_spine_atlas(Path::new("spine/sena.atlas")));
+        assert!(is_supported_spine_atlas(Path::new("spine/sena.ATLAS")));
+        assert!(!is_supported_spine_atlas(Path::new("spine/sena.json")));
+    }
+
+    #[test]
+    fn spine_package_loads_when_required_assets_exist() {
+        let root = std::env::temp_dir().join(format!("sena-spine-package-{}", std::process::id()));
+        let export = root.join("spine").join("export");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(&export).expect("create Spine package fixture");
+
+        fs::write(export.join("sena.skel"), []).expect("write skeleton fixture");
+        fs::write(export.join("sena.atlas"), []).expect("write atlas fixture");
+        fs::write(
+            root.join("pet.json"),
+            r#"{
+                "schema_version": 1,
+                "id": "test.spine",
+                "name": "Spine Test",
+                "version": "0.0.0",
+                "author": "Sena Test",
+                "renderer": "spine",
+                "spine": {
+                    "skeleton": "spine/export/sena.skel",
+                    "atlas": "spine/export/sena.atlas",
+                    "scale": 1.0,
+                    "default_skin": "base"
+                }
+            }"#,
+        )
+        .expect("write manifest fixture");
+
+        let package = PetPackage::load_from_dir(&root).expect("Spine package should load");
+        assert!(package.is_spine());
+        assert_eq!(
+            package.spine_skeleton_path(),
+            Some(export.join("sena.skel"))
+        );
+        assert_eq!(package.spine_atlas_path(), Some(export.join("sena.atlas")));
+        assert_eq!(
+            package
+                .spine_settings()
+                .map(|settings| settings.default_skin.as_str()),
+            Some("base")
+        );
+
+        fs::remove_dir_all(root).expect("clean Spine package fixture");
+    }
+
+    #[test]
     fn model3d_assets_are_limited_to_vrm_and_glb() {
         assert!(is_supported_model3d_asset(Path::new("models/sena.vrm")));
         assert!(is_supported_model3d_asset(Path::new("models/sena.GLB")));
@@ -714,7 +869,14 @@ mod tests {
         assert_eq!(manifest.id, "sena.official");
         assert_eq!(manifest.renderer, RendererKind::Sprite);
         assert_eq!(manifest.sprite.scale, 0.36);
-        let model = manifest.model3d.as_ref().expect("3D migration contract");
+        let spine = manifest.spine.as_ref().expect("Spine migration contract");
+        assert_eq!(spine.skeleton, "spine/export/sena.skel");
+        assert_eq!(spine.atlas, "spine/export/sena.atlas");
+        assert_eq!(spine.default_skin, "base");
+        let model = manifest
+            .model3d
+            .as_ref()
+            .expect("archived 3D migration contract");
         assert_eq!(model.source, "models/sena.vrm");
         assert_eq!(model.motions.get("walk").map(String::as_str), Some("Walk"));
         assert_eq!(
