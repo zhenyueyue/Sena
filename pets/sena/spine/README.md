@@ -5,6 +5,9 @@ Production target: **Spine 3.8.75 Professional**.
 The first required art gate is described in
 [`../SPINE_SETUP_POSE_BRIEF.md`](../SPINE_SETUP_POSE_BRIEF.md).
 
+The exact first-project build order is in
+[`../SPINE_FIRST_EXPORT_CHECKLIST.md`](../SPINE_FIRST_EXPORT_CHECKLIST.md).
+
 Expected layout:
 
 ```text
@@ -87,3 +90,26 @@ cargo run --example sena_spine_asset_gate -- `
 The gate intentionally does **not** switch the official package to
 `renderer: "spine"`. The static Sena artwork still needs visual approval
 before the production renderer becomes the default.
+
+## Versioned production contract
+
+The machine-readable first-export contract lives at:
+
+```text
+pets/sena/spine/settings/r3b_contract.json
+```
+
+It is the source of truth for the R3B blocking requirements: Spine major/minor,
+default skin, required animations, required bones, setup-pose geometry bounds
+and vertex budgets.
+
+Validate the contract before any real export exists:
+
+```powershell
+cargo run --example sena_spine_asset_gate -- --contract-only
+```
+
+GitHub Actions runs the same check automatically. Once a complete Sena export
+is committed, CI automatically upgrades from `--contract-only` to the full
+asset gate. A partial export (for example only `sena.atlas`) fails CI instead
+of silently passing.

@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "character": "sena",
+  "spine_editor_major_minor": "3.8",
+  "default_skin": "base",
+  "required_animations": [
+    "idle",
+    "blink_l",
+    "blink_r"
+  ],
+  "recommended_next_animations": [
+    "blink_both",
+    "idle_sway",
+    "idle_look_l",
+    "idle_look_r",
+    "coding_idle",
+    "coding_type",
+    "listening_idle",
+    "music_bob",
+    "drowsy_idle",
+    "sleep_idle",
+    "petting",
+    "stretch",
+    "look_at_cat",
+    "daydream",
+    "walk_l",
+    "walk_r",
+    "turn_l_to_r",
+    "turn_r_to_l"
+  ],
+  "required_bones": [
+    "root",
+    "body_root",
+    "hips",
+    "torso",
+    "chest",
+    "neck",
+    "head",
+    "face_root",
+    "eye_l",
+    "eye_r",
+    "bow_root",
+    "hair_back_root",
+    "skirt_root"
+  ],
+  "recommended_next_bones": [
+    "brow_l",
+    "brow_r",
+    "hair_front_root",
+    "hair_side_l_root",
+    "hair_side_r_root",
+    "shoulder_l",
+    "upper_arm_l",
+    "forearm_l",
+    "hand_l",
+    "shoulder_r",
+    "upper_arm_r",
+    "forearm_r",
+    "hand_r",
+    "thigh_l",
+    "calf_l",
+    "foot_l",
+    "thigh_r",
+    "calf_r",
+    "foot_r",
+    "cat_carry",
+    "right_hand_prop",
+    "left_hand_prop",
+    "headphones_anchor",
+    "laptop_anchor"
+  ],
+  "geometry_budget": {
+    "preferred_effective_vertices": 1500,
+    "warning_effective_vertices": 2500,
+    "minimum_setup_width": 64.0,
+    "minimum_setup_height": 128.0
+  },
+  "required_export_files": [
+    "sena.atlas"
+  ],
+  "skeleton_candidates": [
+    "sena.skel",
+    "sena.json"
+  ]
+}

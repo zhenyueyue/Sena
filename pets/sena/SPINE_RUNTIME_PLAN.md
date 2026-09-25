@@ -593,6 +593,10 @@ R2B 当前仍保留 per-batch immutable vertex/index buffer，目的是先锁定
 - 顶点数超过 1500 给 warning，超过约 2500 给更强 warning。
 - 会列出后续 R4/R5 仍缺少的 animation 名称，但不阻塞第一份静态/idle 导入。
 - 已用官方 Spineboy 3.8.55 Pro export 实测 inventory：版本、skin、11 个 animations、animation durations 和 atlas page 均可正确读取。
+- R3B 阻塞条件已经从 Rust 硬编码迁移到 `pets/sena/spine/settings/r3b_contract.json`，可独立版本化。
+- `--contract-only` 可在没有任何 Sena 导出资产时验证制作合同。
+- GitHub Actions `Spine Asset Gate`：没有导出时跑 contract-only；发现完整导出后自动跑 full gate；只提交半套 skeleton/atlas 会直接失败。
+- 新增 `SPINE_FIRST_EXPORT_CHECKLIST.md`，把第一份 3.8.75 Professional 工程限制为 Setup Pose + base + idle + 独立左右 blink。
 
 默认验收命令：
 

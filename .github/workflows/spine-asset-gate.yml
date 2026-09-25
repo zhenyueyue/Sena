@@ -1,0 +1,59 @@
+name: Spine Asset Gate
+
+on:
+  pull_request:
+    paths:
+      - "native/spine_bridge/**"
+      - "src/render/spine/**"
+      - "examples/sena_spine_asset_gate.rs"
+      - "pets/sena/spine/**"
+      - "pets/sena/SPINE_*.md"
+      - ".github/workflows/spine-asset-gate.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "native/spine_bridge/**"
+      - "src/render/spine/**"
+      - "examples/sena_spine_asset_gate.rs"
+      - "pets/sena/spine/**"
+      - "pets/sena/SPINE_*.md"
+      - ".github/workflows/spine-asset-gate.yml"
+
+jobs:
+  sena-spine-r3b:
+    name: Sena Spine R3B
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Validate R3B contract or exported asset
+        shell: pwsh
+        run: |
+          $exportDir = "pets/sena/spine/export"
+          $skel = Test-Path "$exportDir/sena.skel"
+          $json = Test-Path "$exportDir/sena.json"
+          $atlas = Test-Path "$exportDir/sena.atlas"
+          $hasAnyExport = @(
+            Get-ChildItem $exportDir -File |
+              Where-Object { $_.Name -ne ".gitkeep" }
+          ).Count -gt 0
+
+          if (($skel -or $json) -and $atlas) {
+            Write-Host "Sena Spine export detected. Running full R3B asset gate."
+            cargo run --release --example sena_spine_asset_gate
+          } elseif ($hasAnyExport) {
+            Write-Error "Partial Sena Spine export detected. Commit skeleton + sena.atlas + referenced atlas PNG pages together."
+            exit 1
+          } else {
+            Write-Host "No Sena export committed yet. Validating the versioned production contract."
+            cargo run --release --example sena_spine_asset_gate -- --contract-only
+          }
