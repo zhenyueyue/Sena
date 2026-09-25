@@ -10,7 +10,9 @@ pub use media::MediaWatcher;
 pub use session::SessionWatcher;
 pub use single_instance::{SingleInstance, SingleInstanceAcquire};
 pub use startup::{set_startup_enabled, startup_enabled};
-pub use tray::{PetContextMenuHook, TrayAction, TrayIcon, show_pet_context_menu};
+pub use tray::{
+    PetContextMenuHook, TrayAction, TrayIcon, set_tray_menu_state, show_pet_context_menu,
+};
 
 use std::{cell::RefCell, path::Path, time::Duration};
 

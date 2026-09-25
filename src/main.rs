@@ -55,12 +55,17 @@ fn main() -> Result<(), slint::PlatformError> {
     let pet_visible = Arc::new(AtomicBool::new(true));
 
     #[cfg(target_os = "windows")]
+    platform::windows::set_tray_menu_state(true, initial_preferences.always_on_top);
+
+    #[cfg(target_os = "windows")]
     if let Some(instance) = single_instance.as_mut() {
         let window = window.as_weak();
+        let preferences = Arc::clone(&preferences);
         let pet_visible = Arc::clone(&pet_visible);
 
         if let Err(error) = instance.start_show_listener(move || {
             let window = window.clone();
+            let preferences = Arc::clone(&preferences);
             let pet_visible = Arc::clone(&pet_visible);
 
             let _ = slint::invoke_from_event_loop(move || {
@@ -74,6 +79,7 @@ fn main() -> Result<(), slint::PlatformError> {
                 with_settings_window(|settings| {
                     settings.set_pet_visible(true);
                 });
+                sync_tray_menu_state(&preferences, &pet_visible);
             });
         }) {
             eprintln!("single-instance show listener unavailable: {error}");
@@ -506,6 +512,7 @@ fn handle_desktop_action(
             with_settings_window(|settings| {
                 settings.set_pet_visible(true);
             });
+            sync_tray_menu_state(&preferences, &pet_visible);
         }
         platform::windows::TrayAction::Hide => {
             pet_visible.store(false, Ordering::Release);
@@ -515,6 +522,62 @@ fn handle_desktop_action(
             with_settings_window(|settings| {
                 settings.set_pet_visible(false);
             });
+            sync_tray_menu_state(&preferences, &pet_visible);
+        }
+        platform::windows::TrayAction::ToggleVisibility => {
+            let visible = !pet_visible.load(Ordering::Acquire);
+            pet_visible.store(visible, Ordering::Release);
+
+            if let Some(window) = window.upgrade() {
+                if visible {
+                    let _ = window.show();
+                    platform::windows::ensure_window_visible(&window.window());
+                } else {
+                    let _ = window.hide();
+                }
+            }
+
+            with_settings_window(|settings| {
+                settings.set_pet_visible(visible);
+            });
+            sync_tray_menu_state(&preferences, &pet_visible);
+        }
+        platform::windows::TrayAction::ResetPosition => {
+            pet_visible.store(true, Ordering::Release);
+            if let Some(window) = window.upgrade() {
+                let _ = window.show();
+                if let Some(position) = pet::place_default_position(&window) {
+                    let mut preferences = preferences.lock().expect("preferences lock poisoned");
+                    preferences.set_position(position.x, position.y);
+                    if let Err(error) = preferences.save() {
+                        eprintln!("failed to save reset Sena position: {error}");
+                    }
+                }
+                platform::windows::ensure_window_visible(&window.window());
+            }
+            with_settings_window(|settings| {
+                settings.set_pet_visible(true);
+            });
+            sync_tray_menu_state(&preferences, &pet_visible);
+        }
+        platform::windows::TrayAction::ToggleStartup => {
+            let enabled = !platform::windows::startup_enabled();
+            let result = platform::windows::set_startup_enabled(enabled);
+            let actual = platform::windows::startup_enabled();
+
+            with_settings_window(|settings| {
+                settings.set_startup_enabled(actual);
+                match &result {
+                    Ok(()) => settings.set_status_message("".into()),
+                    Err(error) => {
+                        settings.set_status_message(format!("开机自启设置失败：{error}").into())
+                    }
+                }
+            });
+
+            if let Err(error) = result {
+                eprintln!("failed to update Sena startup setting: {error}");
+            }
         }
         platform::windows::TrayAction::SetScale(scale) => {
             render::set_user_scale(scale);
@@ -553,11 +616,22 @@ fn handle_desktop_action(
             with_settings_window(|settings| {
                 settings.set_keep_on_top(enabled);
             });
+            sync_tray_menu_state(&preferences, &pet_visible);
         }
         platform::windows::TrayAction::Exit => {
             let _ = slint::quit_event_loop();
         }
     }
+}
+
+#[cfg(target_os = "windows")]
+fn sync_tray_menu_state(preferences: &Arc<Mutex<PreferencesStore>>, pet_visible: &Arc<AtomicBool>) {
+    let always_on_top = preferences
+        .lock()
+        .expect("preferences lock poisoned")
+        .value()
+        .always_on_top;
+    platform::windows::set_tray_menu_state(pet_visible.load(Ordering::Acquire), always_on_top);
 }
 
 #[cfg(target_os = "windows")]
@@ -638,6 +712,7 @@ fn show_settings_window(
             {
                 let window = window.clone();
                 let preferences = Arc::clone(&preferences);
+                let pet_visible = Arc::clone(&pet_visible);
                 let settings_weak = settings.as_weak();
 
                 settings.on_set_keep_on_top(move |enabled| {
@@ -645,22 +720,28 @@ fn show_settings_window(
                         window.set_keep_on_top(enabled);
                     }
 
-                    let mut preferences = preferences.lock().expect("preferences lock poisoned");
-                    preferences.set_always_on_top(enabled);
+                    {
+                        let mut store = preferences.lock().expect("preferences lock poisoned");
+                        store.set_always_on_top(enabled);
 
-                    if let Err(error) = preferences.save() {
-                        eprintln!("failed to save Sena preferences: {error}");
-                        if let Some(settings) = settings_weak.upgrade() {
-                            settings.set_status_message(format!("保存设置失败：{error}").into());
+                        if let Err(error) = store.save() {
+                            eprintln!("failed to save Sena preferences: {error}");
+                            if let Some(settings) = settings_weak.upgrade() {
+                                settings
+                                    .set_status_message(format!("保存设置失败：{error}").into());
+                            }
+                        } else if let Some(settings) = settings_weak.upgrade() {
+                            settings.set_status_message("".into());
                         }
-                    } else if let Some(settings) = settings_weak.upgrade() {
-                        settings.set_status_message("".into());
                     }
+
+                    sync_tray_menu_state(&preferences, &pet_visible);
                 });
             }
 
             {
                 let window = window.clone();
+                let preferences = Arc::clone(&preferences);
                 let pet_visible = Arc::clone(&pet_visible);
 
                 settings.on_set_visible(move |visible| {
@@ -669,10 +750,13 @@ fn show_settings_window(
                     if let Some(window) = window.upgrade() {
                         if visible {
                             let _ = window.show();
+                            platform::windows::ensure_window_visible(&window.window());
                         } else {
                             let _ = window.hide();
                         }
                     }
+
+                    sync_tray_menu_state(&preferences, &pet_visible);
                 });
             }
 

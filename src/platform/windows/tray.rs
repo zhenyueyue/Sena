@@ -1,7 +1,11 @@
 use std::{
     ffi::c_void,
     io,
-    sync::{Arc, Mutex, OnceLock, mpsc},
+    sync::{
+        Arc, Mutex, OnceLock,
+        atomic::{AtomicBool, Ordering},
+        mpsc,
+    },
     thread::{self, JoinHandle},
     time::Duration,
 };
@@ -39,6 +43,9 @@ const PET_CONTEXT_SUBCLASS_ID: usize = 0x5345_4E41;
 const CMD_SETTINGS: usize = 1000;
 const CMD_SHOW: usize = 1001;
 const CMD_HIDE: usize = 1002;
+const CMD_TOGGLE_VISIBLE: usize = 1003;
+const CMD_RESET_POSITION: usize = 1004;
+const CMD_TOGGLE_STARTUP: usize = 1005;
 const CMD_SCALE_80: usize = 1010;
 const CMD_SCALE_100: usize = 1011;
 const CMD_SCALE_120: usize = 1012;
@@ -50,6 +57,9 @@ pub enum TrayAction {
     Settings,
     Show,
     Hide,
+    ToggleVisibility,
+    ResetPosition,
+    ToggleStartup,
     SetScale(f32),
     ToggleAlwaysOnTop,
     Exit,
@@ -58,6 +68,13 @@ pub enum TrayAction {
 type TrayCallback = Arc<dyn Fn(TrayAction) + Send + Sync + 'static>;
 
 static TRAY_CALLBACK: OnceLock<Mutex<Option<TrayCallback>>> = OnceLock::new();
+static TRAY_PET_VISIBLE: AtomicBool = AtomicBool::new(true);
+static TRAY_ALWAYS_ON_TOP: AtomicBool = AtomicBool::new(true);
+
+pub fn set_tray_menu_state(pet_visible: bool, always_on_top: bool) {
+    TRAY_PET_VISIBLE.store(pet_visible, Ordering::Release);
+    TRAY_ALWAYS_ON_TOP.store(always_on_top, Ordering::Release);
+}
 
 struct PetContextCallback {
     callback: Box<dyn Fn() + 'static>,
@@ -278,11 +295,20 @@ unsafe fn show_context_menu(hwnd: HWND) {
         Err(_) => return,
     };
 
+    let pet_visible = TRAY_PET_VISIBLE.load(Ordering::Acquire);
+    let always_on_top = TRAY_ALWAYS_ON_TOP.load(Ordering::Acquire);
+    let startup_enabled = super::startup_enabled();
+    let visible_flags = checked_menu_flags(pet_visible);
+    let topmost_flags = checked_menu_flags(always_on_top);
+    let startup_flags = checked_menu_flags(startup_enabled);
+
     unsafe {
         let _ = AppendMenuW(menu, MF_STRING, CMD_SETTINGS, w!("设置..."));
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
-        let _ = AppendMenuW(menu, MF_STRING, CMD_SHOW, w!("显示 Sena"));
-        let _ = AppendMenuW(menu, MF_STRING, CMD_HIDE, w!("隐藏 Sena"));
+        let _ = AppendMenuW(menu, visible_flags, CMD_TOGGLE_VISIBLE, w!("显示桌宠"));
+        let _ = AppendMenuW(menu, topmost_flags, CMD_TOGGLE_TOPMOST, w!("始终置顶"));
+        let _ = AppendMenuW(menu, startup_flags, CMD_TOGGLE_STARTUP, w!("开机自启"));
+        let _ = AppendMenuW(menu, MF_STRING, CMD_RESET_POSITION, w!("重置位置"));
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
         let _ = AppendMenuW(menu, MF_STRING, CMD_SCALE_80, w!("大小 80%"));
         let _ = AppendMenuW(menu, MF_STRING, CMD_SCALE_100, w!("大小 100%"));
@@ -401,6 +427,9 @@ fn action_for_command(command: usize) -> Option<TrayAction> {
         CMD_SETTINGS => Some(TrayAction::Settings),
         CMD_SHOW => Some(TrayAction::Show),
         CMD_HIDE => Some(TrayAction::Hide),
+        CMD_TOGGLE_VISIBLE => Some(TrayAction::ToggleVisibility),
+        CMD_RESET_POSITION => Some(TrayAction::ResetPosition),
+        CMD_TOGGLE_STARTUP => Some(TrayAction::ToggleStartup),
         CMD_SCALE_80 => Some(TrayAction::SetScale(0.8)),
         CMD_SCALE_100 => Some(TrayAction::SetScale(1.0)),
         CMD_SCALE_120 => Some(TrayAction::SetScale(1.2)),
@@ -495,6 +524,18 @@ mod tests {
         assert_eq!(action_for_command(CMD_SETTINGS), Some(TrayAction::Settings));
         assert_eq!(action_for_command(CMD_SHOW), Some(TrayAction::Show));
         assert_eq!(action_for_command(CMD_HIDE), Some(TrayAction::Hide));
+        assert_eq!(
+            action_for_command(CMD_TOGGLE_VISIBLE),
+            Some(TrayAction::ToggleVisibility)
+        );
+        assert_eq!(
+            action_for_command(CMD_RESET_POSITION),
+            Some(TrayAction::ResetPosition)
+        );
+        assert_eq!(
+            action_for_command(CMD_TOGGLE_STARTUP),
+            Some(TrayAction::ToggleStartup)
+        );
         assert_eq!(
             action_for_command(CMD_SCALE_80),
             Some(TrayAction::SetScale(0.8))
