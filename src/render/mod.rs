@@ -339,6 +339,10 @@ pub fn apply_context(window: &PetWindow, context: &DesktopContext, behavior: Beh
     window.set_activity_label(label.into());
     window.set_is_drowsy(matches!(behavior, Behavior::Drowsy));
     window.set_is_sleeping(matches!(behavior, Behavior::Sleeping));
+    window.set_typing_context_active(context.typing_active && context.is_coding());
+    window.set_music_context_active(
+        context.music_motion_active && context.media == crate::context::MediaState::Playing,
+    );
     window.set_show_laptop(matches!(
         behavior,
         Behavior::Coding | Behavior::CodingWithMusic

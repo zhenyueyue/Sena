@@ -940,6 +940,20 @@ mod tests {
     use super::*;
 
     #[test]
+    fn music_motion_uses_short_irregular_bursts() {
+        assert_eq!(music_motion_rest(0), Duration::from_secs(8));
+        assert_eq!(music_motion_rest(1), Duration::from_secs(13));
+        assert_eq!(music_motion_rest(2), Duration::from_secs(10));
+        assert_eq!(music_motion_rest(3), Duration::from_secs(16));
+        assert_eq!(music_motion_rest(4), Duration::from_secs(8));
+
+        assert_eq!(music_motion_duration(0), Duration::from_millis(720));
+        assert_eq!(music_motion_duration(1), Duration::from_millis(900));
+        assert_eq!(music_motion_duration(2), Duration::from_millis(630));
+        assert_eq!(music_motion_duration(3), Duration::from_millis(810));
+    }
+
+    #[test]
     fn sleeping_motion_requires_unlocked_idle_without_media() {
         let mut context = DesktopContext {
             user_activity: UserActivity::Idle,
@@ -1168,6 +1182,26 @@ fn schedule_drowsy_motion(
 }
 
 #[cfg(target_os = "windows")]
+fn music_motion_rest(cycle: u64) -> Duration {
+    match cycle % 4 {
+        0 => Duration::from_secs(8),
+        1 => Duration::from_secs(13),
+        2 => Duration::from_secs(10),
+        _ => Duration::from_secs(16),
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn music_motion_duration(cycle: u64) -> Duration {
+    match cycle % 4 {
+        0 => Duration::from_millis(720),
+        1 => Duration::from_millis(900),
+        2 => Duration::from_millis(630),
+        _ => Duration::from_millis(810),
+    }
+}
+
+#[cfg(target_os = "windows")]
 fn schedule_music_motion(
     window: slint::Weak<PetWindow>,
     context: Arc<Mutex<DesktopContext>>,
@@ -1175,12 +1209,7 @@ fn schedule_music_motion(
     token: u64,
     cycle: u64,
 ) {
-    let rest = match cycle % 4 {
-        0 => Duration::from_secs(7),
-        1 => Duration::from_secs(11),
-        2 => Duration::from_secs(9),
-        _ => Duration::from_secs(13),
-    };
+    let rest = music_motion_rest(cycle);
 
     slint::Timer::single_shot(rest, move || {
         if generation.load(Ordering::Acquire) != token {
@@ -1208,7 +1237,7 @@ fn schedule_music_motion(
         let finish_window = window.clone();
         let finish_context = Arc::clone(&context);
         let finish_generation = Arc::clone(&generation);
-        slint::Timer::single_shot(Duration::from_millis(900), move || {
+        slint::Timer::single_shot(music_motion_duration(cycle), move || {
             if finish_generation.load(Ordering::Acquire) != token {
                 return;
             }

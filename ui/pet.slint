@@ -13,6 +13,9 @@ export component PetWindow inherits Window {
     in property <bool> show-headphones: false;
     in property <bool> is-drowsy: false;
     in property <bool> is-sleeping: false;
+    in property <bool> typing-context-active: false;
+    in property <bool> music-context-active: false;
+    in-out property <int> music-context-phase: 0;
 
     in-out property <int> animation-clip: 0;
     in-out property <int> animation-frame: 0;
@@ -76,6 +79,19 @@ export component PetWindow inherits Window {
             autonomous-reaction-phase == 4 ? 2px :
             autonomous-reaction-phase == 5 ? 1px : 0px : 0px;
 
+    property <length> context-x: root.typing-context-active ? 1px :
+        !root.music-context-active ? 0px :
+        root.music-context-phase == 1 ? -1px :
+        root.music-context-phase == 2 ? 1px :
+        root.music-context-phase == 3 ? 2px :
+        root.music-context-phase == 4 ? 0px : 0px;
+    property <length> context-y: root.typing-context-active ? 1px :
+        !root.music-context-active ? 0px :
+        root.music-context-phase == 1 ? -1px :
+        root.music-context-phase == 2 ? 0px :
+        root.music-context-phase == 3 ? -1px :
+        root.music-context-phase == 4 ? 0px : 0px;
+
     property <length> body-bob: (
         animation-clip == 2 || animation-clip == 3
     ) && Math.mod(animation-frame, 2) == 1 ? -2px : 0px;
@@ -90,6 +106,15 @@ export component PetWindow inherits Window {
     callback pet-activity();
     callback interact();
     callback animation-tick(int, int);
+
+    music-context-timer := Timer {
+        interval: 180ms;
+        running: root.music-context-active;
+
+        triggered() => {
+            root.music-context-phase = Math.mod(root.music-context-phase + 1, 5);
+        }
+    }
 
     autonomous-reaction-timer := Timer {
         interval: 170ms;
@@ -143,12 +168,30 @@ export component PetWindow inherits Window {
 
     Image {
         visible: root.use-sprite;
-        x: root.reaction-x + root.autonomous-x;
-        y: root.reaction-y + root.autonomous-y;
+        x: root.reaction-x + root.autonomous-x + root.context-x;
+        y: root.reaction-y + root.autonomous-y + root.context-y;
         width: parent.width;
         height: parent.height;
         source: root.sprite-image;
         image-fit: contain;
+    }
+
+    Text {
+        visible: root.typing-context-active && root.show-laptop;
+        x: 174px;
+        y: 82px;
+        text: "✦";
+        color: #9a9de4;
+        font-size: 12px;
+    }
+
+    Text {
+        visible: root.music-context-active && root.show-headphones;
+        x: 174px + (root.music-context-phase == 2 ? 2px : 0px);
+        y: 70px - (root.music-context-phase * 2px);
+        text: "♪";
+        color: #a08bd8;
+        font-size: 14px;
     }
 
     TouchArea {
@@ -179,8 +222,8 @@ export component PetWindow inherits Window {
 
     Rectangle {
         visible: !root.use-sprite;
-        x: 20px + root.reaction-x + root.autonomous-x;
-        y: 28px + root.body-bob + root.reaction-y + root.autonomous-y;
+        x: 20px + root.reaction-x + root.autonomous-x + root.context-x;
+        y: 28px + root.body-bob + root.reaction-y + root.autonomous-y + root.context-y;
         width: 180px;
         height: 188px;
         border-radius: 88px;
