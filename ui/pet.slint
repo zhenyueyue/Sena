@@ -26,6 +26,20 @@ export component PetWindow inherits Window {
 
     in-out property <bool> interaction-bubble-visible: false;
     in-out property <string> interaction-bubble-text: "";
+    in-out property <bool> interaction-reaction-active: false;
+    in-out property <int> interaction-reaction-phase: 0;
+
+    property <length> reaction-x: !interaction-reaction-active ? 0px :
+        interaction-reaction-phase == 2 ? -2px :
+        interaction-reaction-phase == 4 ? 2px :
+        interaction-reaction-phase == 6 ? -1px : 0px;
+    property <length> reaction-y: !interaction-reaction-active ? 0px :
+        interaction-reaction-phase == 1 ? -3px :
+        interaction-reaction-phase == 2 ? -7px :
+        interaction-reaction-phase == 3 ? -9px :
+        interaction-reaction-phase == 4 ? -6px :
+        interaction-reaction-phase == 5 ? -3px :
+        interaction-reaction-phase == 6 ? -1px : 0px;
 
     property <length> body-bob: (
         animation-clip == 2 || animation-clip == 3
@@ -40,6 +54,20 @@ export component PetWindow inherits Window {
     callback drag-end();
     callback interact();
     callback animation-tick(int, int);
+
+    reaction-timer := Timer {
+        interval: 90ms;
+        running: root.interaction-reaction-active;
+
+        triggered() => {
+            if root.interaction-reaction-phase >= 7 {
+                root.interaction-reaction-active = false;
+                root.interaction-reaction-phase = 0;
+            } else {
+                root.interaction-reaction-phase += 1;
+            }
+        }
+    }
 
     animation-timer := Timer {
         interval: root.animation-interval-ms * 1ms;
@@ -65,8 +93,8 @@ export component PetWindow inherits Window {
 
     Image {
         visible: root.use-sprite;
-        x: 0px;
-        y: 0px;
+        x: root.reaction-x;
+        y: root.reaction-y;
         width: parent.width;
         height: parent.height;
         source: root.sprite-image;
@@ -100,8 +128,8 @@ export component PetWindow inherits Window {
 
     Rectangle {
         visible: !root.use-sprite;
-        x: 20px;
-        y: 28px + root.body-bob;
+        x: 20px + root.reaction-x;
+        y: 28px + root.body-bob + root.reaction-y;
         width: 180px;
         height: 188px;
         border-radius: 88px;
@@ -279,6 +307,24 @@ export component PetWindow inherits Window {
                 root.interact();
             }
         }
+    }
+
+    Text {
+        visible: root.interaction-reaction-active;
+        x: 25px + (root.interaction-reaction-phase * 1px);
+        y: 54px - (root.interaction-reaction-phase * 3px);
+        text: "♡";
+        color: #d99ac4;
+        font-size: 18px;
+    }
+
+    Text {
+        visible: root.interaction-reaction-active;
+        x: 178px - (root.interaction-reaction-phase * 1px);
+        y: 66px - (root.interaction-reaction-phase * 2px);
+        text: "✦";
+        color: #8c8fdf;
+        font-size: 15px;
     }
 
     Rectangle {

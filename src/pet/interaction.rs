@@ -1,10 +1,15 @@
-use std::{cell::Cell, rc::Rc, time::Duration};
+use std::{
+    cell::Cell,
+    rc::Rc,
+    time::{Duration, Instant},
+};
 
 use slint::{ComponentHandle, Timer};
 
 use crate::PetWindow;
 
 const BUBBLE_DURATION: Duration = Duration::from_millis(2600);
+const DOUBLE_CLICK_WINDOW: Duration = Duration::from_millis(280);
 
 const INTERACTION_LINES: &[&str] = &[
     "嗯？我在这里呀 ✦",
@@ -15,45 +20,110 @@ const INTERACTION_LINES: &[&str] = &[
     "星奈收到你的招呼啦 ♡",
 ];
 
+const PETTING_LINES: &[&str] = &[
+    "欸嘿……摸摸头也可以啦 ♡",
+    "再摸一下也不是不行……",
+    "头发要被你揉乱啦～",
+    "嗯……这个力度刚刚好。",
+];
+
 pub fn install_interactions(window: &PetWindow) {
     let next_line = Rc::new(Cell::new(0usize));
+    let next_petting_line = Rc::new(Cell::new(0usize));
     let bubble_generation = Rc::new(Cell::new(0u64));
+    let click_generation = Rc::new(Cell::new(0u64));
+    let last_click_at = Rc::new(Cell::new(None::<Instant>));
     let weak_window = window.as_weak();
 
     window.on_interact({
         let next_line = Rc::clone(&next_line);
+        let next_petting_line = Rc::clone(&next_petting_line);
         let bubble_generation = Rc::clone(&bubble_generation);
+        let click_generation = Rc::clone(&click_generation);
+        let last_click_at = Rc::clone(&last_click_at);
 
         move || {
             let Some(window) = weak_window.upgrade() else {
                 return;
             };
 
-            let index = next_line.get();
-            next_line.set(index.wrapping_add(1));
-            window.set_interaction_bubble_text(interaction_line(index).into());
-            window.set_interaction_bubble_visible(true);
+            let now = Instant::now();
+            let is_double_click = last_click_at
+                .get()
+                .is_some_and(|previous| is_double_click_interval(now.duration_since(previous)));
 
-            let token = bubble_generation.get().wrapping_add(1);
-            bubble_generation.set(token);
+            if is_double_click {
+                last_click_at.set(None);
+                click_generation.set(click_generation.get().wrapping_add(1));
+
+                let index = next_petting_line.get();
+                next_petting_line.set(index.wrapping_add(1));
+                show_bubble(&window, petting_line(index), Rc::clone(&bubble_generation));
+                window.set_interaction_reaction_phase(0);
+                window.set_interaction_reaction_active(true);
+                return;
+            }
+
+            last_click_at.set(Some(now));
+            let token = click_generation.get().wrapping_add(1);
+            click_generation.set(token);
 
             let weak_window = window.as_weak();
+            let next_line = Rc::clone(&next_line);
             let bubble_generation = Rc::clone(&bubble_generation);
-            Timer::single_shot(BUBBLE_DURATION, move || {
-                if bubble_generation.get() != token {
+            let click_generation = Rc::clone(&click_generation);
+            let last_click_at = Rc::clone(&last_click_at);
+            Timer::single_shot(DOUBLE_CLICK_WINDOW, move || {
+                if click_generation.get() != token {
                     return;
                 }
 
-                if let Some(window) = weak_window.upgrade() {
-                    window.set_interaction_bubble_visible(false);
-                }
+                last_click_at.set(None);
+                let Some(window) = weak_window.upgrade() else {
+                    return;
+                };
+
+                let index = next_line.get();
+                next_line.set(index.wrapping_add(1));
+                show_bubble(
+                    &window,
+                    interaction_line(index),
+                    Rc::clone(&bubble_generation),
+                );
             });
         }
     });
 }
 
+fn show_bubble(window: &PetWindow, text: &str, bubble_generation: Rc<Cell<u64>>) {
+    window.set_interaction_bubble_text(text.into());
+    window.set_interaction_bubble_visible(true);
+
+    let token = bubble_generation.get().wrapping_add(1);
+    bubble_generation.set(token);
+
+    let weak_window = window.as_weak();
+    Timer::single_shot(BUBBLE_DURATION, move || {
+        if bubble_generation.get() != token {
+            return;
+        }
+
+        if let Some(window) = weak_window.upgrade() {
+            window.set_interaction_bubble_visible(false);
+        }
+    });
+}
+
+fn is_double_click_interval(elapsed: Duration) -> bool {
+    elapsed <= DOUBLE_CLICK_WINDOW
+}
+
 fn interaction_line(index: usize) -> &'static str {
     INTERACTION_LINES[index % INTERACTION_LINES.len()]
+}
+
+fn petting_line(index: usize) -> &'static str {
+    PETTING_LINES[index % PETTING_LINES.len()]
 }
 
 #[cfg(test)]
@@ -70,7 +140,21 @@ mod tests {
     }
 
     #[test]
+    fn petting_lines_cycle_after_last_entry() {
+        assert_eq!(petting_line(0), PETTING_LINES[0]);
+        assert_eq!(petting_line(PETTING_LINES.len()), PETTING_LINES[0]);
+    }
+
+    #[test]
     fn interaction_lines_are_non_empty() {
         assert!(INTERACTION_LINES.iter().all(|line| !line.trim().is_empty()));
+        assert!(PETTING_LINES.iter().all(|line| !line.trim().is_empty()));
+    }
+
+    #[test]
+    fn double_click_window_accepts_fast_second_click() {
+        assert!(is_double_click_interval(Duration::from_millis(180)));
+        assert!(is_double_click_interval(DOUBLE_CLICK_WINDOW));
+        assert!(!is_double_click_interval(Duration::from_millis(281)));
     }
 }
