@@ -5,33 +5,21 @@
   "naming": "snake_case",
   "required_groups": {
     "head": [
-      "head_base",
+      "head_core",
       "ear_l",
       "ear_r"
     ],
     "face": [
+      "eye_l_open",
+      "eye_l_closed",
+      "eye_r_open",
+      "eye_r_closed",
       "brow_l",
       "brow_r",
-      "eye_white_l",
-      "eye_white_r",
-      "iris_l",
-      "iris_r",
-      "pupil_l",
-      "pupil_r",
-      "eye_highlight_l",
-      "eye_highlight_r",
-      "eyelid_upper_l",
-      "eyelid_upper_r",
-      "eyelid_lower_l",
-      "eyelid_lower_r",
-      "lash_l",
-      "lash_r",
-      "blush_l",
-      "blush_r",
       "mouth_neutral",
       "mouth_smile",
       "mouth_open",
-      "mouth_sleep"
+      "mouth_sad"
     ],
     "hair_back": [
       "hair_back_c",

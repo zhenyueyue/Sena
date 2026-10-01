@@ -1416,6 +1416,12 @@ mod tests {
         );
         assert!(
             contract
+                .required_animations
+                .iter()
+                .any(|name| name == "blink_both")
+        );
+        assert!(
+            contract
                 .required_bones
                 .iter()
                 .any(|name| name == "bow_root")
@@ -1427,11 +1433,11 @@ mod tests {
                 .and_then(|parent| parent.as_deref()),
             Some("face_root")
         );
-        assert_eq!(contract.required_slots.len(), 60);
+        assert_eq!(contract.required_slots.len(), 48);
         assert_eq!(
             contract
                 .required_slots
-                .get("mouth")
+                .get("mouth_slot")
                 .map(|slot| slot.setup_attachment.as_str()),
             Some("mouth_neutral")
         );

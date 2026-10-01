@@ -80,13 +80,13 @@ pets/sena/spine/project/sena.bootstrap.json
 
 The bootstrap is valid Spine 3.8.75 JSON and already contains:
 
-- 13 R3B bones in parent-first hierarchy.
-- 60 core slots in the initial draw order.
+- 16 R3B bones in parent-first hierarchy.
+- 48 core slots in the initial draw order.
 - slot -> bone mappings.
 - setup attachment names.
 - slot blend modes, including additive `bow_glow`.
 - an empty `base` skin scaffold.
-- empty `idle`, `blink_l`, and `blink_r` animation scaffolds.
+- empty `idle`, `blink_l`, `blink_r`, and `blink_both` animation scaffolds.
 
 It deliberately contains **no fake attachments, mesh geometry, weights, or
 animation keys**.
@@ -99,7 +99,7 @@ In Spine Editor 3.8.75 Professional:
    approved Sena setup-pose artwork.
 4. Import/create the real image attachments and weighted meshes.
 5. Fill the `base` skin.
-6. Animate `idle`, `blink_l`, and `blink_r`.
+6. Animate `idle`, `blink_l`, `blink_r`, and `blink_both`.
 7. Save the editable project as:
 
 ```text
@@ -183,18 +183,18 @@ The R3B gate currently requires:
 
 - Spine runtime version 3.8.x.
 - skin `base`.
-- animations `idle`, `blink_l`, and `blink_r`.
+- animations `idle`, `blink_l`, `blink_r`, and `blink_both`.
 - all R3B bones declared in `r3b_contract.json`.
 - the exact required parent hierarchy for those bones; correct names with the wrong parent still fail.
-- 60 core slots with the required slot -> bone mapping.
-- 63 required attachments, including alternate mouth states on one `mouth` slot.
+- 48 core slots with the required slot -> bone mapping.
+- 53 required attachments, including alternate mouth states on one `mouth` slot.
 - valid setup attachments.
 - expected Region / Mesh / Linked Mesh attachment categories.
 - required blend modes, including additive `bow_glow`.
-- 22 relative draw-order constraints for rear hair, layered skirt and eye stacks.
+- 20 relative draw-order constraints for rear hair, layered skirt and eye stacks.
 - all required attachments must belong directly to `base`; fallback from another/default skin does not count.
 - `idle` must be 4–6 seconds and may not bake blink scale/shear or eye attachment/deform timelines.
-- `blink_l` / `blink_r` must be 0.08–0.35 seconds and their timeline targets must stay completely on their own eye side.
+- `blink_l` / `blink_r` must be 0.08–0.35 seconds and stay on their own eye side; `blink_both` may target only the two eye bones and the two whole-eye slots.
 - blink animations may not contain global Event/DrawOrder timelines or constraint timelines.
 - a non-empty renderable setup pose.
 - finite geometry and valid triangle indices.

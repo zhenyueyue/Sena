@@ -1,5 +1,6 @@
 {
   "animations": {
+    "blink_both": {},
     "blink_l": {},
     "blink_r": {},
     "idle": {}
@@ -42,6 +43,18 @@
     },
     {
       "name": "eye_r",
+      "parent": "face_root"
+    },
+    {
+      "name": "brow_l",
+      "parent": "face_root"
+    },
+    {
+      "name": "brow_r",
+      "parent": "face_root"
+    },
+    {
+      "name": "mouth",
       "parent": "face_root"
     },
     {
@@ -168,9 +181,9 @@
       "name": "waist_crystal"
     },
     {
-      "attachment": "head_base",
+      "attachment": "head_core",
       "bone": "head",
-      "name": "head_base"
+      "name": "head_core_slot"
     },
     {
       "attachment": "ear_l",
@@ -193,89 +206,29 @@
       "name": "blush_r"
     },
     {
-      "attachment": "eye_white_l",
+      "attachment": "eye_l_open",
       "bone": "eye_l",
-      "name": "eye_white_l"
+      "name": "eye_l_slot"
     },
     {
-      "attachment": "iris_l",
-      "bone": "eye_l",
-      "name": "iris_l"
-    },
-    {
-      "attachment": "pupil_l",
-      "bone": "eye_l",
-      "name": "pupil_l"
-    },
-    {
-      "attachment": "eye_highlight_l",
-      "bone": "eye_l",
-      "name": "eye_highlight_l"
-    },
-    {
-      "attachment": "eyelid_lower_l",
-      "bone": "eye_l",
-      "name": "eyelid_lower_l"
-    },
-    {
-      "attachment": "eyelid_upper_l",
-      "bone": "eye_l",
-      "name": "eyelid_upper_l"
-    },
-    {
-      "attachment": "lash_l",
-      "bone": "eye_l",
-      "name": "lash_l"
-    },
-    {
-      "attachment": "eye_white_r",
+      "attachment": "eye_r_open",
       "bone": "eye_r",
-      "name": "eye_white_r"
-    },
-    {
-      "attachment": "iris_r",
-      "bone": "eye_r",
-      "name": "iris_r"
-    },
-    {
-      "attachment": "pupil_r",
-      "bone": "eye_r",
-      "name": "pupil_r"
-    },
-    {
-      "attachment": "eye_highlight_r",
-      "bone": "eye_r",
-      "name": "eye_highlight_r"
-    },
-    {
-      "attachment": "eyelid_lower_r",
-      "bone": "eye_r",
-      "name": "eyelid_lower_r"
-    },
-    {
-      "attachment": "eyelid_upper_r",
-      "bone": "eye_r",
-      "name": "eyelid_upper_r"
-    },
-    {
-      "attachment": "lash_r",
-      "bone": "eye_r",
-      "name": "lash_r"
-    },
-    {
-      "attachment": "mouth_neutral",
-      "bone": "face_root",
-      "name": "mouth"
+      "name": "eye_r_slot"
     },
     {
       "attachment": "brow_l",
-      "bone": "face_root",
-      "name": "brow_l"
+      "bone": "brow_l",
+      "name": "brow_l_slot"
     },
     {
       "attachment": "brow_r",
-      "bone": "face_root",
-      "name": "brow_r"
+      "bone": "brow_r",
+      "name": "brow_r_slot"
+    },
+    {
+      "attachment": "mouth_neutral",
+      "bone": "mouth",
+      "name": "mouth_slot"
     },
     {
       "attachment": "hair_side_l1",

@@ -352,13 +352,8 @@ fn is_snake_case(name: &str) -> bool {
 
 fn verify_independent_pairs(names: &BTreeSet<&str>) -> Result<(), String> {
     const PAIRS: &[(&str, &str)] = &[
-        ("eye_white_l", "eye_white_r"),
-        ("iris_l", "iris_r"),
-        ("pupil_l", "pupil_r"),
-        ("eye_highlight_l", "eye_highlight_r"),
-        ("eyelid_upper_l", "eyelid_upper_r"),
-        ("eyelid_lower_l", "eyelid_lower_r"),
-        ("lash_l", "lash_r"),
+        ("eye_l_open", "eye_r_open"),
+        ("eye_l_closed", "eye_r_closed"),
         ("brow_l", "brow_r"),
     ];
 
@@ -426,7 +421,10 @@ mod tests {
         validate_contract(&contract).expect("bundled layer contract should be valid");
 
         let names = required_names(&contract);
-        assert!(names.contains("eye_white_l"));
+        assert!(names.contains("eye_l_open"));
+        assert!(names.contains("eye_l_closed"));
+        assert!(names.contains("eye_r_open"));
+        assert!(names.contains("eye_r_closed"));
         assert!(names.contains("hair_back_r2"));
         assert!(names.contains("bow_tail_l"));
         assert!(names.contains("skirt_front_c"));
