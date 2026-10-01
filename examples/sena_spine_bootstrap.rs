@@ -540,7 +540,7 @@ mod tests {
             .iter()
             .collect::<BTreeSet<_>>();
         assert_eq!(expected, actual);
-        assert_eq!(contract.bootstrap_slot_order.len(), 60);
+        assert_eq!(contract.bootstrap_slot_order.len(), 48);
     }
 
     #[test]
