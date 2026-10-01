@@ -72,36 +72,24 @@ Sena 必须首先满足“静止就好看”，其次才是“动起来顺”。
 
 ```text
 head/
-  head_base
+  head_core
   ear_l
   ear_r
 
   face/
+    eye_l_open
+    eye_l_closed
+    eye_r_open
+    eye_r_closed
     brow_l
     brow_r
-    eye_white_l
-    eye_white_r
-    iris_l
-    iris_r
-    pupil_l
-    pupil_r
-    eye_highlight_l
-    eye_highlight_r
-    eyelid_upper_l
-    eyelid_upper_r
-    eyelid_lower_l
-    eyelid_lower_r
-    lash_l
-    lash_r
-    blush_l
-    blush_r
     mouth_neutral
     mouth_smile
     mouth_open
-    mouth_sleep
+    mouth_sad
 ```
 
-眼睛必须左右独立，Sena 左右眨眼不得强制同步。
+眼睛必须左右独立；每只眼的 open / closed 是同一 Slot 下的 Attachment。Sena 左右眨眼仍可独立播放，双眼自然眨眼使用 `blink_both`。
 
 ### 4.2 头发
 
@@ -260,7 +248,8 @@ root
    │  │  │  │     │  ├─ eye_l
    │  │  │  │     │  ├─ eye_r
    │  │  │  │     │  ├─ brow_l
-   │  │  │  │     │  └─ brow_r
+   │  │  │  │     │  ├─ brow_r
+   │  │  │  │     │  └─ mouth
    │  │  │  │     ├─ hair_front_root
    │  │  │  │     ├─ hair_side_l_root
    │  │  │  │     ├─ hair_side_r_root
