@@ -1,11 +1,9 @@
 {
-  "skeleton": {
-    "hash": "sena-r3b-bootstrap",
-    "spine": "3.8.75",
-    "width": 0,
-    "height": 0,
-    "images": "../source/images/",
-    "audio": ""
+  "animations": {
+    "blink_both": {},
+    "blink_l": {},
+    "blink_r": {},
+    "idle": {}
   },
   "bones": [
     {
@@ -72,259 +70,261 @@
       "parent": "body_root"
     }
   ],
-  "slots": [
-    {
-      "name": "hair_back_c",
-      "bone": "hair_back_root",
-      "attachment": "hair_back_c"
-    },
-    {
-      "name": "hair_back_l1",
-      "bone": "hair_back_root",
-      "attachment": "hair_back_l1"
-    },
-    {
-      "name": "hair_back_l2",
-      "bone": "hair_back_root",
-      "attachment": "hair_back_l2"
-    },
-    {
-      "name": "hair_back_r1",
-      "bone": "hair_back_root",
-      "attachment": "hair_back_r1"
-    },
-    {
-      "name": "hair_back_r2",
-      "bone": "hair_back_root",
-      "attachment": "hair_back_r2"
-    },
-    {
-      "name": "skirt_back",
-      "bone": "skirt_root",
-      "attachment": "skirt_back"
-    },
-    {
-      "name": "torso",
-      "bone": "torso",
-      "attachment": "torso"
-    },
-    {
-      "name": "hips",
-      "bone": "hips",
-      "attachment": "hips"
-    },
-    {
-      "name": "bodice",
-      "bone": "chest",
-      "attachment": "bodice"
-    },
-    {
-      "name": "skirt_mid_l",
-      "bone": "skirt_root",
-      "attachment": "skirt_mid_l"
-    },
-    {
-      "name": "skirt_mid_r",
-      "bone": "skirt_root",
-      "attachment": "skirt_mid_r"
-    },
-    {
-      "name": "chiffon_l",
-      "bone": "skirt_root",
-      "attachment": "chiffon_l"
-    },
-    {
-      "name": "chiffon_r",
-      "bone": "skirt_root",
-      "attachment": "chiffon_r"
-    },
-    {
-      "name": "skirt_front_l",
-      "bone": "skirt_root",
-      "attachment": "skirt_front_l"
-    },
-    {
-      "name": "skirt_front_c",
-      "bone": "skirt_root",
-      "attachment": "skirt_front_c"
-    },
-    {
-      "name": "skirt_front_r",
-      "bone": "skirt_root",
-      "attachment": "skirt_front_r"
-    },
-    {
-      "name": "crystal_hem",
-      "bone": "skirt_root",
-      "attachment": "crystal_hem"
-    },
-    {
-      "name": "collar",
-      "bone": "chest",
-      "attachment": "collar"
-    },
-    {
-      "name": "waist_crystal",
-      "bone": "hips",
-      "attachment": "waist_crystal"
-    },
-    {
-      "name": "head_core_slot",
-      "bone": "head",
-      "attachment": "head_core"
-    },
-    {
-      "name": "ear_l",
-      "bone": "head",
-      "attachment": "ear_l"
-    },
-    {
-      "name": "ear_r",
-      "bone": "head",
-      "attachment": "ear_r"
-    },
-    {
-      "name": "blush_l",
-      "bone": "face_root",
-      "attachment": "blush_l"
-    },
-    {
-      "name": "blush_r",
-      "bone": "face_root",
-      "attachment": "blush_r"
-    },
-    {
-      "name": "eye_l_slot",
-      "bone": "eye_l",
-      "attachment": "eye_l_open"
-    },
-    {
-      "name": "eye_r_slot",
-      "bone": "eye_r",
-      "attachment": "eye_r_open"
-    },
-    {
-      "name": "brow_l_slot",
-      "bone": "brow_l",
-      "attachment": "brow_l"
-    },
-    {
-      "name": "brow_r_slot",
-      "bone": "brow_r",
-      "attachment": "brow_r"
-    },
-    {
-      "name": "mouth_slot",
-      "bone": "mouth",
-      "attachment": "mouth_neutral"
-    },
-    {
-      "name": "hair_side_l1",
-      "bone": "head",
-      "attachment": "hair_side_l1"
-    },
-    {
-      "name": "hair_side_l2",
-      "bone": "head",
-      "attachment": "hair_side_l2"
-    },
-    {
-      "name": "hair_side_r1",
-      "bone": "head",
-      "attachment": "hair_side_r1"
-    },
-    {
-      "name": "hair_side_r2",
-      "bone": "head",
-      "attachment": "hair_side_r2"
-    },
-    {
-      "name": "bang_l2",
-      "bone": "head",
-      "attachment": "bang_l2"
-    },
-    {
-      "name": "bang_l1",
-      "bone": "head",
-      "attachment": "bang_l1"
-    },
-    {
-      "name": "bang_c",
-      "bone": "head",
-      "attachment": "bang_c"
-    },
-    {
-      "name": "bang_r1",
-      "bone": "head",
-      "attachment": "bang_r1"
-    },
-    {
-      "name": "bang_r2",
-      "bone": "head",
-      "attachment": "bang_r2"
-    },
-    {
-      "name": "ahoge",
-      "bone": "head",
-      "attachment": "ahoge"
-    },
-    {
-      "name": "bow_tail_l",
-      "bone": "bow_root",
-      "attachment": "bow_tail_l"
-    },
-    {
-      "name": "bow_tail_r",
-      "bone": "bow_root",
-      "attachment": "bow_tail_r"
-    },
-    {
-      "name": "bow_lower_l",
-      "bone": "bow_root",
-      "attachment": "bow_lower_l"
-    },
-    {
-      "name": "bow_lower_r",
-      "bone": "bow_root",
-      "attachment": "bow_lower_r"
-    },
-    {
-      "name": "bow_upper_l",
-      "bone": "bow_root",
-      "attachment": "bow_upper_l"
-    },
-    {
-      "name": "bow_upper_r",
-      "bone": "bow_root",
-      "attachment": "bow_upper_r"
-    },
-    {
-      "name": "bow_knot",
-      "bone": "bow_root",
-      "attachment": "bow_knot"
-    },
-    {
-      "name": "bow_crystal",
-      "bone": "bow_root",
-      "attachment": "bow_crystal"
-    },
-    {
-      "name": "bow_glow",
-      "bone": "bow_root",
-      "attachment": "bow_glow",
-      "blend": "additive"
-    }
-  ],
+  "skeleton": {
+    "audio": "",
+    "hash": "sena-r3b-bootstrap",
+    "height": 0,
+    "images": "../source/images/",
+    "spine": "3.8.75",
+    "width": 0
+  },
   "skins": [
     {
-      "name": "base",
-      "attachments": {}
+      "attachments": {},
+      "name": "base"
     }
   ],
-  "animations": {
-    "idle": {},
-    "blink_l": {},
-    "blink_r": {},
-    "blink_both": {}
-  }
+  "slots": [
+    {
+      "attachment": "hair_back_c",
+      "bone": "hair_back_root",
+      "name": "hair_back_c"
+    },
+    {
+      "attachment": "hair_back_l1",
+      "bone": "hair_back_root",
+      "name": "hair_back_l1"
+    },
+    {
+      "attachment": "hair_back_l2",
+      "bone": "hair_back_root",
+      "name": "hair_back_l2"
+    },
+    {
+      "attachment": "hair_back_r1",
+      "bone": "hair_back_root",
+      "name": "hair_back_r1"
+    },
+    {
+      "attachment": "hair_back_r2",
+      "bone": "hair_back_root",
+      "name": "hair_back_r2"
+    },
+    {
+      "attachment": "skirt_back",
+      "bone": "skirt_root",
+      "name": "skirt_back"
+    },
+    {
+      "attachment": "torso",
+      "bone": "torso",
+      "name": "torso"
+    },
+    {
+      "attachment": "hips",
+      "bone": "hips",
+      "name": "hips"
+    },
+    {
+      "attachment": "bodice",
+      "bone": "chest",
+      "name": "bodice"
+    },
+    {
+      "attachment": "skirt_mid_l",
+      "bone": "skirt_root",
+      "name": "skirt_mid_l"
+    },
+    {
+      "attachment": "skirt_mid_r",
+      "bone": "skirt_root",
+      "name": "skirt_mid_r"
+    },
+    {
+      "attachment": "chiffon_l",
+      "bone": "skirt_root",
+      "name": "chiffon_l"
+    },
+    {
+      "attachment": "chiffon_r",
+      "bone": "skirt_root",
+      "name": "chiffon_r"
+    },
+    {
+      "attachment": "skirt_front_l",
+      "bone": "skirt_root",
+      "name": "skirt_front_l"
+    },
+    {
+      "attachment": "skirt_front_c",
+      "bone": "skirt_root",
+      "name": "skirt_front_c"
+    },
+    {
+      "attachment": "skirt_front_r",
+      "bone": "skirt_root",
+      "name": "skirt_front_r"
+    },
+    {
+      "attachment": "crystal_hem",
+      "bone": "skirt_root",
+      "name": "crystal_hem"
+    },
+    {
+      "attachment": "collar",
+      "bone": "chest",
+      "name": "collar"
+    },
+    {
+      "attachment": "waist_crystal",
+      "bone": "hips",
+      "name": "waist_crystal"
+    },
+    {
+      "attachment": "head_core",
+      "bone": "head",
+      "name": "head_core_slot"
+    },
+    {
+      "attachment": "ear_l",
+      "bone": "head",
+      "name": "ear_l"
+    },
+    {
+      "attachment": "ear_r",
+      "bone": "head",
+      "name": "ear_r"
+    },
+    {
+      "attachment": "blush_l",
+      "bone": "face_root",
+      "name": "blush_l"
+    },
+    {
+      "attachment": "blush_r",
+      "bone": "face_root",
+      "name": "blush_r"
+    },
+    {
+      "attachment": "eye_l_open",
+      "bone": "eye_l",
+      "name": "eye_l_slot"
+    },
+    {
+      "attachment": "eye_r_open",
+      "bone": "eye_r",
+      "name": "eye_r_slot"
+    },
+    {
+      "attachment": "brow_l",
+      "bone": "brow_l",
+      "name": "brow_l_slot"
+    },
+    {
+      "attachment": "brow_r",
+      "bone": "brow_r",
+      "name": "brow_r_slot"
+    },
+    {
+      "attachment": "mouth_neutral",
+      "bone": "mouth",
+      "name": "mouth_slot"
+    },
+    {
+      "attachment": "hair_side_l1",
+      "bone": "head",
+      "name": "hair_side_l1"
+    },
+    {
+      "attachment": "hair_side_l2",
+      "bone": "head",
+      "name": "hair_side_l2"
+    },
+    {
+      "attachment": "hair_side_r1",
+      "bone": "head",
+      "name": "hair_side_r1"
+    },
+    {
+      "attachment": "hair_side_r2",
+      "bone": "head",
+      "name": "hair_side_r2"
+    },
+    {
+      "attachment": "bang_l2",
+      "bone": "head",
+      "name": "bang_l2"
+    },
+    {
+      "attachment": "bang_l1",
+      "bone": "head",
+      "name": "bang_l1"
+    },
+    {
+      "attachment": "bang_c",
+      "bone": "head",
+      "name": "bang_c"
+    },
+    {
+      "attachment": "bang_r1",
+      "bone": "head",
+      "name": "bang_r1"
+    },
+    {
+      "attachment": "bang_r2",
+      "bone": "head",
+      "name": "bang_r2"
+    },
+    {
+      "attachment": "ahoge",
+      "bone": "head",
+      "name": "ahoge"
+    },
+    {
+      "attachment": "bow_tail_l",
+      "bone": "bow_root",
+      "name": "bow_tail_l"
+    },
+    {
+      "attachment": "bow_tail_r",
+      "bone": "bow_root",
+      "name": "bow_tail_r"
+    },
+    {
+      "attachment": "bow_lower_l",
+      "bone": "bow_root",
+      "name": "bow_lower_l"
+    },
+    {
+      "attachment": "bow_lower_r",
+      "bone": "bow_root",
+      "name": "bow_lower_r"
+    },
+    {
+      "attachment": "bow_upper_l",
+      "bone": "bow_root",
+      "name": "bow_upper_l"
+    },
+    {
+      "attachment": "bow_upper_r",
+      "bone": "bow_root",
+      "name": "bow_upper_r"
+    },
+    {
+      "attachment": "bow_knot",
+      "bone": "bow_root",
+      "name": "bow_knot"
+    },
+    {
+      "attachment": "bow_crystal",
+      "bone": "bow_root",
+      "name": "bow_crystal"
+    },
+    {
+      "attachment": "bow_glow",
+      "blend": "additive",
+      "bone": "bow_root",
+      "name": "bow_glow"
+    }
+  ]
 }
