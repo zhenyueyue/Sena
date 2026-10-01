@@ -1,8 +1,11 @@
 {
-  "animations": {
-    "blink_l": {},
-    "blink_r": {},
-    "idle": {}
+  "skeleton": {
+    "hash": "sena-r3b-bootstrap",
+    "spine": "3.8.75",
+    "width": 0,
+    "height": 0,
+    "images": "../source/images/",
+    "audio": ""
   },
   "bones": [
     {
@@ -45,6 +48,18 @@
       "parent": "face_root"
     },
     {
+      "name": "brow_l",
+      "parent": "face_root"
+    },
+    {
+      "name": "brow_r",
+      "parent": "face_root"
+    },
+    {
+      "name": "mouth",
+      "parent": "face_root"
+    },
+    {
       "name": "bow_root",
       "parent": "head"
     },
@@ -57,321 +72,259 @@
       "parent": "body_root"
     }
   ],
-  "skeleton": {
-    "audio": "",
-    "hash": "sena-r3b-bootstrap",
-    "height": 0,
-    "images": "../source/images/",
-    "spine": "3.8.75",
-    "width": 0
-  },
-  "skins": [
-    {
-      "attachments": {},
-      "name": "base"
-    }
-  ],
   "slots": [
     {
-      "attachment": "hair_back_c",
+      "name": "hair_back_c",
       "bone": "hair_back_root",
-      "name": "hair_back_c"
+      "attachment": "hair_back_c"
     },
     {
-      "attachment": "hair_back_l1",
+      "name": "hair_back_l1",
       "bone": "hair_back_root",
-      "name": "hair_back_l1"
+      "attachment": "hair_back_l1"
     },
     {
-      "attachment": "hair_back_l2",
+      "name": "hair_back_l2",
       "bone": "hair_back_root",
-      "name": "hair_back_l2"
+      "attachment": "hair_back_l2"
     },
     {
-      "attachment": "hair_back_r1",
+      "name": "hair_back_r1",
       "bone": "hair_back_root",
-      "name": "hair_back_r1"
+      "attachment": "hair_back_r1"
     },
     {
-      "attachment": "hair_back_r2",
+      "name": "hair_back_r2",
       "bone": "hair_back_root",
-      "name": "hair_back_r2"
+      "attachment": "hair_back_r2"
     },
     {
-      "attachment": "skirt_back",
+      "name": "skirt_back",
       "bone": "skirt_root",
-      "name": "skirt_back"
+      "attachment": "skirt_back"
     },
     {
-      "attachment": "torso",
+      "name": "torso",
       "bone": "torso",
-      "name": "torso"
+      "attachment": "torso"
     },
     {
-      "attachment": "hips",
+      "name": "hips",
       "bone": "hips",
-      "name": "hips"
+      "attachment": "hips"
     },
     {
-      "attachment": "bodice",
+      "name": "bodice",
       "bone": "chest",
-      "name": "bodice"
+      "attachment": "bodice"
     },
     {
-      "attachment": "skirt_mid_l",
+      "name": "skirt_mid_l",
       "bone": "skirt_root",
-      "name": "skirt_mid_l"
+      "attachment": "skirt_mid_l"
     },
     {
-      "attachment": "skirt_mid_r",
+      "name": "skirt_mid_r",
       "bone": "skirt_root",
-      "name": "skirt_mid_r"
+      "attachment": "skirt_mid_r"
     },
     {
-      "attachment": "chiffon_l",
+      "name": "chiffon_l",
       "bone": "skirt_root",
-      "name": "chiffon_l"
+      "attachment": "chiffon_l"
     },
     {
-      "attachment": "chiffon_r",
+      "name": "chiffon_r",
       "bone": "skirt_root",
-      "name": "chiffon_r"
+      "attachment": "chiffon_r"
     },
     {
-      "attachment": "skirt_front_l",
+      "name": "skirt_front_l",
       "bone": "skirt_root",
-      "name": "skirt_front_l"
+      "attachment": "skirt_front_l"
     },
     {
-      "attachment": "skirt_front_c",
+      "name": "skirt_front_c",
       "bone": "skirt_root",
-      "name": "skirt_front_c"
+      "attachment": "skirt_front_c"
     },
     {
-      "attachment": "skirt_front_r",
+      "name": "skirt_front_r",
       "bone": "skirt_root",
-      "name": "skirt_front_r"
+      "attachment": "skirt_front_r"
     },
     {
-      "attachment": "crystal_hem",
+      "name": "crystal_hem",
       "bone": "skirt_root",
-      "name": "crystal_hem"
+      "attachment": "crystal_hem"
     },
     {
-      "attachment": "collar",
+      "name": "collar",
       "bone": "chest",
-      "name": "collar"
+      "attachment": "collar"
     },
     {
-      "attachment": "waist_crystal",
+      "name": "waist_crystal",
       "bone": "hips",
-      "name": "waist_crystal"
+      "attachment": "waist_crystal"
     },
     {
-      "attachment": "head_base",
+      "name": "head_core_slot",
       "bone": "head",
-      "name": "head_base"
+      "attachment": "head_core"
     },
     {
-      "attachment": "ear_l",
+      "name": "ear_l",
       "bone": "head",
-      "name": "ear_l"
+      "attachment": "ear_l"
     },
     {
-      "attachment": "ear_r",
+      "name": "ear_r",
       "bone": "head",
-      "name": "ear_r"
+      "attachment": "ear_r"
     },
     {
-      "attachment": "blush_l",
+      "name": "blush_l",
       "bone": "face_root",
-      "name": "blush_l"
+      "attachment": "blush_l"
     },
     {
-      "attachment": "blush_r",
+      "name": "blush_r",
       "bone": "face_root",
-      "name": "blush_r"
+      "attachment": "blush_r"
     },
     {
-      "attachment": "eye_white_l",
+      "name": "eye_l_slot",
       "bone": "eye_l",
-      "name": "eye_white_l"
+      "attachment": "eye_l_open"
     },
     {
-      "attachment": "iris_l",
-      "bone": "eye_l",
-      "name": "iris_l"
-    },
-    {
-      "attachment": "pupil_l",
-      "bone": "eye_l",
-      "name": "pupil_l"
-    },
-    {
-      "attachment": "eye_highlight_l",
-      "bone": "eye_l",
-      "name": "eye_highlight_l"
-    },
-    {
-      "attachment": "eyelid_lower_l",
-      "bone": "eye_l",
-      "name": "eyelid_lower_l"
-    },
-    {
-      "attachment": "eyelid_upper_l",
-      "bone": "eye_l",
-      "name": "eyelid_upper_l"
-    },
-    {
-      "attachment": "lash_l",
-      "bone": "eye_l",
-      "name": "lash_l"
-    },
-    {
-      "attachment": "eye_white_r",
+      "name": "eye_r_slot",
       "bone": "eye_r",
-      "name": "eye_white_r"
+      "attachment": "eye_r_open"
     },
     {
-      "attachment": "iris_r",
-      "bone": "eye_r",
-      "name": "iris_r"
+      "name": "brow_l_slot",
+      "bone": "brow_l",
+      "attachment": "brow_l"
     },
     {
-      "attachment": "pupil_r",
-      "bone": "eye_r",
-      "name": "pupil_r"
+      "name": "brow_r_slot",
+      "bone": "brow_r",
+      "attachment": "brow_r"
     },
     {
-      "attachment": "eye_highlight_r",
-      "bone": "eye_r",
-      "name": "eye_highlight_r"
+      "name": "mouth_slot",
+      "bone": "mouth",
+      "attachment": "mouth_neutral"
     },
     {
-      "attachment": "eyelid_lower_r",
-      "bone": "eye_r",
-      "name": "eyelid_lower_r"
-    },
-    {
-      "attachment": "eyelid_upper_r",
-      "bone": "eye_r",
-      "name": "eyelid_upper_r"
-    },
-    {
-      "attachment": "lash_r",
-      "bone": "eye_r",
-      "name": "lash_r"
-    },
-    {
-      "attachment": "mouth_neutral",
-      "bone": "face_root",
-      "name": "mouth"
-    },
-    {
-      "attachment": "brow_l",
-      "bone": "face_root",
-      "name": "brow_l"
-    },
-    {
-      "attachment": "brow_r",
-      "bone": "face_root",
-      "name": "brow_r"
-    },
-    {
-      "attachment": "hair_side_l1",
+      "name": "hair_side_l1",
       "bone": "head",
-      "name": "hair_side_l1"
+      "attachment": "hair_side_l1"
     },
     {
-      "attachment": "hair_side_l2",
+      "name": "hair_side_l2",
       "bone": "head",
-      "name": "hair_side_l2"
+      "attachment": "hair_side_l2"
     },
     {
-      "attachment": "hair_side_r1",
+      "name": "hair_side_r1",
       "bone": "head",
-      "name": "hair_side_r1"
+      "attachment": "hair_side_r1"
     },
     {
-      "attachment": "hair_side_r2",
+      "name": "hair_side_r2",
       "bone": "head",
-      "name": "hair_side_r2"
+      "attachment": "hair_side_r2"
     },
     {
-      "attachment": "bang_l2",
+      "name": "bang_l2",
       "bone": "head",
-      "name": "bang_l2"
+      "attachment": "bang_l2"
     },
     {
-      "attachment": "bang_l1",
+      "name": "bang_l1",
       "bone": "head",
-      "name": "bang_l1"
+      "attachment": "bang_l1"
     },
     {
-      "attachment": "bang_c",
+      "name": "bang_c",
       "bone": "head",
-      "name": "bang_c"
+      "attachment": "bang_c"
     },
     {
-      "attachment": "bang_r1",
+      "name": "bang_r1",
       "bone": "head",
-      "name": "bang_r1"
+      "attachment": "bang_r1"
     },
     {
-      "attachment": "bang_r2",
+      "name": "bang_r2",
       "bone": "head",
-      "name": "bang_r2"
+      "attachment": "bang_r2"
     },
     {
-      "attachment": "ahoge",
+      "name": "ahoge",
       "bone": "head",
-      "name": "ahoge"
+      "attachment": "ahoge"
     },
     {
-      "attachment": "bow_tail_l",
+      "name": "bow_tail_l",
       "bone": "bow_root",
-      "name": "bow_tail_l"
+      "attachment": "bow_tail_l"
     },
     {
-      "attachment": "bow_tail_r",
+      "name": "bow_tail_r",
       "bone": "bow_root",
-      "name": "bow_tail_r"
+      "attachment": "bow_tail_r"
     },
     {
-      "attachment": "bow_lower_l",
+      "name": "bow_lower_l",
       "bone": "bow_root",
-      "name": "bow_lower_l"
+      "attachment": "bow_lower_l"
     },
     {
-      "attachment": "bow_lower_r",
+      "name": "bow_lower_r",
       "bone": "bow_root",
-      "name": "bow_lower_r"
+      "attachment": "bow_lower_r"
     },
     {
-      "attachment": "bow_upper_l",
+      "name": "bow_upper_l",
       "bone": "bow_root",
-      "name": "bow_upper_l"
+      "attachment": "bow_upper_l"
     },
     {
-      "attachment": "bow_upper_r",
+      "name": "bow_upper_r",
       "bone": "bow_root",
-      "name": "bow_upper_r"
+      "attachment": "bow_upper_r"
     },
     {
-      "attachment": "bow_knot",
+      "name": "bow_knot",
       "bone": "bow_root",
-      "name": "bow_knot"
+      "attachment": "bow_knot"
     },
     {
-      "attachment": "bow_crystal",
+      "name": "bow_crystal",
       "bone": "bow_root",
-      "name": "bow_crystal"
+      "attachment": "bow_crystal"
     },
     {
+      "name": "bow_glow",
+      "bone": "bow_root",
       "attachment": "bow_glow",
-      "blend": "additive",
-      "bone": "bow_root",
-      "name": "bow_glow"
+      "blend": "additive"
     }
-  ]
+  ],
+  "skins": [
+    {
+      "name": "base",
+      "attachments": {}
+    }
+  ],
+  "animations": {
+    "idle": {},
+    "blink_l": {},
+    "blink_r": {},
+    "blink_both": {}
+  }
 }
