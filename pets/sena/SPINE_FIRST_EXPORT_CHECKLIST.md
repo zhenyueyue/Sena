@@ -113,27 +113,20 @@ pets/sena/spine/settings/layer_contract.json
 ### Face
 
 ```text
-head_base
-eye_white_l
-eye_white_r
-iris_l
-iris_r
-pupil_l
-pupil_r
-eye_highlight_l
-eye_highlight_r
-eyelid_upper_l
-eyelid_upper_r
-eyelid_lower_l
-eyelid_lower_r
-lash_l
-lash_r
+head_core
+eye_l_open
+eye_l_closed
+eye_r_open
+eye_r_closed
 brow_l
 brow_r
 mouth_neutral
+mouth_smile
+mouth_open
+mouth_sad
 ```
 
-左右眼绝不能烘焙成一张脸图。
+左右眼必须保持为独立 Attachment；每只眼的 open / closed 必须放在同一个眼睛 Slot 中切换。
 
 ### Hair
 
@@ -221,7 +214,7 @@ cargo run --example sena_source_gate
 
 ## 3. 创建 Spine 工程
 
-不要手工创建 13 根 R3B 骨骼和 60 个核心 Slot。
+不要手工创建 16 根 R3B 骨骼和 48 个核心 Slot。
 
 仓库已经跟踪一份由机器合同生成的 Spine 3.8.75 Bootstrap：
 
@@ -244,14 +237,14 @@ pets/sena/spine/project/sena.bootstrap.json
 
 它已经包含：
 
-- 13 根 R3B 骨骼与父子层级。
-- 60 个核心 Slot。
+- 16 根 R3B 骨骼与父子层级。
+- 48 个核心 Slot。
 - Slot -> Bone。
 - Setup attachment 名。
 - 初始 Draw Order。
 - Blend。
 - 空的 `base` skin。
-- 空的 `idle / blink_l / blink_r` 动画名。
+- 空的 `idle / blink_l / blink_r / blink_both` 动画名。
 
 Bootstrap **故意没有**：
 
@@ -359,9 +352,9 @@ pets/sena/spine/settings/r3b_contract.json
 
 当前 R3B 锁定：
 
-- 60 个核心 slot。
-- 63 个必需 attachment。
-- 22 条基础 draw-order 约束。
+- 48 个核心 slot。
+- 53 个必需 attachment。
+- 20 条基础 draw-order 约束。
 - slot -> bone。
 - setup attachment。
 - blend mode。
@@ -374,15 +367,15 @@ Asset Gate 会直接从 spine-c 读取真实工程并逐项比对。
 正确：
 
 ```text
-slot: mouth
-bone: face_root
+slot: mouth_slot
+bone: mouth
 setup: mouth_neutral
 
 attachments:
   mouth_neutral
   mouth_smile
   mouth_open
-  mouth_sleep
+  mouth_sad
 ```
 
 错误：
@@ -391,7 +384,7 @@ attachments:
 mouth_neutral slot
 mouth_smile slot
 mouth_open slot
-mouth_sleep slot
+mouth_sad slot
 ```
 
 表情状态应该切 attachment，不应该靠四个嘴同时叠层。
@@ -400,21 +393,19 @@ mouth_sleep slot
 
 左眼和右眼不能共享同一个 slot。
 
-例如左眼：
+正式结构：
 
 ```text
-eye_white_l    -> eye_l
-iris_l         -> eye_l
-pupil_l        -> eye_l
-eye_highlight_l -> eye_l
-eyelid_upper_l -> eye_l
-eyelid_lower_l -> eye_l
-lash_l         -> eye_l
+eye_l_slot -> eye_l
+  eye_l_open
+  eye_l_closed
+
+eye_r_slot -> eye_r
+  eye_r_open
+  eye_r_closed
 ```
 
-右眼同理全部挂 `eye_r`。
-
-这样 `blink_l` / `blink_r` 才能完全独立。
+Setup Pose 分别使用 `eye_l_open` / `eye_r_open`。这样 `blink_l`、`blink_r` 可以完全独立，`blink_both` 则只组合两侧眼睛时间线。
 
 ### Mesh / Region 类型
 
@@ -422,9 +413,8 @@ R3B 会阻止明显错误的 attachment 类型。
 
 优先 Region：
 
-- eye white / iris / pupil / highlight。
+- whole-eye open / closed attachments。
 - eyebrow。
-- blush。
 - mouth。
 - collar。
 - waist crystal。
@@ -441,7 +431,7 @@ R3B 会阻止明显错误的 attachment 类型。
 
 部分主体允许 Region 或 Mesh：
 
-- `head_base`。
+- `head_core`。
 - `torso`。
 - `hips`。
 - `bodice`。
@@ -465,14 +455,14 @@ bow_glow
 
 ### 基础 Draw Order
 
-Asset Gate 不强迫所有 60 个 slot 使用一个死板的绝对顺序，而是检查关键前后关系。
+Asset Gate 不强迫所有 48 个 slot 使用一个死板的绝对顺序，而是检查关键前后关系。
 
 例如：
 
 ```text
-rear hair < head_base
+rear hair < head_core_slot
 skirt_back < skirt_mid < skirt_front < crystal_hem
-head_base < eye_white < iris < pupil < eye_highlight
+head_core_slot < eye_l_slot / eye_r_slot < brow slots < mouth_slot
 ```
 
 其中 `<` 表示左边必须画在右边后面。
@@ -533,7 +523,7 @@ Weighted Mesh 优先用于：
 
 ## 6.5 base Skin 所有权
 
-第一份工程的 60 个核心 slot / 63 个核心 attachment 必须真正放在：
+第一份工程的 48 个核心 slot / 53 个核心 attachment 必须真正放在：
 
 ```text
 base
@@ -611,12 +601,12 @@ Asset Gate 会检查 timeline 的真实 target，而不只是动画名：
 - duration：0.08–0.35 秒。
 - intended Track：3。
 - 只允许 bone `eye_l`。
-- 只允许左眼 7 个核心 slot。
+- 只允许 `eye_l_slot`。
 - 不允许任何右眼 bone / slot。
 - 不允许 Event / Draw Order。
 - 不允许任何 Constraint timeline。
 
-`blink_r` 同理，只允许 `eye_r` 与右眼 slot。
+`blink_r` 同理，只允许 `eye_r` 与 `eye_r_slot`。
 
 因此下面这种动画会直接失败：
 
@@ -688,6 +678,7 @@ cargo run --example sena_spine_asset_gate
 - `idle`。
 - `blink_l`。
 - `blink_r`。
+- `blink_both`。
 - R3B 必需骨骼。
 - setup pose 可渲染。
 - idle 中间帧可渲染。
