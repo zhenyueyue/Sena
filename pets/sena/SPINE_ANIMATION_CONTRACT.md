@@ -131,6 +131,10 @@ expr_surprised
 
 要求：
 
+- `blink_l` 只允许驱动 `eye_l` / `eye_l_slot`。
+- `blink_r` 只允许驱动 `eye_r` / `eye_r_slot`。
+- `blink_both` 只允许组合上述两侧眼睛目标。
+- 三条 blink 都不得 key 眉毛、嘴巴、head 或 body。
 - `blink_l` 和 `blink_r` 必须能单独播放。
 - 正常随机眨眼用两眼相差 20–90 ms 的错峰，而不是永远同帧。
 - 猫使用独立随机时钟。
